@@ -1,0 +1,103 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+
+{% block title %}{{ page.title }} — Don Norman{% endblock %}
+
+{% block head %}
+<script type="application/ld+json">
+{{ book_json_ld|safe }}
+</script>
+{% endblock %}
+
+{% block layout %}
+<main id="main" class="home">
+  <section class="hero">
+    <div class="hero-visual">
+      <div class="cover-frame">
+        <picture>
+          <source srcset="/images/cover.webp" type="image/webp">
+          <img src="/images/cover.jpg" width="438" height="662" alt="Cover of The Design of Everyday Things by Don Norman" fetchpriority="high">
+        </picture>
+      </div>
+      <p class="cover-caption">Basic Books · 2013</p>
+    </div>
+    <div class="hero-copy">
+      <p class="eyebrow">A browser edition</p>
+      <h1 class="hero-title">
+        <span class="line">The Design</span>
+        <span class="line">of Everyday</span>
+        <span class="line accent-line">Things</span>
+      </h1>
+      <p class="hero-author">Don Norman</p>
+      <p class="hero-edition">Revised and Expanded Edition</p>
+      <p class="hero-intro">The complete text, set for the browser. Seven chapters, forty figures, seventy-one notes, and a full index — with nothing abridged.</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="/preface/">Start reading {{ icon("arrow-right", 18) }}</a>
+        <a class="btn btn-quiet" href="/contents/">Contents</a>
+      </div>
+      <dl class="hero-stats">
+        <div><dt>Chapters</dt><dd>7</dd></div>
+        <div><dt>Words</dt><dd>{{ stats.chapter_words|comma }}</dd></div>
+        <div><dt>Figures</dt><dd>{{ stats.figures }}</dd></div>
+        <div><dt>Notes</dt><dd>{{ stats.notes }}</dd></div>
+      </dl>
+    </div>
+  </section>
+
+  <section class="home-toc" aria-labelledby="home-toc-title">
+    <div class="section-heading">
+      <div class="section-heading-main">
+        <p class="eyebrow">Read</p>
+        <h2 id="home-toc-title">The chapters</h2>
+      </div>
+      <a class="text-link" href="/contents/">Full contents {{ icon("arrow-right", 16) }}</a>
+    </div>
+    <ol class="chapter-list">
+      {% for chapter in home_chapters %}
+      <li>
+        <a href="{{ chapter.route }}" class="chapter-row">
+          <span class="chapter-row-num">{{ "%02d"|format(chapter.number) }}</span>
+          <span class="chapter-row-main">
+            <span class="chapter-row-title">{{ chapter.title }}</span>
+            <span class="chapter-row-meta">{{ chapter.section_count }} sections · {{ chapter.reading_minutes }} min read</span>
+          </span>
+          <span class="chapter-row-arrow" aria-hidden="true">{{ icon("arrow-right", 20) }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ol>
+    <div class="home-read-more">
+      <a class="chapter-row chapter-row-extra" href="/acknowledgments/">
+        <span class="chapter-row-num">—</span>
+        <span class="chapter-row-main">
+          <span class="chapter-row-title">Acknowledgments</span>
+          <span class="chapter-row-meta">Back matter</span>
+        </span>
+        <span class="chapter-row-arrow" aria-hidden="true">{{ icon("arrow-right", 20) }}</span>
+      </a>
+    </div>
+  </section>
+
+  <section class="colophon" id="colophon" aria-labelledby="colophon-title">
+    <div class="section-heading">
+      <div class="section-heading-main">
+        <p class="eyebrow">Colophon</p>
+        <h2 id="colophon-title">About this edition</h2>
+      </div>
+    </div>
+    <div class="colophon-grid">
+      <div class="colophon-copy">
+        <p>This is the complete text of the 2013 revised and expanded edition, extracted from the EPUB and rebuilt as a static website. Page numbers, running heads, and print spacing are gone; the words, headings, figures, captions, notes, references, and index remain.</p>
+        <p>Every paragraph is checked against the source by a text-fidelity gate. A build fails if a word is added, dropped, or moved. The design is the only thing that changes.</p>
+        <p class="colophon-rights">Text © 2013 Don Norman. Published by Basic Books. This browser edition is intended for personal reading; it is not affiliated with the author or publisher.</p>
+      </div>
+      <dl class="colophon-specs">
+        <div><dt>Typography</dt><dd>Fraunces, Literata, Inter</dd></div>
+        <div><dt>Build</dt><dd>Python + static HTML</dd></div>
+        <div><dt>Search</dt><dd>Pagefind, fully static</dd></div>
+        <div><dt>Source</dt><dd>EPUB, 2013 edition</dd></div>
+      </dl>
+    </div>
+  </section>
+</main>
+{% endblock %}

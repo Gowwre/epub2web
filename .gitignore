@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+content/
+public/images/
+*.epub
+__pycache__/
+.DS_Store
+screenshots/

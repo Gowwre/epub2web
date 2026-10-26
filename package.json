@@ -1,0 +1,18 @@
+{
+  "name": "the-design-of-everyday-things-web",
+  "private": true,
+  "version": "0.1.0",
+  "description": "A browser edition of The Design of Everyday Things, built from the EPUB with a deterministic extraction pipeline and a text-fidelity gate.",
+  "scripts": {
+    "extract": "python3 scripts/extract.py",
+    "build": "npm run extract && python3 scripts/build.py && npx pagefind --site dist --output-subdir pagefind && python3 scripts/verify.py",
+    "verify": "python3 scripts/verify.py",
+    "links": "python3 scripts/check_links.py",
+    "check": "npm run build && python3 scripts/check_links.py",
+    "dev": "python3 -m http.server 4321 -d dist",
+    "serve": "python3 -m http.server 4321 -d dist"
+  },
+  "devDependencies": {
+    "pagefind": "^1.5.2"
+  }
+}

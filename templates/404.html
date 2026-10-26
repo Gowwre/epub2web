@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+
+{% block layout %}
+<main id="main" class="not-found">
+  <p class="eyebrow">404</p>
+  <h1>This page is not in the book.</h1>
+  <p>The address may be wrong, or the section may have moved.</p>
+  <div class="hero-actions">
+    <a class="btn btn-primary" href="/">Back to the cover</a>
+    <a class="btn btn-quiet" href="/contents/">Contents</a>
+  </div>
+</main>
+{% endblock %}
