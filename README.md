@@ -23,6 +23,9 @@ npm run build
 # Build + link check
 npm run check
 
+# Portable offline package (no hosting required)
+npm run package:offline
+
 # Preview at http://localhost:4321
 npm run dev
 ```
@@ -36,6 +39,27 @@ SITE_URL="https://your-domain.example" npm run build
 ```
 
 Upload `dist/` to any static host. The site assumes it is served from the domain root.
+
+## Distributing without hosting
+
+`npm run package:offline` creates:
+
+```
+release/doet-browser-edition.zip          ~3.7 MB, no hosting
+release/doet-browser-edition/             the unzipped package
+```
+
+The zip contains the complete site plus a tiny local-only server (`serve.py`) and one-click launchers:
+
+- **macOS:** double-click `start.command`
+- **Windows:** double-click `start.bat` (needs Python 3)
+- **Linux:** run `start.sh`
+
+The launcher opens `http://127.0.0.1:8000/` in the browser. It binds to `127.0.0.1` only, so the book is not exposed to the network and no internet connection is needed. Pagefind search, note previews, fonts, and images all work because the site is served properly rather than opened as `file://`.
+
+You can email the zip, put it on a USB drive, or share it through any file-transfer service. The recipient needs Python 3; the README inside the package explains the options. If you need a true zero-install format (one self-contained HTML file that opens by double-click), that requires inlining the fonts/images and replacing the search index; the current package is the version that preserves all features.
+
+The site and package are intentionally excluded from git. The text remains © Don Norman / Basic Books; see the rights note below.
 
 ---
 
@@ -149,4 +173,5 @@ static/assets/
   fonts/           woff2 files
 content/           generated; gitignored
 dist/              generated; gitignored
+release/           portable offline package; gitignored
 ```

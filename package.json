@@ -10,7 +10,8 @@
     "links": "python3 scripts/check_links.py",
     "check": "npm run build && python3 scripts/check_links.py",
     "dev": "python3 -m http.server 4321 -d dist",
-    "serve": "python3 -m http.server 4321 -d dist"
+    "serve": "python3 -m http.server 4321 -d dist",
+    "package:offline": "npm run build && python3 scripts/package_offline.py"
   },
   "devDependencies": {
     "pagefind": "^1.5.2"
