@@ -10,6 +10,7 @@
     if (!path) return basePath + "/";
     if (/^(?:[a-z][a-z0-9+.-]*:|\/\/)/i.test(path)) return path;
     if (path.charAt(0) !== "/") return path;
+    if (basePath && (path === basePath || path.indexOf(basePath + "/") === 0)) return path;
     return basePath + path;
   }
 
@@ -138,7 +139,7 @@
       return;
     }
     const needle = query.toLowerCase();
-    const matches = searchIndex
+    const allMatches = searchIndex
       .map(function (entry) {
         const titleMatch = entry.title.toLowerCase().includes(needle);
         const textMatch = entry.text.toLowerCase().includes(needle);
@@ -146,14 +147,21 @@
         return { entry: entry, score: (titleMatch ? 3 : 0) + (textMatch ? 1 : 0) };
       })
       .filter(Boolean)
-      .sort(function (a, b) { return b.score - a.score; })
-      .slice(0, 20);
+      .sort(function (a, b) { return b.score - a.score; });
+    const matches = allMatches.slice(0, 20);
     if (!matches.length) {
       searchStatus.textContent = "No matches for “" + query + "”.";
       return;
     }
     searchStatus.textContent =
-      matches.length + " result" + (matches.length === 1 ? "" : "s") + " for “" + query + "”.";
+      allMatches.length +
+      " result" +
+      (allMatches.length === 1 ? "" : "s") +
+      " for “" +
+      query +
+      "”" +
+      (allMatches.length > matches.length ? " · showing the first 20" : "") +
+      ".";
     matches.forEach(function (match) {
       const entry = match.entry;
       const link = document.createElement("a");

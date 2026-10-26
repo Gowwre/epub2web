@@ -8,7 +8,7 @@ No AI at runtime. No prose rewriting. No Node, bundler, or database. Just Python
 
 [![CI](https://github.com/Gowwre/epub2web/actions/workflows/ci.yml/badge.svg)](https://github.com/Gowwre/epub2web/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776ab)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/Gowwre/epub2web/blob/main/LICENSE)
 
 ![epub2web home page](https://raw.githubusercontent.com/Gowwre/epub2web/main/docs/home.png)
 
@@ -61,7 +61,7 @@ A complete static site with:
 - light and dark themes, reading progress, keyboard navigation
 - responsive typography, print styles, and a mobile contents sheet
 - semantic HTML, accessible labels, and image descriptions
-- every page checked against the EPUB source before the command succeeds
+- every page and every rendered image checked against the EPUB source before the command succeeds
 
 ![epub2web reading view](https://raw.githubusercontent.com/Gowwre/epub2web/main/docs/reading.png)
 
@@ -88,10 +88,24 @@ Most “EPUB to website” tools either look like a document dump or quietly rew
 
 - The extractor maps print-oriented markup to semantic HTML, groups figures and captions, rewrites links, and repairs common EPUB layout artefacts.
 - A **fidelity gate** compares every rendered page with its source, token-for-token and character-for-character. A dropped clause, changed punctuation mark, or moved paragraph fails the build.
-- A **link gate** checks every internal anchor, image, and duplicate ID.
+- An **image gate** compares the number of images on each source page with the rendered page, so a missing figure cannot pass silently.
+- A **link gate** checks every internal anchor, image, asset, and duplicate ID.
 - The build never calls a language model or a remote service. The same EPUB always produces the same text and structure; only the sitemap's build timestamp changes.
 
 That makes the tool useful for authors, translators, publishers, and anyone who wants a readable web edition without turning the text into training data.
+
+## Failure handling and safety
+
+A failed build is not allowed to damage a working site.
+
+- The site is built in a staging directory, verified, and only then swapped into place. If extraction or a gate fails, an existing `--force` target is left untouched and no half-built output is published.
+- `--force` refuses to replace the current directory, the home directory, any directory containing the input EPUB, or a non-empty directory that does not look like an epub2web site.
+- Missing images, invalid images, and remote image references stop the build with the page and file named. Embedded base64 data-URI images are extracted into the site.
+- An EPUB with no readable spine pages fails instead of producing an empty website.
+- Source scripts, event handlers, `javascript:` URLs, hidden source attributes, and other active content are removed before rendering. Metadata embedded in JSON-LD is escaped so it cannot break out of its script element.
+- `--keep-work` preserves the failed site and the extraction report for inspection; otherwise temporary directories are removed.
+
+That makes failure modes explicit: the tool stops rather than silently dropping a figure, a page, or a scriptable payload.
 
 ## CLI
 
@@ -113,8 +127,8 @@ epub2web book.epub -o my-site --site-url https://example.com
 | `--base-path PATH` | Build for a subpath, e.g. `/epub2web` (default: site root) |
 | `--no-verify` | Skip the text-fidelity gate (development only) |
 | `--no-links` | Skip the internal-link gate (development only) |
-| `--force` | Replace an existing output directory |
-| `--keep-work` | Keep the intermediate extraction directory |
+| `--force` | Safely replace an existing epub2web output directory |
+| `--keep-work` | Keep extraction files and a failed site for inspection |
 | `--version` | Print the version |
 
 A run looks like this:
@@ -124,11 +138,11 @@ EPUB:    Alice's Adventures in Wonderland
 Author:  Lewis Carroll
 Pages:   13
 Words:   29,564
-Site:    /home/you/alice-site/index.html
 Verify:  PASS (13/13 pages exact)
-Links:   PASS (625 checked, 0 broken, 0 duplicate ids)
+Links:   PASS (743 checked, 0 broken, 0 duplicate ids)
 Search:  16 sections indexed
-Time:    0.54s
+Site:    /home/you/alice-site/index.html
+Time:    0.57s
 Preview: epub2web alice.epub --serve
 ```
 
@@ -167,7 +181,7 @@ epub2web book.epub --base-path /epub2web --serve
 # http://127.0.0.1:8000/epub2web/
 ```
 
-The included [demo workflow](.github/workflows/pages.yml) does exactly this
+The included [demo workflow](https://github.com/Gowwre/epub2web/blob/main/.github/workflows/pages.yml) does exactly this
 for the project's public-domain Alice in Wonderland demo.
 
 ## Development
@@ -191,19 +205,23 @@ make clean
 
 The test fixture is generated in `tests/conftest.py`; no copyrighted book is required.
 
-Maintainers: see [RELEASING.md](RELEASING.md) for the PyPI Trusted Publishing setup.
+Maintainers: see [RELEASING.md](https://github.com/Gowwre/epub2web/blob/main/RELEASING.md) for the PyPI Trusted Publishing setup.
 
 ## Limitations
 
 - **Reflowable EPUB 2/3** is the target. Fixed-layout, image-only, and DRM-protected EPUBs need additional work.
+- Remote image URLs are rejected because the generated site must stay self-contained and should not leak reader requests. Download and embed those images in the EPUB first.
+- Inline SVG is stripped for safety; external SVG images are sanitized and kept. Images referenced only from CSS backgrounds are not converted. Use raster `<img>`/`<figure>` markup for figures that must appear in the browser.
+- Audio, video, forms, and interactive widgets are not converted; their fallback text is omitted.
 - Unusual print-conversion markup may need a small converter rule. The fidelity gate will stop a lossy conversion rather than let it pass.
+- A spine document that contains several chapters becomes one reading page. Splitting at TOC boundaries is a future improvement.
 - A single-file HTML mode is on the roadmap. Today the output is a static site folder, which is better for navigation, search, and images.
 - PDF input is out of scope.
 
-If a book fails, open an issue with the command, the failing page, and a minimal markup sample (no copyrighted text). See [CONTRIBUTING.md](CONTRIBUTING.md).
+If a book fails, open an issue with the command, the failing page, and a minimal markup sample (no copyrighted text). See [CONTRIBUTING.md](https://github.com/Gowwre/epub2web/blob/main/CONTRIBUTING.md).
 
 ## License and rights
 
 The code and theme are **MIT** licensed. Your EPUB and generated site remain yours; `epub2web` does not include or redistribute book text.
 
-The self-hosted fonts are under the SIL Open Font License; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Only publish books you have the right to publish.
+The self-hosted fonts are under the SIL Open Font License; see [THIRD_PARTY_NOTICES.md](https://github.com/Gowwre/epub2web/blob/main/THIRD_PARTY_NOTICES.md). Only publish books you have the right to publish.

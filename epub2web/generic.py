@@ -9,6 +9,10 @@ before a build can succeed.
 
 from __future__ import annotations
 
+import base64
+import binascii
+import contextlib
+import hashlib
 import html
 import io
 import json
@@ -18,7 +22,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup, NavigableString, Tag, XMLParsedAsHTMLWarning
-from PIL import Image
+from PIL import Image, ImageOps
 
 from .epub import Epub
 from .text import inner, normalize_text, slugify, strip_leading, text_of
@@ -63,18 +67,172 @@ CHAPTER_RE = re.compile(
 )
 NUMBER_RE = re.compile(r"^(\d+)([.:)]?)\s+(.*)$")
 
+DANGEROUS_TAGS = (
+    "script",
+    "style",
+    "noscript",
+    "nav",
+    "iframe",
+    "frame",
+    "frameset",
+    "object",
+    "embed",
+    "applet",
+    "form",
+    "input",
+    "button",
+    "textarea",
+    "select",
+    "option",
+    "optgroup",
+    "link",
+    "meta",
+    "base",
+    "template",
+    "svg",
+    "video",
+    "audio",
+    "source",
+    "track",
+    "canvas",
+)
+DANGEROUS_ATTRS = {
+    "style",
+    "srcdoc",
+    "formaction",
+    "action",
+    "background",
+    "poster",
+    "ping",
+    "xlink:href",
+    "srcset",
+    "imagesrcset",
+    "sizes",
+}
+UNSAFE_URL_PREFIXES = (
+    "javascript:",
+    "vbscript:",
+    "file:",
+    "data:text/html",
+    "data:application/xhtml",
+    "data:image/svg",
+)
+DATA_IMAGE_RE = re.compile(
+    r"^data:image/(png|jpe?g|gif|webp|avif);base64,([A-Za-z0-9+/=\s]+)$",
+    re.IGNORECASE | re.DOTALL,
+)
+RASTER_EXTENSIONS = {
+    "jpeg": ".jpg",
+    "png": ".png",
+    "gif": ".gif",
+    "webp": ".webp",
+    "avif": ".avif",
+}
+
+
+def safe_url(value: str, tag_name: str = "", attribute: str = "") -> bool:
+    compact = re.sub(r"[\x00-\x20]+", "", value or "").lower()
+    if not compact:
+        return True
+    if compact.startswith(UNSAFE_URL_PREFIXES):
+        return False
+    return not (
+        tag_name == "img"
+        and attribute == "src"
+        and compact.startswith("data:")
+        and not compact.startswith("data:image/")
+    )
+
+
+def sanitize_svg(data: bytes) -> bytes:
+    soup = BeautifulSoup(data, "xml")
+    if soup.find() is None:
+        raise ValueError("empty SVG")
+    for el in soup.find_all(
+        ["script", "style", "foreignObject", "iframe", "object", "embed", "audio", "video"]
+    ):
+        el.decompose()
+    for tag in soup.find_all(True):
+        for attr in list(tag.attrs):
+            name = attr.lower()
+            value = str(tag.attrs[attr])
+            if name.startswith("on") or name in ("style", "src", "srcdoc", "formaction", "action"):
+                del tag.attrs[attr]
+                continue
+            if name in ("href", "xlink:href"):
+                compact = re.sub(r"[\x00-\x20]+", "", value).lower()
+                if not compact.startswith("#"):
+                    del tag.attrs[attr]
+            elif re.search(r"url\(\s*['\"]?(?:https?:|//|data:)", value, re.IGNORECASE):
+                del tag.attrs[attr]
+    return str(soup).encode("utf-8")
+
+
+def svg_size(data: bytes) -> tuple[int, int]:
+    soup = BeautifulSoup(data, "xml")
+    svg = soup.find("svg")
+    if svg is None:
+        return 0, 0
+
+    def length(value) -> float:
+        match = re.match(r"^\s*([0-9.]+)(?:px)?\s*$", str(value or ""), re.IGNORECASE)
+        return float(match.group(1)) if match else 0.0
+
+    width, height = length(svg.get("width")), length(svg.get("height"))
+    if not (width and height):
+        viewbox = re.split(r"[\s,]+", str(svg.get("viewBox") or "").strip())
+        if len(viewbox) == 4:
+            width, height = length(viewbox[2]), length(viewbox[3])
+    return (int(width), int(height)) if width > 0 and height > 0 else (0, 0)
+
+
+def dedupe_fragment_ids(fragment: str) -> str:
+    """Keep the first occurrence of every id in a generated page fragment."""
+    soup = BeautifulSoup(fragment, "lxml")
+    root = soup.body or soup
+    seen: set[str] = set()
+    for tag in root.find_all(id=True):
+        value = tag["id"]
+        if value in seen:
+            del tag["id"]
+        else:
+            seen.add(value)
+    return "".join(str(child) for child in root.contents)
+
 
 def clean_doc(soup: BeautifulSoup) -> BeautifulSoup:
     body = soup.body
     if body is None:
         return soup
-    for el in body.find_all(["script", "style", "noscript", "nav"]):
-        el.decompose()
-    for el in body.find_all(attrs={"hidden": True}):
-        el.decompose()
+    # EPUBs are untrusted input. Strip active content and attributes that
+    # could execute in the generated site or silently hide text from the
+    # fidelity gate (for example, a source element with data-chrome).
+    for img in body.find_all("img"):
+        if not img.get("src"):
+            for attribute in ("data-src", "data-original"):
+                if img.get(attribute):
+                    img["src"] = img[attribute]
+                    break
+        if not img.get("src") and img.get("srcset"):
+            candidate = img["srcset"].split(",")[0].strip().split(" ")[0]
+            if candidate:
+                img["src"] = candidate
     for el in body.find_all(style=True):
         if "display:none" in el.get("style", "").replace(" ", "").lower():
             el.decompose()
+    for el in body.find_all(DANGEROUS_TAGS):
+        el.decompose()
+    for tag in body.find_all(True):
+        for attr in list(tag.attrs):
+            name = attr.lower()
+            if (
+                name.startswith(("data-", "on"))
+                or name in DANGEROUS_ATTRS
+                or (name in ("href", "src") and not safe_url(str(tag.attrs[attr]), tag.name, name))
+            ):
+                del tag.attrs[attr]
+    for el in body.find_all(attrs={"hidden": True}):
+        el.decompose()
     for el in body.find_all(class_=re.compile(r"^(hide|hidden)$", re.I)):
         if el.get_text(strip=True):
             continue
@@ -91,7 +249,9 @@ def clean_doc(soup: BeautifulSoup) -> BeautifulSoup:
     # Keep ids from layout containers before flattening them. If the
     # container wraps a heading/paragraph, move the id onto that block so it
     # remains the first block (important for chapter-header detection).
-    for el in body.find_all(["div", "section"]):
+    for el in body.find_all(
+        ["div", "section", "article", "main", "header", "footer", "aside", "hgroup", "center"]
+    ):
         if el.get("id"):
             target = el.find(["h1", "h2", "h3", "h4", "h5", "h6", "p", "table", "figure"])
             if target is not None and not target.get("id"):
@@ -114,6 +274,18 @@ def clean_doc(soup: BeautifulSoup) -> BeautifulSoup:
             span["class"] = "anchor"
             span["id"] = a["id"]
             a.replace_with(span)
+    # Empty links are layout artefacts (often Gutenberg's linked-image
+    # wrappers). They render nothing and can point outside the spine, so
+    # keep their id as an anchor and drop the dead href.
+    for a in body.find_all("a", href=True):
+        if not a.get_text(strip=True) and not a.find(["img", "picture", "svg"]):
+            if a.get("id"):
+                span = soup.new_tag("span")
+                span["class"] = "anchor"
+                span["id"] = a["id"]
+                a.replace_with(span)
+            else:
+                a.decompose()
 
     while True:
         span = body.find("span", id=False)
@@ -268,7 +440,12 @@ def first_heading(soup: BeautifulSoup) -> Tag | None:
 
 
 def image_info(epub: Epub, images: dict, doc_path: str, src: str) -> dict | None:
-    if not src or src.startswith(("data:", "http:", "https:")):
+    src = (src or "").strip()
+    if not src:
+        return None
+    if src.startswith("data:"):
+        return images.get(src)
+    if src.startswith(("http:", "https:", "//")):
         return None
     path, _ = epub._resolve(doc_path, src)
     return images.get(path)
@@ -290,24 +467,33 @@ class GenericExtractor:
             if p.is_file():
                 p.unlink()
 
+        self.image_errors: list[str] = []
+        self.cover_source = ""
         with Epub(self.epub_path) as book:
             self.book = book
-            self.items = [
-                item
-                for item in book.html_spine()
-                if item.path != (book.nav_item.path if book.nav_item else None)
-            ]
+            self.items = list(book.html_spine())
+            if not self.items:
+                raise ValueError("EPUB spine contains no readable HTML documents")
             self.cleaned: dict[str, BeautifulSoup] = {}
             for item in self.items:
                 try:
                     soup = BeautifulSoup(book.read(item.path), "lxml")
-                except Exception:
-                    continue
+                except Exception as exc:
+                    raise ValueError(f"could not parse {item.path}: {exc}") from exc
                 self.cleaned[item.path] = clean_doc(soup)
 
             self.cover_info = self._process_cover()
             self.images = self._process_images()
+            if self.image_errors:
+                shown = "\n  ".join(self.image_errors[:8])
+                extra = len(self.image_errors) - 8
+                if extra > 0:
+                    shown += f"\n  … and {extra} more"
+                raise ValueError(f"could not process image references:\n  {shown}")
+
             self.pages = self._plan_pages()
+            if not self.pages:
+                raise ValueError("no readable pages found in the EPUB spine")
             self.page_by_path = {p["source_files"][0]: p for p in self.pages}
             self.route_by_path = {p["source_files"][0]: p["route"] for p in self.pages}
 
@@ -316,6 +502,7 @@ class GenericExtractor:
             for page in self.pages:
                 path = page["source_files"][0]
                 soup = self.cleaned[path]
+                page["images"] = len(soup.body.find_all("img")) if soup.body else 0
                 source_text[path] = normalize_text(text_of(soup.body))
                 fragment, sections, warnings = self._convert_page(page, soup)
                 page["sections"] = sections
@@ -326,6 +513,8 @@ class GenericExtractor:
                 fragments[page["id"]] = fragment
 
             self.pages = [p for p in self.pages if p["id"] in fragments]
+            if not self.pages:
+                raise ValueError("no readable pages found in the EPUB spine")
             self.page_by_path = {p["source_files"][0]: p for p in self.pages}
             self.route_by_path = {p["source_files"][0]: p["route"] for p in self.pages}
 
@@ -335,63 +524,174 @@ class GenericExtractor:
             return self.book_data
 
     # -- images -----------------------------------------------------------
+    def _unique_image_name(self, stem: str, suffix: str, used: set[str]) -> str:
+        name = f"{stem}{suffix}"
+        n = 2
+        while name in used:
+            name = f"{stem}-{n}{suffix}"
+            n += 1
+        used.add(name)
+        return name
+
+    def _write_image(
+        self,
+        data: bytes,
+        stem: str,
+        suffix: str,
+        used: set[str],
+        origin: str,
+    ) -> dict | None:
+        stem = slugify(stem, fallback="image")
+        suffix = (suffix or "").lower()
+        if suffix == ".jpeg":
+            suffix = ".jpg"
+        if suffix == ".svg" or b"<svg" in data.lstrip()[:256].lower():
+            try:
+                data = sanitize_svg(data)
+            except Exception as exc:
+                self.image_errors.append(f"{origin}: invalid SVG ({exc})")
+                return None
+            name = self._unique_image_name(stem, ".svg", used)
+            (self.images_dir / name).write_bytes(data)
+            width, height = svg_size(data)
+            return {"name": name, "webp": "", "width": width, "height": height}
+
+        try:
+            im = Image.open(io.BytesIO(data))
+            im.load()
+            fmt = (im.format or "").lower()
+            frames = getattr(im, "n_frames", 1)
+        except Exception:
+            self.image_errors.append(f"{origin}: image could not be decoded")
+            return None
+        with contextlib.suppress(Exception):
+            im = ImageOps.exif_transpose(im)
+
+        extension = RASTER_EXTENSIONS.get(fmt)
+        if extension is None:
+            try:
+                converted = im.convert("RGBA" if im.mode in ("RGBA", "LA", "P") else "RGB")
+                buffer = io.BytesIO()
+                converted.save(buffer, "PNG")
+                data = buffer.getvalue()
+                im = converted
+                extension = ".png"
+            except Exception:
+                self.image_errors.append(f"{origin}: unsupported image format {fmt or 'unknown'}")
+                return None
+
+        name = self._unique_image_name(stem, extension, used)
+        (self.images_dir / name).write_bytes(data)
+        info = {"name": name, "webp": "", "width": im.width, "height": im.height}
+        if extension in (".webp", ".avif") or frames > 1:
+            return info
+        try:
+            if im.mode in ("RGB", "L", "RGBA", "LA"):
+                webp_im = im
+            elif im.mode == "P" and "transparency" in im.info:
+                webp_im = im.convert("RGBA")
+            else:
+                webp_im = im.convert("RGB")
+            webp_name = self._unique_image_name(Path(name).stem, ".webp", used)
+            webp_im.save(self.images_dir / webp_name, "WEBP", quality=86, method=6)
+            info["webp"] = webp_name
+        except Exception:
+            pass
+        return info
+
     def _process_cover(self) -> dict | None:
         item = self.book.cover_item
         if item is None:
             return None
-        data = self.book.read(item.path)
-        suffix = Path(item.path).suffix.lower()
-        if suffix == ".svg":
-            name = "cover.svg"
-            (self.images_dir / name).write_bytes(data)
-            return {"name": name, "webp": "", "width": 0, "height": 0}
-        name = "cover.jpg"
-        (self.images_dir / name).write_bytes(data)
+        self.cover_source = item.path
         try:
-            im = Image.open(io.BytesIO(data))
-            if im.mode not in ("RGB", "L"):
-                im = im.convert("RGB")
-            im.save(self.images_dir / "cover.webp", "WEBP", quality=86, method=6)
-            return {"name": name, "webp": "cover.webp", "width": im.width, "height": im.height}
-        except Exception:
-            return {"name": name, "webp": "", "width": 0, "height": 0}
+            data = self.book.read(item.path)
+        except KeyError as exc:
+            raise ValueError(f"cover image is missing from the EPUB: {item.path}") from exc
+        info = self._write_image(
+            data,
+            "cover",
+            Path(item.path).suffix,
+            set(),
+            f"cover {item.path}",
+        )
+        if info is None:
+            raise ValueError(f"cover image could not be processed: {item.path}")
+        return info
+
+    def _process_data_image(
+        self,
+        src: str,
+        doc_path: str,
+        used: set[str],
+    ) -> dict | None:
+        match = DATA_IMAGE_RE.match(src.strip())
+        if not match:
+            self.image_errors.append(f"{doc_path}: unsupported data URI image")
+            return None
+        try:
+            data = base64.b64decode(re.sub(r"\s+", "", match.group(2)), validate=True)
+        except (binascii.Error, ValueError):
+            self.image_errors.append(f"{doc_path}: invalid base64 data URI image")
+            return None
+        subtype = match.group(1).lower().replace("jpg", "jpeg")
+        stem = f"inline-{hashlib.sha256(data).hexdigest()[:12]}"
+        return self._write_image(
+            data,
+            stem,
+            RASTER_EXTENSIONS[subtype],
+            used,
+            f"{doc_path}: embedded data URI image",
+        )
 
     def _process_images(self) -> dict[str, dict]:
         used: set[str] = set()
+        if self.cover_info:
+            used.add(self.cover_info["name"])
+            if self.cover_info.get("webp"):
+                used.add(self.cover_info["webp"])
         result: dict[str, dict] = {}
         for doc_path, soup in self.cleaned.items():
             for img in soup.find_all("img"):
-                src = img.get("src") or ""
-                if not src or src.startswith(("data:", "http:", "https:")):
+                src = (img.get("src") or "").strip()
+                if not src:
+                    self.image_errors.append(f"{doc_path}: image has no src")
+                    continue
+                if src.startswith("data:"):
+                    if src in result:
+                        continue
+                    info = self._process_data_image(src, doc_path, used)
+                    if info:
+                        result[src] = info
+                    continue
+                if src.startswith(("http:", "https:", "//")):
+                    self.image_errors.append(f"{doc_path}: remote image is not supported: {src}")
                     continue
                 path, _ = self.book._resolve(doc_path, src)
-                if not path or path in result:
+                if not path:
+                    self.image_errors.append(f"{doc_path}: invalid image reference: {src}")
+                    continue
+                if path in result:
+                    continue
+                if self.cover_source and path == self.cover_source:
+                    result[path] = dict(self.cover_info)
                     continue
                 try:
                     data = self.book.read(path)
                 except KeyError:
+                    self.image_errors.append(
+                        f"{doc_path}: image is missing from the EPUB: {src} ({path})"
+                    )
                     continue
-                base = Path(path).name
-                stem, suffix = Path(base).stem, Path(base).suffix.lower()
-                name = base
-                n = 2
-                while name in used:
-                    name = f"{stem}-{n}{suffix}"
-                    n += 1
-                used.add(name)
-                (self.images_dir / name).write_bytes(data)
-                info = {"name": name, "webp": "", "width": 0, "height": 0}
-                if suffix not in (".svg",):
-                    try:
-                        im = Image.open(io.BytesIO(data))
-                        if im.mode not in ("RGB", "L"):
-                            im = im.convert("RGB")
-                        webp = f"{Path(name).stem}.webp"
-                        im.save(self.images_dir / webp, "WEBP", quality=86, method=6)
-                        info.update(webp=webp, width=im.width, height=im.height)
-                    except Exception:
-                        pass
-                result[path] = info
+                info = self._write_image(
+                    data,
+                    Path(path).stem,
+                    Path(path).suffix,
+                    used,
+                    f"{doc_path}: {src}",
+                )
+                if info:
+                    result[path] = info
         return result
 
     # -- planning ---------------------------------------------------------
@@ -472,7 +772,10 @@ class GenericExtractor:
             if i < chapter_start:
                 page["type"] = "frontmatter"
             elif (
-                any(label == b or label.startswith(b + " ") or b in label for b in BACK_LABELS)
+                any(
+                    label == b or label.startswith(b + " ") or f" {b} " in f" {label} "
+                    for b in BACK_LABELS
+                )
                 or i > last_chapter
             ):
                 page["type"] = "backmatter"
@@ -490,7 +793,7 @@ class GenericExtractor:
     def _href(self, doc_path: str, href: str) -> str:
         if not href:
             return href
-        if href.startswith(("http:", "https:", "mailto:", "tel:", "data:")):
+        if href.startswith(("http:", "https:", "ftp:", "//", "mailto:", "tel:", "data:")):
             return href
         parts = urlsplit(href)
         if not parts.path:
@@ -522,8 +825,7 @@ class GenericExtractor:
                 img["src"] = f"/images/{info['name']}"
             img.attrs.pop("srcset", None)
         for tag in el.find_all(True):
-            if tag.name not in ("table", "td", "th", "tr", "colgroup", "col"):
-                tag.attrs.pop("class", None)
+            tag.attrs.pop("class", None)
             tag.attrs.pop("style", None)
         return inner(el)
 
@@ -536,8 +838,7 @@ class GenericExtractor:
                 img["src"] = f"/images/{info['name']}"
             img.attrs.pop("srcset", None)
         for tag in el.find_all(True):
-            if tag.name not in ("table", "td", "th", "tr", "colgroup", "col"):
-                tag.attrs.pop("class", None)
+            tag.attrs.pop("class", None)
             tag.attrs.pop("style", None)
         return str(el)
 
@@ -596,7 +897,12 @@ class GenericExtractor:
                 "blockquote",
                 "figure",
                 "img",
+                "picture",
                 "div",
+                "address",
+                "dl",
+                "pre",
+                "math",
             )
         ]
         # divs have been flattened in clean_doc; this is defensive.
@@ -625,6 +931,7 @@ class GenericExtractor:
         def header_for(elements: list[Tag]) -> str:
             text = " ".join(heading_text(e) for e in elements).strip()
             anchors_parts: list[str] = []
+            anchor_tags: list[Tag] = []
             has_content_link = False
             for e in elements:
                 for tag in e.find_all(id=True):
@@ -632,13 +939,14 @@ class GenericExtractor:
                         # A real link in the heading (usually a footnote
                         # marker) must stay in the title and keep its id.
                         has_content_link = True
-                    else:
-                        anchors_parts.append(str(tag))
+                    elif tag.name in ("a", "span") and not tag.find(True):
+                        # Empty anchors mark a chapter location. Move them
+                        # outside the generated heading so their ids survive.
+                        anchor_tags.append(tag)
+                        anchors_parts.append(f'<span id="{html.escape(tag["id"])}"></span>')
             anchors = "".join(anchors_parts)
-            for e in elements:
-                for tag in e.find_all(id=True):
-                    if not tag.get_text(strip=True):
-                        tag.attrs.pop("id", None)
+            for tag in anchor_tags:
+                tag.attrs.pop("id", None)
             inner_html = " ".join(self._inline(e, source_path).strip() for e in elements)
             _, number_label, title = parse_label(text)
             # Keep the source wording exactly; the split is only layout. If
@@ -721,8 +1029,8 @@ class GenericExtractor:
                 i += 1
                 continue
 
-            if name == "img":
-                imgs = [el]
+            if name in ("img", "picture"):
+                imgs = [el] if name == "img" else el.find_all("img")
                 j = i + 1
                 while j < len(blocks) and blocks[j].name == "img":
                     imgs.append(blocks[j])
@@ -789,6 +1097,23 @@ class GenericExtractor:
                 i += 1
                 continue
 
+            if name == "dl":
+                el.attrs.pop("class", None)
+                el["class"] = "book-dl"
+                out.append(self._clean_tree(el, source_path))
+                i += 1
+                continue
+
+            if name == "pre":
+                out.append(f'<pre class="book-pre">{self._inline(el, source_path)}</pre>')
+                i += 1
+                continue
+
+            if name == "math":
+                out.append(str(el))
+                i += 1
+                continue
+
             if name == "blockquote":
                 el.attrs.pop("class", None)
                 el["class"] = "book-quote"
@@ -797,10 +1122,7 @@ class GenericExtractor:
                 continue
 
             if name == "table":
-                classes = list(el.get("class", []))
-                if "book-table" not in classes:
-                    classes.insert(0, "book-table")
-                el["class"] = classes
+                el["class"] = ["book-table"]
                 out.append(f'<div class="table-wrap">{self._clean_tree(el, source_path)}</div>')
                 i += 1
                 continue
@@ -809,6 +1131,18 @@ class GenericExtractor:
                 fig_index[0] += 1
                 imgs = el.find_all("img")
                 caps = el.find_all("figcaption")
+                if not caps:
+                    caps = [
+                        candidate
+                        for candidate in el.find_all(["p", "span"])
+                        if "caption" in " ".join(candidate.get("class", [])).lower()
+                    ]
+                if not caps:
+                    caps = [
+                        candidate
+                        for candidate in el.find_all("p")
+                        if candidate.get_text(strip=True) and not candidate.find("img")
+                    ]
                 out.append(self._anchors(el) + self._figure(imgs, caps, source_path, fig_index[0]))
                 i += 1
                 continue
@@ -893,7 +1227,7 @@ class GenericExtractor:
             out.append(f"<p{pid}{pcls}>{self._inline(el, source_path).strip()}</p>")
             i += 1
 
-        return "".join(out), sections, warnings
+        return dedupe_fragment_ids("".join(out)), sections, warnings
 
     # -- output -----------------------------------------------------------
     def _write_pages(self, fragments: dict[str, str]) -> None:
@@ -973,6 +1307,7 @@ class GenericExtractor:
                     "words": page["words"],
                     "figure_count": page.get("figure_count", 0),
                     "note_count": page.get("note_count", 0),
+                    "images": page.get("images", 0),
                     "warnings": page.get("warnings", []),
                 }
             )

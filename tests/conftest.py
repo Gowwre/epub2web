@@ -104,3 +104,31 @@ def tiny_epub(tmp_path: Path) -> Path:
     path = tmp_path / "tiny.epub"
     _write_epub(path)
     return path
+
+
+@pytest.fixture()
+def epub_factory(tiny_epub: Path, tmp_path: Path):
+    """Create EPUB variants by replacing or omitting files in the tiny fixture."""
+
+    def make(
+        name: str,
+        replacements: dict[str, list[tuple[bytes, bytes]]] | None = None,
+        omit: set[str] | None = None,
+        additions: dict[str, bytes] | None = None,
+    ) -> Path:
+        target = tmp_path / name
+        replacements = replacements or {}
+        omitted = omit or set()
+        with zipfile.ZipFile(tiny_epub) as source, zipfile.ZipFile(target, "w") as dest:
+            for item in source.infolist():
+                if item.filename in omitted:
+                    continue
+                data = source.read(item.filename)
+                for old, new in replacements.get(item.filename, []):
+                    data = data.replace(old, new)
+                dest.writestr(item, data)
+            for filename, data in (additions or {}).items():
+                dest.writestr(filename, data)
+        return target
+
+    return make

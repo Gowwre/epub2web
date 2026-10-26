@@ -8,3 +8,5 @@ def test_normalize_whitespace_and_list_markers():
 
 def test_slugify():
     assert slugify("A Section: The Beginning!") == "a-section-the-beginning"
+    assert slugify("设计", fallback="") == ""
+    assert slugify("", fallback="book") == "book"

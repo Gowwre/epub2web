@@ -20,6 +20,7 @@ check-dist: build
 	$(PY) -m twine check dist/*
 
 demo:
+	@test -n "$(EPUB)" || (echo "usage: make demo EPUB=book.epub"; exit 1)
 	$(PY) -m epub2web "$(EPUB)" --serve
 
 clean:

@@ -18,6 +18,9 @@ from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
+MAX_EPUB_BYTES = 2 * 1024**3
+MAX_ENTRY_BYTES = 512 * 1024**2
+
 
 @dataclass
 class ManifestItem:
@@ -51,16 +54,30 @@ class Epub:
     def __init__(self, path: str | Path):
         self.path = Path(path)
         self.zf = zipfile.ZipFile(self.path)
-        self.opf_path = self._find_opf()
-        self.opf_dir = posixpath.dirname(self.opf_path)
-        self.opf = BeautifulSoup(self.zf.read(self.opf_path), "xml")
-        self.metadata = self._read_metadata()
-        self.manifest: dict[str, ManifestItem] = self._read_manifest()
-        self.spine: list[ManifestItem] = self._read_spine()
-        self.guide: list[GuideRef] = self._read_guide()
-        self.nav_item = self._find_nav_item()
-        self.toc: list[TocEntry] = self._read_toc()
-        self.cover_item = self._find_cover()
+        try:
+            total_size = sum(item.file_size for item in self.zf.infolist())
+            if total_size > MAX_EPUB_BYTES:
+                raise ValueError(
+                    f"EPUB expands to more than {MAX_EPUB_BYTES // (1024**3)} GB; refusing to read it"
+                )
+            self.opf_path = self._find_opf()
+            self.opf_dir = posixpath.dirname(self.opf_path)
+            try:
+                self.opf = BeautifulSoup(self.read(self.opf_path), "xml")
+            except KeyError as exc:
+                raise ValueError(f"EPUB package document is missing: {self.opf_path}") from exc
+            if self.opf.find() is None:
+                raise ValueError(f"EPUB package document is not valid XML: {self.opf_path}")
+            self.metadata = self._read_metadata()
+            self.manifest: dict[str, ManifestItem] = self._read_manifest()
+            self.spine: list[ManifestItem] = self._read_spine()
+            self.guide: list[GuideRef] = self._read_guide()
+            self.nav_item = self._find_nav_item()
+            self.toc: list[TocEntry] = self._read_toc()
+            self.cover_item = self._find_cover()
+        except Exception:
+            self.zf.close()
+            raise
 
     # -- helpers ---------------------------------------------------------
     @staticmethod
@@ -74,7 +91,7 @@ class Epub:
         parts = urlsplit(href)
         if parts.scheme or href.startswith("//"):
             return "", parts.fragment
-        path = unquote(parts.path)
+        path = unquote(parts.path).replace("\\", "/")
         if not path:
             return base_path, parts.fragment
         joined = posixpath.normpath(posixpath.join(posixpath.dirname(base_path), path))
@@ -82,12 +99,20 @@ class Epub:
             joined = joined.lstrip("./")
         return joined, parts.fragment
 
+    @staticmethod
+    def _media_type(value: str) -> str:
+        return (value or "").split(";", 1)[0].strip().lower()
+
     def _find_opf(self) -> str:
-        container = BeautifulSoup(self.zf.read("META-INF/container.xml"), "xml")
+        try:
+            data = self.read("META-INF/container.xml")
+        except KeyError as exc:
+            raise ValueError("not a valid EPUB: missing META-INF/container.xml") from exc
+        container = BeautifulSoup(data, "xml")
         rootfile = container.find("rootfile")
         if not rootfile or not rootfile.get("full-path"):
             raise ValueError("EPUB has no rootfile in META-INF/container.xml")
-        return rootfile["full-path"]
+        return unquote(rootfile["full-path"]).replace("\\", "/")
 
     # -- metadata --------------------------------------------------------
     def _read_metadata(self) -> dict:
@@ -165,7 +190,7 @@ class Epub:
                 id=item_id,
                 href=href,
                 path=path,
-                media_type=item.get("media-type") or "",
+                media_type=self._media_type(item.get("media-type") or ""),
                 properties=item.get("properties") or "",
             )
         return manifest
@@ -219,24 +244,25 @@ class Epub:
 
     def _read_nav(self, item: ManifestItem) -> list[TocEntry]:
         try:
-            soup = BeautifulSoup(self.zf.read(item.path), "lxml")
+            soup = BeautifulSoup(self.read(item.path), "lxml")
         except Exception:
             return []
         nav = None
         for candidate in soup.find_all("nav"):
             epub_type = candidate.get("epub:type") or candidate.get("type") or ""
-            if "toc" in epub_type.split():
+            if "toc" in epub_type.split() or candidate.get("role") == "doc-toc":
                 nav = candidate
                 break
         if nav is None:
             nav = soup.find("nav")
         if nav is None:
             return []
-        entries: list[TocEntry] = []
 
-        def walk(ol, depth):
+        def walk(ol, depth) -> list[TocEntry]:
+            result: list[TocEntry] = []
             for li in ol.find_all("li", recursive=False):
                 a = li.find("a", recursive=False)
+                nested = li.find("ol", recursive=False)
                 if a is None:
                     # EPUB3 sometimes wraps the label in a span and puts
                     # links in a nested list.
@@ -249,28 +275,24 @@ class Epub:
                     label = self._text(a)
                     href = a.get("href") or ""
                     path, fragment = self._resolve(item.path, href)
-                nested = li.find("ol", recursive=False)
+                children = walk(nested, depth + 1) if nested is not None else []
                 if label:
-                    entry = TocEntry(
-                        label=label,
-                        href=href,
-                        path=path,
-                        fragment=fragment,
-                        depth=depth,
-                        children=[],
+                    result.append(
+                        TocEntry(
+                            label=label,
+                            href=href,
+                            path=path,
+                            fragment=fragment,
+                            depth=depth,
+                            children=children,
+                        )
                     )
-                    entries.append(entry)
-                    if nested is not None:
-                        child_before = len(entries)
-                        walk(nested, depth + 1)
-                        entry.children = entries[child_before:]
-                elif nested is not None:
-                    walk(nested, depth)
+                else:
+                    result.extend(children)
+            return result
 
         ol = nav.find("ol")
-        if ol:
-            walk(ol, 0)
-        return entries
+        return walk(ol, 0) if ol else []
 
     def _read_ncx(self) -> list[TocEntry]:
         ncx_item = None
@@ -286,7 +308,7 @@ class Epub:
         if ncx_item is None:
             return []
         try:
-            soup = BeautifulSoup(self.zf.read(ncx_item.path), "xml")
+            soup = BeautifulSoup(self.read(ncx_item.path), "xml")
         except Exception:
             return []
         nav_map = soup.find("navMap")
@@ -329,14 +351,14 @@ class Epub:
         if cover_id and cover_id in self.manifest:
             return self.manifest[cover_id]
         for ref in self.guide:
-            if ref.type == "cover":
+            if (ref.type or "").lower() == "cover":
                 item = next((i for i in self.manifest.values() if i.path == ref.path), None)
                 if item and item.media_type.startswith("image/"):
                     return item
                 if item and item.media_type in ("application/xhtml+xml", "text/html"):
                     # A wrapper page: find the first image inside it.
                     try:
-                        soup = BeautifulSoup(self.zf.read(item.path), "lxml")
+                        soup = BeautifulSoup(self.read(item.path), "lxml")
                         img = soup.find("img")
                         if img and img.get("src"):
                             path, _ = self._resolve(item.path, img["src"])
@@ -347,6 +369,9 @@ class Epub:
 
     # -- public helpers ---------------------------------------------------
     def read(self, path: str) -> bytes:
+        info = self.zf.getinfo(path)
+        if info.file_size > MAX_ENTRY_BYTES:
+            raise ValueError(f"EPUB entry is too large to process: {path}")
         return self.zf.read(path)
 
     def html_spine(self) -> list[ManifestItem]:

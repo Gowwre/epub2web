@@ -5,17 +5,16 @@ from __future__ import annotations
 import html
 import json
 import os
-import re
 import shutil
 from datetime import date
 from pathlib import Path
+from urllib.parse import urlsplit
 
-from bs4 import BeautifulSoup, Tag
+from bs4 import BeautifulSoup, Comment, Tag
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from .text import normalize_text, text_of
 
-ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_TEMPLATES = Path(__file__).resolve().parent / "templates"
 DEFAULT_STATIC = Path(__file__).resolve().parent / "theme"
 TODAY = date.today().isoformat()
@@ -54,7 +53,16 @@ def normalize_base_path(value: str) -> str:
     value = (value or "").strip()
     if not value or value == "/":
         return ""
-    if "://" in value or "?" in value or "#" in value or any(c.isspace() for c in value):
+    if (
+        "://" in value
+        or "?" in value
+        or "#" in value
+        or "\\" in value
+        or value.startswith("//")
+        or any(c.isspace() for c in value)
+        or any(c in "<>\"'`" for c in value)
+        or any(ord(c) < 32 or ord(c) == 127 for c in value)
+    ):
         raise ValueError(f"invalid base path: {value!r}")
     segments = [segment for segment in value.strip("/").split("/") if segment]
     if not segments or any(segment in (".", "..") for segment in segments):
@@ -90,8 +98,14 @@ class SiteRenderer:
         self.static_dir = Path(static_dir or DEFAULT_STATIC)
         self.base_path = normalize_base_path(base_path)
         self.site_url = site_url.rstrip("/")
-        if self.base_path and not self.site_url.endswith(self.base_path):
-            self.site_url += self.base_path
+        if self.base_path:
+            site_path = urlsplit(self.site_url).path.rstrip("/")
+            if not (site_path == self.base_path or site_path.endswith(self.base_path)):
+                self.site_url += self.base_path
+        if self.content_dir.resolve() == self.dist.resolve() or (
+            self.content_dir.resolve().is_relative_to(self.dist.resolve())
+        ):
+            raise ValueError("the output directory must not contain the content directory")
         self.book = json.loads((self.content_dir / "book.json").read_text(encoding="utf-8"))
         self.env = Environment(
             loader=FileSystemLoader(self.templates_dir),
@@ -278,7 +292,17 @@ class SiteRenderer:
             for p in self.pages
             if p.get("type") == "backmatter"
         ]
-        self.start_href = next((p["route"] for p in self.pages if p.get("id") == "preface"), "")
+        self.start_href = next(
+            (
+                p["route"]
+                for p in self.pages
+                if any(
+                    word in p.get("title", "").lower()
+                    for word in ("preface", "foreword", "introduction")
+                )
+            ),
+            "",
+        )
         if not self.start_href:
             self.start_href = (
                 self.home_chapters[0]["route"]
@@ -356,7 +380,14 @@ class SiteRenderer:
         if cover:
             book_json_ld["image"] = f"{self.site_url}/images/{cover}"
         book_json_ld = {k: v for k, v in book_json_ld.items() if v not in (None, "")}
-        book_json_ld = json.dumps(book_json_ld, ensure_ascii=False)
+        book_json_ld = (
+            json.dumps(book_json_ld, ensure_ascii=False)
+            .replace("&", "\\u0026")
+            .replace("<", "\\u003c")
+            .replace(">", "\\u003e")
+            .replace("\u2028", "\\u2028")
+            .replace("\u2029", "\\u2029")
+        )
 
         # Home
         home_page = {
@@ -373,7 +404,11 @@ class SiteRenderer:
             book=self.book,
             site_url=self.site_url,
             meta_description=meta.get("description")
-            or f"{meta['title']} by {meta.get('author', '')}.",
+            or (
+                f"{meta['title']} by {meta['author']}."
+                if meta.get("author")
+                else f"{meta['title']}."
+            ),
             stats=self.stats,
             home_chapters=self.home_chapters,
             home_extras=self.home_extras,
@@ -413,7 +448,11 @@ class SiteRenderer:
             page=contents_page,
             book=self.book,
             site_url=self.site_url,
-            meta_description=f"Contents of {meta['title']} by {meta.get('author', '')}.",
+            meta_description=(
+                f"Contents of {meta['title']} by {meta['author']}."
+                if meta.get("author")
+                else f"Contents of {meta['title']}."
+            ),
             stats=self.stats,
             home_chapters=self.home_chapters,
             home_extras=self.home_extras,
@@ -449,9 +488,9 @@ class SiteRenderer:
                 '<span class="readtime">Calculating…</span>', f"{page['reading_minutes']} min read"
             )
             pos = self.reading_order.index(page["id"]) if page["id"] in self.reading_order else -1
-            prev_page = self.page_by_id[self.reading_order[pos - 1]] if pos > 0 else None
+            prev_page = self.page_by_id.get(self.reading_order[pos - 1]) if pos > 0 else None
             next_page = (
-                self.page_by_id[self.reading_order[pos + 1]]
+                self.page_by_id.get(self.reading_order[pos + 1])
                 if 0 <= pos < len(self.reading_order) - 1
                 else None
             )
@@ -538,33 +577,35 @@ class SiteRenderer:
         """Prefix root-relative URLs when the site is hosted under a subpath."""
         if not self.base_path:
             return
-        attributes = re.compile(r'\b(href|src)="(/[^"]*)"')
-        srcset = re.compile(r'\bsrcset="([^"]*)"')
 
-        def fix_attr(match: re.Match) -> str:
-            value = match.group(2)
+        def prefix(value: str) -> str:
             if (
-                value.startswith("//")
+                not value.startswith("/")
+                or value.startswith("//")
                 or value == self.base_path
                 or value.startswith(self.base_path + "/")
+                or value.startswith(self.base_path + "?")
             ):
-                return match.group(0)
-            return f'{match.group(1)}="{self.base_path}{value}"'
-
-        def fix_srcset(match: re.Match) -> str:
-            items = []
-            for item in match.group(1).split(","):
-                bits = item.strip().split()
-                if bits and bits[0].startswith("/") and not bits[0].startswith("//"):
-                    bits[0] = self.base_path + bits[0]
-                items.append(" ".join(bits))
-            return 'srcset="' + ", ".join(items) + '"'
+                return value
+            return self.base_path + value
 
         for path in self.dist.rglob("*.html"):
-            text = path.read_text(encoding="utf-8")
-            text = attributes.sub(fix_attr, text)
-            text = srcset.sub(fix_srcset, text)
-            path.write_text(text, encoding="utf-8")
+            soup = BeautifulSoup(path.read_text(encoding="utf-8"), "lxml")
+            for tag in soup.find_all(True):
+                for attribute in ("href", "src", "poster"):
+                    value = tag.get(attribute)
+                    if isinstance(value, str):
+                        tag[attribute] = prefix(value)
+                srcset = tag.get("srcset")
+                if isinstance(srcset, str):
+                    items = []
+                    for item in srcset.split(","):
+                        bits = item.strip().split()
+                        if bits:
+                            bits[0] = prefix(bits[0])
+                        items.append(" ".join(bits))
+                    tag["srcset"] = ", ".join(items)
+            path.write_text(str(soup), encoding="utf-8")
 
     def _write_search_index(self) -> None:
         """Build a dependency-free search index from the rendered sections."""
@@ -595,7 +636,7 @@ class SiteRenderer:
 
             for node in root.children:
                 if not isinstance(node, Tag):
-                    if str(node).strip():
+                    if not isinstance(node, Comment) and str(node).strip():
                         buffer.append(str(node))
                     continue
                 if node.name in ("h1", "h2", "h3", "h4"):

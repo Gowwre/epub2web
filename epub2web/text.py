@@ -5,7 +5,7 @@ from __future__ import annotations
 import re
 import unicodedata
 
-from bs4 import NavigableString, Tag
+from bs4 import Comment, Doctype, NavigableString, ProcessingInstruction, Tag
 
 BLOCK_TAGS = {
     "address",
@@ -52,6 +52,8 @@ def text_of(root: Tag) -> str:
     parts: list[str] = []
 
     def walk(node):
+        if isinstance(node, (Comment, Doctype, ProcessingInstruction)):
+            return
         if isinstance(node, NavigableString):
             parts.append(str(node))
             return
@@ -94,13 +96,13 @@ def tokens(text: str) -> list[str]:
     return normalize_text(text).split()
 
 
-def slugify(text: str) -> str:
+def slugify(text: str, fallback: str = "section") -> str:
     text = re.sub(r"<[^>]+>", "", text)
     text = unicodedata.normalize("NFKD", text)
     text = text.encode("ascii", "ignore").decode("ascii")
     text = re.sub(r"[^A-Za-z0-9\s-]", "", text).strip().lower()
     text = re.sub(r"[\s_]+", "-", text)
-    return text[:70].strip("-") or "section"
+    return text[:70].strip("-") or fallback
 
 
 def inner(el: Tag) -> str:

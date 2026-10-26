@@ -43,47 +43,12 @@ def first_diff(source: list[str], output: list[str]) -> str:
     return "\n".join(lines)
 
 
-def _find_page(pages: list[dict], key: str) -> dict | None:
-    return next((p for p in pages if p.get("id") == key), None) or next(
-        (p for p in pages if key in p.get("title", "").lower()), None
-    )
-
-
-def _count(dist: Path, page: dict | None, selector: str) -> int:
-    if page is None:
-        return 0
-    path = route_file(dist, page["route"])
-    if not path.exists():
-        return 0
-    soup = BeautifulSoup(path.read_text(encoding="utf-8"), "lxml")
-    return len(soup.select(selector))
-
-
 def _structural_checks(book: dict, dist: Path) -> dict:
-    pages = book.get("pages", [])
-    stats = book.get("stats", {})
     checks: dict[str, dict] = {}
-
-    for key, selector in (
-        ("notes", "article.note"),
-        ("references", ".reference-list > li"),
-        ("index_entries", "[data-index-text]"),
-    ):
-        expected = stats.get(key, 0)
-        if not expected:
-            continue
-        lookup = "index" if key == "index_entries" else key
-        page = _find_page(pages, lookup)
-        if page is None:
-            continue
-        actual = _count(dist, page, selector)
-        checks[key] = {"expected": expected, "actual": actual}
-
     cover = book.get("meta", {}).get("cover", "")
-    cover_path = dist / "images" / (cover or "cover.jpg")
-    if cover or cover_path.exists():
+    if cover:
+        cover_path = dist / "images" / cover
         checks["cover"] = {"expected": 1, "actual": 1 if cover_path.exists() else 0}
-
     return checks
 
 
@@ -112,17 +77,31 @@ def verify_site(
         out_tokens = output.split()
         token_ok = src_tokens == out_tokens
         char_ok = source == output
-        ok = token_ok and char_ok
-        status = "ok" if ok else ("MISMATCH" if not token_ok else "CHAR MISMATCH")
+        expected_images = int(page.get("images", 0) or 0)
+        actual_images = len(main.find_all("img")) if main else 0
+        images_ok = expected_images == actual_images
+        ok = token_ok and char_ok and images_ok
         if not ok:
             failures += 1
-            if token_ok:
-                matcher = difflib.SequenceMatcher(a=source, b=output, autojunk=False)
-                detail = "    character-level difference: " + repr(matcher.get_opcodes()[:5])
-            else:
-                detail = first_diff(src_tokens, out_tokens)
+        if token_ok and char_ok and images_ok:
+            status = "ok"
+        elif not token_ok:
+            status = "TEXT+IMAGE MISMATCH" if not images_ok else "TEXT MISMATCH"
+        elif not char_ok:
+            status = "TEXT+IMAGE MISMATCH" if not images_ok else "CHAR MISMATCH"
+        else:
+            status = "IMAGE MISMATCH"
+        if token_ok and not char_ok:
+            matcher = difflib.SequenceMatcher(a=source, b=output, autojunk=False)
+            detail = "    character-level difference: " + repr(matcher.get_opcodes()[:5])
+        elif not token_ok:
+            detail = first_diff(src_tokens, out_tokens)
         else:
             detail = ""
+        if not images_ok:
+            detail += (
+                f"\n    images: source {expected_images:,} / output {actual_images:,}"
+            ).rstrip()
         rows.append(
             {
                 "page": page["id"],
@@ -130,7 +109,9 @@ def verify_site(
                 "status": status,
                 "source_tokens": len(src_tokens),
                 "output_tokens": len(out_tokens),
-                "detail": detail,
+                "source_images": expected_images,
+                "output_images": actual_images,
+                "detail": detail.strip(),
             }
         )
 

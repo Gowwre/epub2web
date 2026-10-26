@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="en" data-theme="light" data-base="{{ base_path }}">
+<html lang="{{ book.meta.language or 'en' }}" data-theme="light" data-base="{{ base_path }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -28,7 +28,9 @@
     (function () {
       try {
         var stored = localStorage.getItem("epub2web-theme");
-        var theme = stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        var theme = stored === "dark" || stored === "light"
+          ? stored
+          : (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
         document.documentElement.dataset.theme = theme;
       } catch (e) {}
     })();
@@ -48,7 +50,7 @@
   <header class="site-header" data-chrome>
     <div class="header-inner">
       <a class="brand" href="/" aria-label="{{ book.meta.short_title }} — home">
-        <span class="brand-mark" aria-hidden="true">{{ book.meta.short_title[:1]|upper }}</span>
+        <span class="brand-mark" aria-hidden="true">{{ (book.meta.short_title or book.meta.title or "E")[:1]|upper }}</span>
         <span class="brand-text">{{ book.meta.short_title }}</span>
       </a>
       <nav class="header-nav" aria-label="Primary">
@@ -72,7 +74,7 @@
   <footer class="site-footer" data-chrome>
     <div class="footer-inner">
       <div class="footer-brand">
-        <span class="brand-mark" aria-hidden="true">{{ book.meta.short_title[:1]|upper }}</span>
+        <span class="brand-mark" aria-hidden="true">{{ (book.meta.short_title or book.meta.title or "E")[:1]|upper }}</span>
         <div>
           <p class="footer-title">{{ book.meta.short_title }}</p>
           <p class="footer-sub">A browser edition{% if book.meta.subtitle %} of the {{ book.meta.subtitle }}{% endif %}.</p>

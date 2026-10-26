@@ -725,6 +725,22 @@ ul.book-list li::before {
 ol.book-list { list-style: decimal; }
 ol.book-list li::marker { font-family: var(--font-ui); font-size: 0.85em; font-weight: 600; }
 
+.book-dl { margin: 1.2em 0 1.5em; }
+.book-dl dt { font-weight: 650; color: var(--ink); }
+.book-dl dd { margin: 0.25em 0 0.9em 1.2em; }
+
+.book-pre {
+  margin: 1.6em 0;
+  padding: 1em 1.1em;
+  overflow-x: auto;
+  background: var(--paper-2);
+  border: 1px solid var(--rule);
+  font-family: var(--font-ui);
+  font-size: 0.78rem;
+  line-height: 1.6;
+  white-space: pre;
+}
+
 /* Tables */
 
 .table-wrap {

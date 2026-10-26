@@ -9,5 +9,7 @@ venv/
 .ruff_cache/
 .coverage
 *-site/
+.*-build-*/
+.*-old-*/
 *.epub
 .DS_Store

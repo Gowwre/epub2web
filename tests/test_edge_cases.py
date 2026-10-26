@@ -1,0 +1,297 @@
+import base64
+import io
+import re
+import zipfile
+from pathlib import Path
+
+import pytest
+from bs4 import BeautifulSoup
+from epub2web.cli import main
+from epub2web.epub import Epub
+from epub2web.generic import GenericExtractor
+from epub2web.links import check_site_links
+from epub2web.render import render_site
+from epub2web.verify import verify_site
+from PIL import Image
+
+OPF = "OEBPS/content.opf"
+CH1 = "OEBPS/ch1.xhtml"
+CH2 = "OEBPS/ch2.xhtml"
+COVER = "OEBPS/images/cover.png"
+
+
+def _build(epub: Path, site: Path) -> int:
+    return main([str(epub), "-o", str(site), "--force"])
+
+
+def test_png_cover_keeps_its_real_extension(tiny_epub, tmp_path: Path):
+    site = tmp_path / "site"
+    assert _build(tiny_epub, site) == 0
+
+    assert (site / "images" / "cover.png").read_bytes().startswith(b"\x89PNG")
+    assert not (site / "images" / "cover.jpg").exists()
+    assert "images/cover.png" in (site / "index.html").read_text(encoding="utf-8")
+
+
+def test_failed_rebuild_preserves_the_previous_site(tiny_epub, epub_factory, tmp_path: Path):
+    site = tmp_path / "site"
+    assert _build(tiny_epub, site) == 0
+    before = (site / "index.html").read_text(encoding="utf-8")
+
+    bad = epub_factory(
+        "bad.epub",
+        replacements={CH1: [(b'src="images/cover.png"', b'src="images/missing.png"')]},
+    )
+    assert _build(bad, site) == 2
+    assert (site / "index.html").read_text(encoding="utf-8") == before
+    assert not list(tmp_path.glob(".site-build-*"))
+
+
+def test_force_refuses_to_remove_the_input_directory(tiny_epub, tmp_path: Path):
+    with pytest.raises(SystemExit) as exc:
+        main([str(tiny_epub), "-o", str(tmp_path), "--force"])
+    assert exc.value.code == 2
+    assert tiny_epub.exists()
+
+
+def test_missing_image_fails_with_an_actionable_error(epub_factory, tmp_path: Path, capsys):
+    bad = epub_factory(
+        "missing.epub",
+        replacements={CH1: [(b'src="images/cover.png"', b'src="images/missing.png"')]},
+    )
+    site = tmp_path / "site"
+    assert _build(bad, site) == 2
+    error = capsys.readouterr().err
+    assert "missing from the EPUB" in error
+    assert not site.exists()
+
+
+def test_remote_image_fails_instead_of_disappearing(epub_factory, tmp_path: Path, capsys):
+    bad = epub_factory(
+        "remote.epub",
+        replacements={CH1: [(b'src="images/cover.png"', b'src="https://example.com/f.png"')]},
+    )
+    assert _build(bad, tmp_path / "site") == 2
+    assert "remote image is not supported" in capsys.readouterr().err
+
+
+def test_empty_spine_content_fails(tiny_epub, tmp_path: Path, capsys):
+    target = tmp_path / "empty.epub"
+    with zipfile.ZipFile(tiny_epub) as source, zipfile.ZipFile(target, "w") as dest:
+        for item in source.infolist():
+            data = source.read(item.filename)
+            if item.filename in (CH1, CH2):
+                data = re.sub(rb"<body>.*?</body>", b"<body></body>", data, flags=re.S)
+            dest.writestr(item, data)
+
+    assert _build(target, tmp_path / "site") == 2
+    assert "no readable pages" in capsys.readouterr().err
+
+
+def test_source_active_content_is_removed(epub_factory, tmp_path: Path):
+    variant = epub_factory(
+        "sanitized.epub",
+        replacements={
+            CH1: [
+                (
+                    b"</body>",
+                    b'<p data-chrome="1" onclick="alert(1)">visible ghost text</p>'
+                    b'<p><a href="javascript:alert(2)" onclick="alert(3)">safe link</a></p>'
+                    b"</body>",
+                )
+            ]
+        },
+    )
+    site = tmp_path / "site"
+    assert _build(variant, site) == 0
+    html = (site / "read" / "1" / "index.html").read_text(encoding="utf-8")
+    assert "visible ghost text" in html
+    assert "safe link" in html
+    assert "javascript:" not in html
+
+    soup = BeautifulSoup(html, "lxml")
+    ghost = soup.find(string=lambda value: value and "visible ghost text" in value)
+    assert ghost is not None
+    assert not ghost.parent.has_attr("data-chrome")
+    assert not ghost.parent.has_attr("onclick")
+    link = soup.find("a", string=lambda value: value and "safe link" in value)
+    assert link is not None
+    assert not link.has_attr("href")
+    assert not link.has_attr("onclick")
+
+
+def test_article_wrappers_pre_and_definition_lists_are_kept(epub_factory, tmp_path: Path):
+    variant = epub_factory(
+        "structural.epub",
+        replacements={
+            CH1: [
+                (b"<body>", b"<body><article>"),
+                (
+                    b"</body>",
+                    b"</article><pre>line one\n  line two</pre>"
+                    b"<dl><dt>Term</dt><dd>Definition</dd></dl></body>",
+                ),
+            ]
+        },
+    )
+    site = tmp_path / "site"
+    assert _build(variant, site) == 0
+    html = (site / "read" / "1" / "index.html").read_text(encoding="utf-8")
+    assert '<pre class="book-pre">' in html
+    assert '<dl class="book-dl">' in html
+    assert "line one" in html
+    assert "Definition" in html
+
+
+def test_heading_images_and_empty_links_do_not_duplicate(epub_factory, tmp_path: Path):
+    variant = epub_factory(
+        "heading.epub",
+        replacements={
+            CH1: [
+                (
+                    b'<h1 id="ch1">Chapter One</h1>',
+                    b'<h1 id="ch1"><a id="chapter-anchor"></a>Chapter One'
+                    b'<img src="images/cover.png" alt=""/></h1>',
+                ),
+                (
+                    b"</body>",
+                    b'<p><a href="missing.xhtml" id="dead-link"></a></p></body>',
+                ),
+            ]
+        },
+    )
+    site = tmp_path / "site"
+    assert _build(variant, site) == 0
+    html = (site / "read" / "1" / "index.html").read_text(encoding="utf-8")
+    assert html.count('id="chapter-anchor"') == 1
+    assert html.count('id="dead-link"') == 1
+    assert "missing.xhtml" not in html
+    assert html.count('src="/images/cover.png"') == 2
+
+
+def test_nested_nav_entries_are_not_duplicated(epub_factory):
+    nav = b"""<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xmlns:epub="http://www.idpf.org/2007/ops">
+<head><title>Contents</title></head><body><nav epub:type="toc"><ol>
+<li><a href="ch1.xhtml">Chapter One</a><ol>
+<li><a href="ch1.xhtml#section-one">A Section</a></li></ol></li>
+<li><a href="ch2.xhtml">Chapter Two</a></li>
+</ol></nav></body></html>"""
+    variant = epub_factory(
+        "nav.epub",
+        replacements={
+            OPF: [
+                (
+                    b'<item id="ncx"',
+                    b'<item id="nav" href="nav.xhtml" media-type="application/xhtml+xml" '
+                    b'properties="nav"/>\n<item id="ncx"',
+                ),
+                (b'<itemref idref="ch1"/>', b'<itemref idref="nav"/>\n<itemref idref="ch1"/>'),
+            ]
+        },
+        additions={"OEBPS/nav.xhtml": nav},
+    )
+    with Epub(variant) as book:
+        assert [entry.label for entry in book.toc_flat()] == [
+            "Chapter One",
+            "A Section",
+            "Chapter Two",
+        ]
+
+
+def test_base_path_does_not_rewrite_literal_text(epub_factory, tmp_path: Path):
+    variant = epub_factory(
+        "literal.epub",
+        replacements={
+            CH1: [(b"</body>", b'<p><code>href="/docs" src="/img.png"</code></p></body>')]
+        },
+    )
+    site = tmp_path / "site"
+    code = main(
+        [
+            str(variant),
+            "-o",
+            str(site),
+            "--base-path",
+            "/shelf",
+            "--site-url",
+            "https://example.com",
+            "--force",
+        ]
+    )
+    assert code == 0
+    html = (site / "read" / "1" / "index.html").read_text(encoding="utf-8")
+    assert 'href="/docs" src="/img.png"' in html
+    assert "/shelf/docs" not in html
+    assert 'href="/shelf/assets/styles.css"' in (site / "index.html").read_text(encoding="utf-8")
+
+
+def test_json_ld_metadata_cannot_break_out_of_script(epub_factory, tmp_path: Path):
+    injected = b"<dc:title>A &lt;/script&gt;&lt;script&gt;alert(1)&lt;/script&gt; Book</dc:title>"
+    bad = epub_factory(
+        "metadata.epub",
+        replacements={OPF: [(b"<dc:title>A Tiny Book</dc:title>", injected)]},
+    )
+    site = tmp_path / "site"
+    assert _build(bad, site) == 0
+    html = (site / "index.html").read_text(encoding="utf-8")
+    assert "</script><script>alert(1)</script>" not in html
+    assert "\\u003c/script\\u003e" in html
+
+
+def test_protocol_relative_links_are_external(epub_factory, tmp_path: Path):
+    variant = epub_factory(
+        "protocol.epub",
+        replacements={CH1: [(b"</body>", b'<p><a href="//example.com/x">external</a></p></body>')]},
+    )
+    site = tmp_path / "site"
+    assert _build(variant, site) == 0
+    assert 'href="//example.com/x"' in (site / "read" / "1" / "index.html").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_data_uri_image_is_embedded(epub_factory, tmp_path: Path):
+    buffer = io.BytesIO()
+    Image.new("RGB", (10, 12), (20, 120, 200)).save(buffer, "PNG")
+    uri = "data:image/png;base64," + base64.b64encode(buffer.getvalue()).decode("ascii")
+    variant = epub_factory(
+        "data.epub",
+        replacements={CH1: [(b'src="images/cover.png"', f'src="{uri}"'.encode("ascii"))]},
+    )
+    site = tmp_path / "site"
+    assert _build(variant, site) == 0
+    images = list((site / "images").glob("inline-*.png"))
+    assert len(images) == 1
+    assert images[0].read_bytes().startswith(b"\x89PNG")
+
+
+def test_link_gate_checks_html_and_css_assets(tiny_epub, tmp_path: Path):
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    site = tmp_path / "site"
+    GenericExtractor(tiny_epub, content, images).run()
+    render_site(content, site, site_url="http://localhost:8000")
+
+    (site / "assets" / "fonts" / "literata-latin.woff2").unlink()
+    result = check_site_links(site)
+    assert not result["ok"]
+    assert any(item["reason"] == "missing stylesheet asset" for item in result["broken"])
+
+
+def test_verify_detects_a_dropped_image(tiny_epub, tmp_path: Path):
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    site = tmp_path / "site"
+    GenericExtractor(tiny_epub, content, images).run()
+    render_site(content, site, site_url="http://localhost:8000")
+
+    page_path = site / "read" / "1" / "index.html"
+    soup = BeautifulSoup(page_path.read_text(encoding="utf-8"), "lxml")
+    for image in soup.select("main article img"):
+        image.decompose()
+    page_path.write_text(str(soup), encoding="utf-8")
+
+    report = verify_site(content, site, verbose=False)
+    assert not report["pass"]
+    assert any(row["status"] == "IMAGE MISMATCH" for row in report["pages"])
