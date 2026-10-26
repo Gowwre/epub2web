@@ -93,7 +93,7 @@ Links:   PASS (3,826 checked, 0 broken, 0 duplicate ids)
 
 ### Profiles
 
-- **`generic`** — standard EPUB 2/3 parsing: OPF metadata, spine, NCX or EPUB 3 nav, semantic HTML, class-name heuristics for print conversions, figure/caption grouping, link and image rewriting. Works on ordinary books without a custom profile.
+- **`generic`** — standard EPUB 2/3 parsing: OPF metadata, spine, NCX or EPUB 3 nav, semantic HTML, class-name heuristics for print conversions, figure/caption grouping, link and image rewriting. Works on ordinary books without a custom profile. It preserves paragraphs that mix images and text, keeps footnote links that sit inside headings, deduplicates repeated print page anchors, and distinguishes unnumbered part-divider pages from real chapters.
 - **`doet`** — the exact profile for this book: class-specific semantic mapping, reconstructed endnote superscripts, the full notes/references/index pages, print page anchors, and the original home/contents treatment. Auto-detected by title or ISBN when the profile scripts are available.
 - **`auto`** — chooses `doet` when applicable, otherwise `generic`.
 
@@ -103,6 +103,7 @@ The generic profile has a character-level fidelity gate too. It verifies the ren
 |---|---|---|---|
 | Alice's Adventures in Wonderland (Project Gutenberg EPUB) | generic | 13 | **~0.7 s** |
 | The Design of Everyday Things | doet | 15 | **~3.3 s** |
+| Don't Make Me Think, Revisited (Calibre EPUB) | generic | 27 | **~8 s** |
 
 Those times include extraction, rendering, verification, and Pagefind indexing. There are no network calls and no model calls in that path; the LLM is only involved when writing or extending the program, never when running it.
 

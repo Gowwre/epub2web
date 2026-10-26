@@ -130,7 +130,7 @@ class SiteRenderer:
 
     def _build_navigation(self) -> None:
         before, chapters, after = [], [], []
-        chapter_entries = [e for e in self.toc if e.get("kind") == "chapter"]
+        chapter_entries = [e for e in self.toc if e.get("kind") in ("chapter", "part")]
         if chapter_entries:
             first = self.toc.index(chapter_entries[0])
             last = len(self.toc) - 1 - list(reversed(self.toc)).index(chapter_entries[-1])
@@ -242,7 +242,7 @@ class SiteRenderer:
         stats = self.stats
         figure_count = stats.get("figures", 0)
         note_count = stats.get("notes", 0)
-        chapter_words = stats.get("chapter_words") or stats.get("words", 0)
+        chapter_words = stats.get("words") or stats.get("chapter_words", 0)
         chapter_count = stats.get("chapters") or len(self.home_chapters)
         parts = []
         if chapter_count:

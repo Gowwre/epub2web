@@ -142,6 +142,16 @@ def clean_doc(soup: BeautifulSoup) -> BeautifulSoup:
     for tag in body.find_all(["table", "td", "th", "tr", "colgroup", "col"]):
         for attr in ("width", "height", "align", "valign", "cellpadding", "cellspacing", "border"):
             tag.attrs.pop(attr, None)
+
+    # Some EPUBs repeat an id (usually a print page anchor). Keep the first
+    # target; the id is a navigation artifact, not content.
+    seen_ids: set[str] = set()
+    for tag in body.find_all(id=True):
+        value = tag["id"]
+        if value in seen_ids:
+            del tag["id"]
+        else:
+            seen_ids.add(value)
     return soup
 
 
@@ -150,7 +160,7 @@ def parse_label(label: str) -> tuple[str, str, str]:
     label = re.sub(r"\s+", " ", label).strip()
     m = CHAPTER_RE.match(label)
     if m:
-        number_label = f"{m.group(1).upper()} {m.group(2)}{m.group(3)}"
+        number_label = f"{m.group(1)} {m.group(2)}{m.group(3)}"
         title = m.group(4).strip() or label
         return label, number_label, title
     m = NUMBER_RE.match(label)
@@ -379,6 +389,7 @@ class GenericExtractor:
         if chapter_start is None:
             chapter_start = 0
 
+        last_chapter = max((i for i, p in enumerate(pages) if p["marker"]), default=chapter_start)
         for i, page in enumerate(pages):
             page["id"] = f"page-{i + 1}"
             page["route"] = f"/read/{i + 1}/"
@@ -387,6 +398,14 @@ class GenericExtractor:
                 page["type"] = "frontmatter"
             elif any(label == b or label.startswith(b + " ") or b in label for b in BACK_LABELS):
                 page["type"] = "backmatter"
+            elif i > last_chapter:
+                page["type"] = "backmatter"
+            elif page["marker"]:
+                page["type"] = "chapter"
+            elif page["words"] < 200:
+                # Unnumbered divider pages such as "Things You Need to
+                # Get Right" are part headings, not chapters.
+                page["type"] = "part"
             else:
                 page["type"] = "chapter"
         return pages
@@ -506,10 +525,30 @@ class GenericExtractor:
 
         def header_for(elements: list[Tag]) -> str:
             text = " ".join(heading_text(e) for e in elements).strip()
+            anchors_parts: list[str] = []
+            has_content_link = False
+            for e in elements:
+                for tag in e.find_all(id=True):
+                    if tag.get_text(strip=True):
+                        # A real link in the heading (usually a footnote
+                        # marker) must stay in the title and keep its id.
+                        has_content_link = True
+                    else:
+                        anchors_parts.append(str(tag))
+            anchors = "".join(anchors_parts)
+            for e in elements:
+                for tag in e.find_all(id=True):
+                    if not tag.get_text(strip=True):
+                        tag.attrs.pop("id", None)
             inner_html = " ".join(self._inline(e, page["source_files"][0]).strip() for e in elements)
             display, number_label, title = parse_label(text)
-            # Keep the source wording exactly; the split is only layout.
-            if number_label and title and title != number_label:
+            # Keep the source wording exactly; the split is only layout. If
+            # the heading contains a footnote/link marker, keep the whole
+            # heading as the title so the marker is not duplicated or lost.
+            if has_content_link:
+                number_html = ""
+                title_html = inner_html or html.escape(text)
+            elif number_label and title and title != number_label:
                 number_html = html.escape(number_label)
                 title_html = html.escape(title)
             else:
@@ -521,7 +560,6 @@ class GenericExtractor:
             for e in elements:
                 hid = hid or e.get("id", "")
             used_ids.add(hid)
-            anchors = "".join(str(a) for e in elements for a in e.find_all(id=True))
             num = f'<p class="chapter-number">{number_html}</p>' if number_html else ""
             return (
                 f'<header class="chapter-header" id="{html.escape(hid)}">'
@@ -569,7 +607,7 @@ class GenericExtractor:
                 hid = add_id(el)
                 c = {2: "section-title", 3: "subsection-title", 4: "subsubsection-title"}[level]
                 out.append(f'<{tag} class="{c}" id="{html.escape(hid)}">{self._inline(el, page["source_files"][0]).strip()}</{tag}>')
-                if page["type"] == "chapter" and level == 2:
+                if page["type"] == "chapter" and level in (2, 3):
                     sections.append({"level": level, "id": hid, "title": heading_text(el)})
                 i += 1
                 continue
@@ -603,10 +641,15 @@ class GenericExtractor:
                 imgs = el.find_all("img")
                 anchors = self._anchors(el)
                 j = i + 1
-                while j < len(blocks) and ("image" in " ".join(blocks[j].get("class", [])).lower()
-                                           or (blocks[j].name == "p" and blocks[j].find("img"))):
-                    imgs.extend(blocks[j].find_all("img"))
-                    anchors += self._anchors(blocks[j])
+                while j < len(blocks):
+                    nxt = blocks[j]
+                    nxt_cls = " ".join(nxt.get("class", [])).lower()
+                    image_only = (nxt.name == "p" and nxt.find("img")
+                                  and not nxt.get_text(strip=True))
+                    if not (("image" in nxt_cls and not nxt.get_text(strip=True)) or image_only):
+                        break
+                    imgs.extend(nxt.find_all("img"))
+                    anchors += self._anchors(nxt)
                     j += 1
                 caps = []
                 while j < len(blocks) and ("caption" in " ".join(blocks[j].get("class", [])).lower()
@@ -689,7 +732,7 @@ class GenericExtractor:
                 i = j
                 continue
 
-            if "subhead" in cls or "section" in cls or "heading" in cls:
+            if "subhead" in cls or "section" in cls or "heading" in cls or "chap-sub" in cls:
                 if "subheading5" in cls:
                     level = 4
                 elif "subheading4" in cls:
@@ -704,7 +747,7 @@ class GenericExtractor:
                 hid = add_id(el)
                 c = "subsection-title" if level == 3 else "section-title"
                 out.append(f'<{tag} class="{c}" id="{html.escape(hid)}">{self._inline(el, page["source_files"][0]).strip()}</{tag}>')
-                if page["type"] == "chapter" and level == 2:
+                if page["type"] == "chapter" and level in (2, 3):
                     sections.append({"level": level, "id": hid, "title": heading_text(el)})
                 i += 1
                 continue
@@ -716,7 +759,8 @@ class GenericExtractor:
                 i += 1
                 continue
 
-            pcls = ' class="lede"' if page["type"] == "chapter" and first_para else ""
+            pcls = (' class="lede"' if page["type"] == "chapter" and first_para
+                    and "right" not in cls else "")
             if pcls:
                 first_para = False
             pid = f' id="{html.escape(el["id"])}"' if el.get("id") else ""
@@ -740,6 +784,13 @@ class GenericExtractor:
                     "kind": "chapter",
                     "number": page["number_short"] or str(chapters),
                     "label": page["title"],
+                    "href": page["route"],
+                    "generated": False,
+                })
+            elif page["type"] == "part":
+                toc.append({
+                    "kind": "part",
+                    "label": page["display_title"],
                     "href": page["route"],
                     "generated": False,
                 })
