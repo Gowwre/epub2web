@@ -89,7 +89,7 @@ Most “EPUB to website” tools either look like a document dump or quietly rew
 - The extractor maps print-oriented markup to semantic HTML, groups figures and captions, rewrites links, and repairs common EPUB layout artefacts.
 - A **fidelity gate** compares every rendered page with its source, token-for-token and character-for-character. A dropped clause, changed punctuation mark, or moved paragraph fails the build.
 - A **link gate** checks every internal anchor, image, and duplicate ID.
-- The build never calls a language model or a remote service. The same EPUB always produces the same site.
+- The build never calls a language model or a remote service. The same EPUB always produces the same text and structure; only the sitemap's build timestamp changes.
 
 That makes the tool useful for authors, translators, publishers, and anyone who wants a readable web edition without turning the text into training data.
 
@@ -136,7 +136,7 @@ Preview: epub2web alice.epub --serve
 
 Search is built in. `epub2web` writes `search-index.json` and loads it only when the reader opens search. There is no Pagefind, Node, or third-party script.
 
-Because the site uses root-relative URLs and fetches the index, serve the folder rather than opening `index.html` directly from the filesystem:
+Because the site uses absolute paths and fetches the index, serve the folder rather than opening `index.html` directly from the filesystem:
 
 ```bash
 epub2web book.epub --serve
