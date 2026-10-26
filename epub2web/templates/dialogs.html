@@ -1,0 +1,67 @@
+{% from "macros.html" import icon %}
+<dialog id="menu-dialog" class="sheet menu-sheet" aria-labelledby="menu-title">
+  <div class="sheet-head">
+    <div>
+      <p class="sheet-eyebrow">{{ book.meta.short_title }}</p>
+      <h2 class="sheet-title" id="menu-title">Contents</h2>
+    </div>
+    <button class="icon-btn" type="button" data-close aria-label="Close contents">{{ icon("close") }}</button>
+  </div>
+  <div class="sheet-body menu-toc">
+    {% for entry in sidebar.before %}
+    <a class="menu-entry" href="{{ entry.href }}">
+      <span>{{ entry.label }}</span>
+      <span class="menu-arrow" aria-hidden="true">→</span>
+    </a>
+    {% endfor %}
+    {% for chapter in sidebar.chapters %}
+    <div class="menu-chapter">
+      <a class="menu-entry menu-chapter-link" href="{{ chapter.href }}">
+        <span><span class="menu-num">{{ chapter.number }}</span>{{ chapter.label }}</span>
+        <span class="menu-arrow" aria-hidden="true">→</span>
+      </a>
+      {% if chapter.sections %}
+      <div class="menu-sections">
+        {% for section in chapter.sections %}
+        <a href="{{ section.href }}">{{ section.label }}</a>
+        {% endfor %}
+      </div>
+      {% endif %}
+    </div>
+    {% endfor %}
+    {% for entry in sidebar.after %}
+    <a class="menu-entry" href="{{ entry.href }}">
+      <span>{{ entry.label }}</span>
+      <span class="menu-arrow" aria-hidden="true">→</span>
+    </a>
+    {% endfor %}
+  </div>
+</dialog>
+
+<dialog id="search-dialog" class="sheet search-sheet" aria-labelledby="search-title">
+  <div class="sheet-head">
+    <div>
+      <p class="sheet-eyebrow">Full text</p>
+      <h2 class="sheet-title" id="search-title">Search the book</h2>
+    </div>
+    <button class="icon-btn" type="button" data-close aria-label="Close search">{{ icon("close") }}</button>
+  </div>
+  <div class="sheet-body">
+    <div id="search" class="search-mount" aria-live="polite"></div>
+    <p class="search-hint">Search the full text. Press <kbd>/</kbd> anywhere to open search, <kbd>Esc</kbd> to close.</p>
+  </div>
+</dialog>
+
+<dialog id="lightbox" class="lightbox" aria-label="Figure viewer">
+  <button class="lightbox-close" type="button" data-lightbox-close aria-label="Close figure">{{ icon("close", 24) }}</button>
+  <figure>
+    <img alt="">
+    <figcaption></figcaption>
+  </figure>
+</dialog>
+
+<div id="note-popover" class="note-popover" role="dialog" aria-label="Note preview" hidden>
+  <p class="note-popover-head"><span class="note-popover-page"></span><span class="note-popover-label">Note</span></p>
+  <p class="note-popover-text"></p>
+  <a class="note-popover-link" href="#">Open the note <span aria-hidden="true">→</span></a>
+</div>

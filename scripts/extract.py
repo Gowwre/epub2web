@@ -16,6 +16,7 @@ from __future__ import annotations
 import html
 import io
 import json
+import os
 import re
 import shutil
 import unicodedata
@@ -28,10 +29,10 @@ from bs4 import BeautifulSoup, NavigableString, Tag
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-EPUB = next(iter(sorted(ROOT.glob("*.epub"))), None)
-CONTENT = ROOT / "content"
+EPUB = Path(os.environ["EPUB_PATH"]) if os.environ.get("EPUB_PATH") else next(iter(sorted(ROOT.glob("*.epub"))), None)
+CONTENT = Path(os.environ.get("CONTENT_DIR", ROOT / "content"))
 PAGES = CONTENT / "pages"
-PUBLIC_IMAGES = ROOT / "public" / "images"
+PUBLIC_IMAGES = Path(os.environ.get("IMAGES_DIR", ROOT / "public" / "images"))
 
 if EPUB is None:
     raise SystemExit("No .epub found in the project root.")

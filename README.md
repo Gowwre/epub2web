@@ -23,6 +23,9 @@ npm run build
 # Build + link check
 npm run check
 
+# Reusable CLI (optional)
+pip install -e .
+
 # Portable offline package (no hosting required)
 npm run package:offline
 
@@ -39,6 +42,75 @@ SITE_URL="https://your-domain.example" npm run build
 ```
 
 Upload `dist/` to any static host. The site assumes it is served from the domain root.
+
+## Reusable CLI: `epub2web`
+
+The extraction/render pipeline is also packaged as a deterministic CLI. It takes an EPUB and produces a complete static HTML site with the same design system:
+
+```bash
+pip install -e .
+epub2web book.epub -o my-site
+```
+
+Or, without installing:
+
+```bash
+python3 -m epub2web book.epub -o my-site
+```
+
+Examples:
+
+```bash
+# Force the generic EPUB heuristics
+epub2web alice.epub -o alice-site --profile generic
+
+# Use the exact profile for this book (auto-detected)
+epub2web "the-design-of-everyday-things.epub" -o doet-site
+
+# Skip the search index / fidelity report if you are iterating
+epub2web book.epub -o out --no-search --no-verify
+```
+
+The output is a static site folder:
+
+```
+my-site/
+  index.html
+  contents/index.html
+  read/1/index.html …      (generic profile)
+  chapters/1/index.html …   (DOET profile)
+  assets/                   fonts, CSS, JS
+  images/                   optimized figures
+  pagefind/                 search index, if Pagefind is installed
+```
+
+A run reports both gates:
+
+```
+Verify:  PASS (14/14 pages exact)
+Links:   PASS (3,826 checked, 0 broken, 0 duplicate ids)
+```
+
+### Profiles
+
+- **`generic`** — standard EPUB 2/3 parsing: OPF metadata, spine, NCX or EPUB 3 nav, semantic HTML, class-name heuristics for print conversions, figure/caption grouping, link and image rewriting. Works on ordinary books without a custom profile.
+- **`doet`** — the exact profile for this book: class-specific semantic mapping, reconstructed endnote superscripts, the full notes/references/index pages, print page anchors, and the original home/contents treatment. Auto-detected by title or ISBN when the profile scripts are available.
+- **`auto`** — chooses `doet` when applicable, otherwise `generic`.
+
+The generic profile has a character-level fidelity gate too. It verifies the rendered text page by page against the EPUB source and exits non-zero on any difference. In testing:
+
+| Book | Profile | Pages | Time |
+|---|---|---|---|
+| Alice's Adventures in Wonderland (Project Gutenberg EPUB) | generic | 13 | **~0.7 s** |
+| The Design of Everyday Things | doet | 15 | **~3.3 s** |
+
+Those times include extraction, rendering, verification, and Pagefind indexing. There are no network calls and no model calls in that path; the LLM is only involved when writing or extending the program, never when running it.
+
+Pagefind is optional. If it is not installed, the site is still complete; the search dialog reports that the index is unavailable. For a pip-only environment, install Pagefind separately with `npm install -g pagefind` (or run the repo's `npm install`).
+
+The generic path is intentionally conservative: it recognizes standard EPUB markup and common print-conversion class names, but it does not try to reconstruct a print page-number index or rebuild lost superscripts. Those are profile-level refinements. If a book's markup is unusual, add a small profile rather than teaching the LLM to rewrite the prose.
+
+A single-file HTML output (inline fonts, images, search index) is a possible next step; the CLI currently emits a multi-page site with clean URLs.
 
 ## Distributing without hosting
 
@@ -174,4 +246,14 @@ static/assets/
 content/           generated; gitignored
 dist/              generated; gitignored
 release/           portable offline package; gitignored
+epub2web/          reusable CLI package
+  epub.py          EPUB container, OPF, spine, NCX/nav reader
+  generic.py       generic semantic extractor
+  render.py        generic site renderer
+  verify.py        generic fidelity gate
+  links.py         generic link/anchor/duplicate-id gate
+  cli.py           command-line entry point
+  templates/       generic site templates
+  theme/           packaged CSS, JS, fonts, favicon
+pyproject.toml     pip package / console-script definition
 ```

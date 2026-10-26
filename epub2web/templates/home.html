@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+
+{% block title %}{{ book.meta.short_title }}{% if book.meta.author %} — {{ book.meta.author }}{% endif %}{% endblock %}
+
+{% block head %}
+<script type="application/ld+json">
+{{ book_json_ld|safe }}
+</script>
+{% endblock %}
+
+{% block layout %}
+<main id="main" class="home">
+  <section class="hero">
+    <div class="hero-visual">
+      {% if book.meta.cover %}
+      <div class="cover-frame">
+        <picture>
+          {% if book.meta.cover_webp %}<source srcset="/images/{{ book.meta.cover_webp }}" type="image/webp">{% endif %}
+          <img src="/images/{{ book.meta.cover }}" width="{{ cover_width or 438 }}" height="{{ cover_height or 662 }}" alt="Cover of {{ book.meta.short_title }}" fetchpriority="high">
+        </picture>
+      </div>
+      {% else %}
+      <div class="cover-fallback">
+        <span class="cover-fallback-author">{{ book.meta.author }}</span>
+        <span class="cover-fallback-title">{{ book.meta.short_title }}</span>
+        <span class="cover-fallback-rule" aria-hidden="true"></span>
+        <span class="cover-fallback-sub">{{ book.meta.subtitle or book.meta.publisher }}</span>
+      </div>
+      {% endif %}
+      {% if book.meta.publisher or book.meta.year %}
+      <p class="cover-caption">{% if book.meta.publisher %}{{ book.meta.publisher }}{% endif %}{% if book.meta.publisher and book.meta.year %} · {% endif %}{% if book.meta.year %}{{ book.meta.year }}{% endif %}</p>
+      {% endif %}
+    </div>
+    <div class="hero-copy">
+      <p class="eyebrow">A browser edition</p>
+      <h1 class="hero-title">
+        {% if book.meta.title_lines %}
+          {% for line in book.meta.title_lines %}<span class="line{% if loop.last %} accent-line{% endif %}">{{ line }}</span>{% endfor %}
+        {% else %}
+          <span class="line">{{ book.meta.short_title }}</span>
+        {% endif %}
+      </h1>
+      {% if book.meta.author %}<p class="hero-author">{{ book.meta.author }}</p>{% endif %}
+      {% if book.meta.subtitle %}<p class="hero-edition">{{ book.meta.subtitle }}</p>{% endif %}
+      <p class="hero-intro">{{ hero_intro }}</p>
+      <div class="hero-actions">
+        <a class="btn btn-primary" href="{{ start_href }}">Start reading {{ icon("arrow-right", 18) }}</a>
+        <a class="btn btn-quiet" href="/contents/">Contents</a>
+      </div>
+      {% if stats_items %}
+      <dl class="hero-stats">
+        {% for item in stats_items %}<div><dt>{{ item.label }}</dt><dd>{{ item.value }}</dd></div>{% endfor %}
+      </dl>
+      {% endif %}
+    </div>
+  </section>
+
+  <section class="home-toc" aria-labelledby="home-toc-title">
+    <div class="section-heading">
+      <div class="section-heading-main">
+        <p class="eyebrow">Read</p>
+        <h2 id="home-toc-title">{{ home_heading }}</h2>
+      </div>
+      <a class="text-link" href="/contents/">Full contents {{ icon("arrow-right", 16) }}</a>
+    </div>
+    {% if home_chapters %}
+    <ol class="chapter-list">
+      {% for chapter in home_chapters %}
+      <li>
+        <a href="{{ chapter.route }}" class="chapter-row">
+          <span class="chapter-row-num">{{ chapter.display_number }}</span>
+          <span class="chapter-row-main">
+            <span class="chapter-row-title">{{ chapter.title }}</span>
+            <span class="chapter-row-meta">{% if chapter.section_count %}{{ chapter.section_count }} sections · {% endif %}{{ chapter.reading_minutes }} min read</span>
+          </span>
+          <span class="chapter-row-arrow" aria-hidden="true">{{ icon("arrow-right", 20) }}</span>
+        </a>
+      </li>
+      {% endfor %}
+    </ol>
+    {% endif %}
+    {% if home_extras %}
+    <p class="home-more">
+      <span>Also in this edition</span>
+      {% for extra in home_extras %}<a href="{{ extra.href }}">{{ extra.label }}</a>{% endfor %}
+    </p>
+    {% endif %}
+  </section>
+
+  <section class="colophon" id="colophon" aria-labelledby="colophon-title">
+    <div class="section-heading">
+      <div class="section-heading-main">
+        <p class="eyebrow">Colophon</p>
+        <h2 id="colophon-title">About this edition</h2>
+      </div>
+    </div>
+    <div class="colophon-grid">
+      <div class="colophon-copy">
+        <p>This is the complete text of {{ book.meta.title }}{% if book.meta.subtitle %}: {{ book.meta.subtitle }}{% endif %}, built from {{ book.meta.source }} as a static website. Page furniture is omitted; the words, headings, figures, captions, notes, references, and index remain.</p>
+        <p>Every paragraph is checked against the source by a text-fidelity gate. A build fails if a word is added, dropped, or moved. The design is the only thing that changes.</p>
+        <p class="colophon-rights">{{ book.meta.rights or "Text rights belong to the respective rights holder." }} This browser edition is unabridged and is not affiliated with the publisher.</p>
+      </div>
+      <dl class="colophon-specs">
+        <div><dt>Typography</dt><dd>Fraunces, Literata, Inter</dd></div>
+        <div><dt>Build</dt><dd>Python + static HTML</dd></div>
+        <div><dt>Search</dt><dd>{{ search_label or "Static full-text" }}</dd></div>
+        <div><dt>Source</dt><dd>{{ book.meta.source }}</dd></div>
+      </dl>
+    </div>
+  </section>
+</main>
+{% endblock %}

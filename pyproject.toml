@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "epub2web"
+version = "0.1.0"
+description = "Convert an EPUB into a complete, browser-optimized static website. Deterministic: no LLM, no prose rewriting."
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+  "beautifulsoup4>=4.12",
+  "Jinja2>=3.1",
+  "lxml>=5.0",
+  "Pillow>=10.0",
+]
+
+[project.scripts]
+epub2web = "epub2web.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["epub2web*"]
+
+[tool.setuptools.package-data]
+epub2web = [
+  "templates/*.html",
+  "theme/assets/*",
+  "theme/assets/fonts/*",
+  "theme/favicon.svg",
+]

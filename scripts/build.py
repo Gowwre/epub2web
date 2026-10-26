@@ -13,15 +13,17 @@ from pathlib import Path
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 ROOT = Path(__file__).resolve().parents[1]
-CONTENT = ROOT / "content"
-DIST = ROOT / "dist"
-STATIC = ROOT / "static"
-PUBLIC = ROOT / "public"
+CONTENT = Path(os.environ.get("CONTENT_DIR", ROOT / "content"))
+DIST = Path(os.environ.get("DIST_DIR", ROOT / "dist"))
+STATIC = Path(os.environ.get("STATIC_DIR", ROOT / "static"))
+PUBLIC = Path(os.environ.get("PUBLIC_DIR", ROOT / "public"))
+IMAGES = Path(os.environ.get("IMAGES_DIR", PUBLIC / "images"))
+TEMPLATES = Path(os.environ.get("TEMPLATES_DIR", ROOT / "templates"))
 SITE_URL = os.environ.get("SITE_URL", "http://localhost:4321").rstrip("/")
 TODAY = date.today().isoformat()
 
 env = Environment(
-    loader=FileSystemLoader(ROOT / "templates"),
+    loader=FileSystemLoader(TEMPLATES),
     autoescape=select_autoescape(["html", "xml"]),
     trim_blocks=True,
     lstrip_blocks=True,
@@ -268,7 +270,8 @@ def main() -> None:
 
     # --- Assets ----------------------------------------------------------
     shutil.copytree(STATIC / "assets", DIST / "assets", dirs_exist_ok=True)
-    shutil.copytree(PUBLIC / "images", DIST / "images", dirs_exist_ok=True)
+    if IMAGES.exists():
+        shutil.copytree(IMAGES, DIST / "images", dirs_exist_ok=True)
     shutil.copyfile(STATIC / "favicon.svg", DIST / "favicon.svg")
     (DIST / "notes.json").write_text(
         (CONTENT / "notes-popover.json").read_text(encoding="utf-8"), encoding="utf-8"

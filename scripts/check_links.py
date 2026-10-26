@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 import sys
 from pathlib import Path
@@ -11,7 +12,7 @@ from urllib.parse import urlsplit
 from bs4 import BeautifulSoup
 
 ROOT = Path(__file__).resolve().parents[1]
-DIST = ROOT / "dist"
+DIST = Path(os.environ.get("DIST_DIR", ROOT / "dist"))
 
 
 def target_path(base: Path, path: str) -> Path | None:
