@@ -1,0 +1,23 @@
+{% macro icon(name, size=20) -%}
+<svg class="icon icon-{{ name }}" width="{{ size }}" height="{{ size }}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+  {%- if name == "menu" -%}
+  <path d="M4 7h16M4 12h16M4 17h16"/>
+  {%- elif name == "close" -%}
+  <path d="M6 6l12 12M18 6L6 18"/>
+  {%- elif name == "search" -%}
+  <circle cx="11" cy="11" r="7"/><path d="M20 20l-3.6-3.6"/>
+  {%- elif name == "sun" -%}
+  <circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+  {%- elif name == "moon" -%}
+  <path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5Z"/>
+  {%- elif name == "arrow-left" -%}
+  <path d="M19 12H5M11 18l-6-6 6-6"/>
+  {%- elif name == "arrow-right" -%}
+  <path d="M5 12h14M13 6l6 6-6 6"/>
+  {%- elif name == "chevron-down" -%}
+  <path d="M6 9l6 6 6-6"/>
+  {%- elif name == "book" -%}
+  <path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5V5.5Z"/><path d="M4 18.5A2.5 2.5 0 0 1 6.5 16H20"/>
+  {%- endif -%}
+</svg>
+{%- endmacro %}

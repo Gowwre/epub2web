@@ -1,0 +1,44 @@
+<aside class="sidebar" aria-label="Book contents" data-chrome>
+  <div class="sidebar-inner">
+    <div class="sidebar-head">
+      <p class="sidebar-eyebrow">Contents</p>
+      <a class="sidebar-all" href="/contents/">All chapters <span aria-hidden="true">→</span></a>
+    </div>
+    <nav class="sidebar-nav">
+      {% for entry in sidebar.before %}
+      <a class="sidebar-link{% if entry.id == page.id %} is-current{% endif %}" href="{{ entry.href }}"{% if entry.id == page.id %} aria-current="page"{% endif %}>
+        <span class="sidebar-label">{{ entry.label }}</span>
+      </a>
+      {% endfor %}
+
+      <ol class="sidebar-chapters">
+        {% for chapter in sidebar.chapters %}
+        {% set is_current = chapter.id == page.id %}
+        <li class="sidebar-chapter{% if is_current %} is-current{% endif %}">
+          <a class="sidebar-link" href="{{ chapter.href }}"{% if is_current %} aria-current="page"{% endif %}>
+            <span class="sidebar-num">{{ chapter.number }}</span>
+            <span class="sidebar-label">{{ chapter.label }}</span>
+          </a>
+          {% if is_current and chapter.sections %}
+          <ul class="sidebar-sections" aria-label="Sections in this chapter">
+            {% for section in chapter.sections %}
+            <li><a href="{{ section.href }}" data-section-link>{{ section.label }}</a></li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+        </li>
+        {% endfor %}
+      </ol>
+
+      {% for entry in sidebar.after %}
+      <a class="sidebar-link{% if entry.id == page.id %} is-current{% endif %}" href="{{ entry.href }}"{% if entry.id == page.id %} aria-current="page"{% endif %}>
+        <span class="sidebar-label">{{ entry.label }}</span>
+      </a>
+      {% endfor %}
+    </nav>
+    <div class="sidebar-foot">
+      <a href="/#colophon">About this edition</a>
+      <button class="sidebar-search" type="button" data-search-open>Search the book <span aria-hidden="true">/</span></button>
+    </div>
+  </div>
+</aside>

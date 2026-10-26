@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% from "macros.html" import icon %}
+
+{% block layout %}
+<div class="reading-shell{% if wide %} reading-shell-wide{% endif %}">
+  {% if show_sidebar %}{% include "sidebar.html" %}{% endif %}
+  <main id="main" class="page-main{% if wide %} page-main-wide{% endif %}">
+    <article class="book-page page-type-{{ page.type }}">
+      {{ fragment|safe }}
+    </article>
+
+    {% if prev or next %}
+    <nav class="chapter-nav" aria-label="Chapter navigation" data-chrome>
+      {% if prev %}
+      <a class="chapter-nav-card chapter-nav-prev" href="{{ prev.route }}">
+        <span class="chapter-nav-kicker">{{ icon("arrow-left", 16) }} Previous</span>
+        <span class="chapter-nav-title">{{ prev.short_title }}</span>
+        <span class="chapter-nav-sub">{{ prev.title }}</span>
+      </a>
+      {% else %}<span></span>{% endif %}
+      {% if next %}
+      <a class="chapter-nav-card chapter-nav-next" href="{{ next.route }}">
+        <span class="chapter-nav-kicker">Next {{ icon("arrow-right", 16) }}</span>
+        <span class="chapter-nav-title">{{ next.short_title }}</span>
+        <span class="chapter-nav-sub">{{ next.title }}</span>
+      </a>
+      {% endif %}
+    </nav>
+    {% endif %}
+
+    <div class="page-end" data-chrome>
+      <a href="/contents/">Contents</a>
+      <span aria-hidden="true">·</span>
+      <a href="/#colophon">About this edition</a>
+      <span aria-hidden="true">·</span>
+      <a href="#top" data-top>Back to top</a>
+    </div>
+  </main>
+</div>
+{% endblock %}
