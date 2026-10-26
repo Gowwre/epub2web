@@ -1,21 +1,21 @@
 [build-system]
-requires = ["setuptools>=68"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "epub2web"
-version = "0.1.0"
+dynamic = ["version"]
 description = "Turn an EPUB into a beautiful, browser-optimized static website. Deterministic, no LLM, with a text-fidelity gate."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
+license-files = ["LICENSE"]
 authors = [{ name = "epub2web contributors" }]
 keywords = ["epub", "ebook", "html", "static-site", "publishing", "accessibility"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Environment :: Console",
   "Intended Audience :: End Users/Desktop",
-  "License :: OSI Approved :: MIT License",
   "Operating System :: OS Independent",
   "Programming Language :: Python :: 3",
   "Programming Language :: Python :: 3.10",
@@ -46,6 +46,9 @@ epub2web = "epub2web.cli:main"
 Homepage = "https://github.com/Gowwre/epub2web"
 Source = "https://github.com/Gowwre/epub2web"
 Issues = "https://github.com/Gowwre/epub2web/issues"
+
+[tool.setuptools.dynamic]
+version = { attr = "epub2web.__version__" }
 
 [tool.setuptools.packages.find]
 include = ["epub2web*"]

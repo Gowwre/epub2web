@@ -191,6 +191,8 @@ make clean
 
 The test fixture is generated in `tests/conftest.py`; no copyrighted book is required.
 
+Maintainers: see [RELEASING.md](RELEASING.md) for the PyPI Trusted Publishing setup.
+
 ## Limitations
 
 - **Reflowable EPUB 2/3** is the target. Fixed-layout, image-only, and DRM-protected EPUBs need additional work.
