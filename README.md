@@ -2,6 +2,8 @@
 
 **Turn an EPUB into a beautiful, browser-optimized website — deterministically.**
 
+[Try the live demo](https://gowwre.github.io/epub2web/) — a public-domain edition of *Alice's Adventures in Wonderland*.
+
 No AI at runtime. No prose rewriting. No Node, bundler, or database. Just Python, static HTML, and a fidelity gate that refuses to lose a word.
 
 [![CI](https://github.com/Gowwre/epub2web/actions/workflows/ci.yml/badge.svg)](https://github.com/Gowwre/epub2web/actions/workflows/ci.yml)
