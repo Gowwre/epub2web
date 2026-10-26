@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Create a portable offline distribution of the built site.
 
 The package contains:
@@ -14,7 +13,6 @@ No hosting, no internet connection, no external services.
 
 from __future__ import annotations
 
-import os
 import shutil
 import stat
 import zipfile

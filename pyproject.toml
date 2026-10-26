@@ -28,3 +28,24 @@ epub2web = [
   "theme/assets/fonts/*",
   "theme/favicon.svg",
 ]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["epub2web", "scripts"]
+extend-exclude = [
+  "build",
+  "content",
+  "dist",
+  "release",
+  "epub2web/theme",
+  "DontMakeMeThink",
+  "ThinkingInSystems",
+]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = ["E501"]
+
+[tool.ruff.format]
+quote-style = "double"

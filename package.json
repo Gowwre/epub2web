@@ -11,7 +11,12 @@
     "check": "npm run build && python3 scripts/check_links.py",
     "dev": "python3 -m http.server 4321 -d dist",
     "serve": "python3 -m http.server 4321 -d dist",
-    "package:offline": "npm run build && python3 scripts/package_offline.py"
+    "package:offline": "npm run build && python3 scripts/package_offline.py",
+    "lint": "ruff check epub2web scripts && ruff format --check epub2web scripts",
+    "lint:js": "node --check static/assets/app.js && node --check epub2web/theme/assets/app.js",
+    "theme:sync": "python3 scripts/sync_theme.py",
+    "theme:check": "python3 scripts/sync_theme.py --check",
+    "clean": "python3 scripts/clean.py"
   },
   "devDependencies": {
     "pagefind": "^1.5.2"

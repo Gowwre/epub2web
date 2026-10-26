@@ -5,8 +5,13 @@ content/
 public/images/
 *.epub
 __pycache__/
+.ruff_cache/
+.mypy_cache/
+.venv/
 .DS_Store
 screenshots/
 release/
 *.egg-info/
 DontMakeMeThink/
+ThinkingInSystems/
+/*-site/

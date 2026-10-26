@@ -43,22 +43,31 @@ def run_doet(epub: Path, content: Path, images: Path, output: Path, site_url: st
     if not extract.exists() or not build.exists():
         raise RuntimeError("DOET profile scripts are not available in this installation")
     env = os.environ.copy()
-    env.update({
-        "EPUB_PATH": str(epub),
-        "CONTENT_DIR": str(content),
-        "IMAGES_DIR": str(images),
-        "DIST_DIR": str(output),
-        "SITE_URL": site_url,
-        "STATIC_DIR": str(ROOT / "static"),
-        "TEMPLATES_DIR": str(ROOT / "templates"),
-        "PUBLIC_DIR": str(ROOT / "public"),
-    })
+    env.update(
+        {
+            "EPUB_PATH": str(epub),
+            "CONTENT_DIR": str(content),
+            "IMAGES_DIR": str(images),
+            "DIST_DIR": str(output),
+            "SITE_URL": site_url,
+            "STATIC_DIR": str(ROOT / "static"),
+            "TEMPLATES_DIR": str(ROOT / "templates"),
+            "PUBLIC_DIR": str(ROOT / "public"),
+        }
+    )
     subprocess.run([sys.executable, str(extract)], env=env, check=True, stdout=subprocess.DEVNULL)
     subprocess.run([sys.executable, str(build)], env=env, check=True, stdout=subprocess.DEVNULL)
 
 
-def run_generic(epub: Path, content: Path, images: Path, output: Path, site_url: str,
-                title: str = "", author: str = "") -> dict:
+def run_generic(
+    epub: Path,
+    content: Path,
+    images: Path,
+    output: Path,
+    site_url: str,
+    title: str = "",
+    author: str = "",
+) -> dict:
     book = GenericExtractor(epub, content, images).run()
     if title or author:
         book["meta"]["title"] = title or book["meta"]["title"]
@@ -80,8 +89,11 @@ def run_pagefind(output: Path) -> bool:
     binary = next((p for p in candidates if p.exists()), None)
     if binary is None:
         return False
-    subprocess.run([str(binary), "--site", str(output), "--output-subdir", "pagefind"],
-                   check=True, stdout=subprocess.DEVNULL)
+    subprocess.run(
+        [str(binary), "--site", str(output), "--output-subdir", "pagefind"],
+        check=True,
+        stdout=subprocess.DEVNULL,
+    )
     return True
 
 
@@ -89,21 +101,28 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="epub2web",
         description="Convert an EPUB into a complete, browser-optimized static website. "
-                    "Deterministic: no network calls, no LLM, no prose rewriting.",
+        "Deterministic: no network calls, no LLM, no prose rewriting.",
     )
     parser.add_argument("epub", type=Path, help="input .epub")
     parser.add_argument("-o", "--output", type=Path, help="output site directory")
-    parser.add_argument("--profile", choices=("auto", "generic", "doet"), default="auto",
-                        help="extraction profile (default: auto-detect)")
+    parser.add_argument(
+        "--profile",
+        choices=("auto", "generic", "doet"),
+        default="auto",
+        help="extraction profile (default: auto-detect)",
+    )
     parser.add_argument("--title", default="", help="override the book title")
     parser.add_argument("--author", default="", help="override the author")
-    parser.add_argument("--site-url", default="http://localhost:4321",
-                        help="absolute URL used in metadata/sitemap")
+    parser.add_argument(
+        "--site-url", default="http://localhost:4321", help="absolute URL used in metadata/sitemap"
+    )
     parser.add_argument("--no-search", action="store_true", help="skip the Pagefind index")
     parser.add_argument("--no-verify", action="store_true", help="skip the fidelity gate")
     parser.add_argument("--no-links", action="store_true", help="skip the internal link check")
     parser.add_argument("--force", action="store_true", help="replace an existing output directory")
-    parser.add_argument("--keep-work", action="store_true", help="keep the intermediate content directory")
+    parser.add_argument(
+        "--keep-work", action="store_true", help="keep the intermediate content directory"
+    )
     args = parser.parse_args(argv)
 
     started = time.perf_counter()
@@ -119,7 +138,9 @@ def main(argv: list[str] | None = None) -> int:
 
     profile = args.profile
     if profile == "auto":
-        profile = "doet" if info["doet"] and (ROOT / "scripts" / "extract.py").exists() else "generic"
+        profile = (
+            "doet" if info["doet"] and (ROOT / "scripts" / "extract.py").exists() else "generic"
+        )
 
     slug = slugify(args.title or info["title"] or epub.stem) or "book"
     output = (args.output or Path.cwd() / f"{slug}-site").resolve()
@@ -157,12 +178,16 @@ def main(argv: list[str] | None = None) -> int:
         if not args.no_verify:
             result = verify_site(content, output, verbose=False)
             verified = result["pass"]
-            print(f"Verify:  {'PASS' if verified else 'FAIL'} "
-                  f"({len(result['pages']) - result['failures']}/{len(result['pages'])} pages exact)")
+            print(
+                f"Verify:  {'PASS' if verified else 'FAIL'} "
+                f"({len(result['pages']) - result['failures']}/{len(result['pages'])} pages exact)"
+            )
             if not verified:
                 for row in result["pages"]:
                     if row["status"] != "ok":
-                        print(f"  ✗ {row['page']}: {row['title']} ({row['source_tokens']} → {row['output_tokens']} tokens)")
+                        print(
+                            f"  ✗ {row['page']}: {row['title']} ({row['source_tokens']} → {row['output_tokens']} tokens)"
+                        )
         else:
             print("Verify:  skipped")
 
@@ -170,9 +195,11 @@ def main(argv: list[str] | None = None) -> int:
         if not args.no_links:
             link_result = check_site_links(output)
             links_ok = link_result["ok"]
-            print(f"Links:   {'PASS' if links_ok else 'FAIL'} "
-                  f"({link_result['checked']:,} checked, {len(link_result['broken'])} broken, "
-                  f"{len(link_result['duplicates'])} duplicate ids)")
+            print(
+                f"Links:   {'PASS' if links_ok else 'FAIL'} "
+                f"({link_result['checked']:,} checked, {len(link_result['broken'])} broken, "
+                f"{len(link_result['duplicates'])} duplicate ids)"
+            )
             if not links_ok:
                 for item in link_result["broken"][:10]:
                     print(f"  ✗ {item['file']} -> {item['href']} ({item['reason']})")

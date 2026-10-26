@@ -2,24 +2,26 @@
 
 from __future__ import annotations
 
+import argparse
+import os
 import re
+import sys
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
 
+ROOT = Path(__file__).resolve().parents[1]
+
 
 def _is_external(href: str) -> bool:
-    return bool(re.match(r"^(https?:|mailto:|tel:|javascript:|data:)", href, re.I))
+    return bool(re.match(r"^(https?:|mailto:|tel:|javascript:|data:)", href, re.IGNORECASE))
 
 
 def _target_path(dist: Path, base: Path, path: str) -> Path | None:
     if not path:
         return base
-    if path.startswith("/"):
-        candidate = dist / path.lstrip("/")
-    else:
-        candidate = (base.parent / path).resolve()
+    candidate = dist / path.lstrip("/") if path.startswith("/") else (base.parent / path).resolve()
     try:
         candidate.relative_to(dist.resolve())
     except ValueError:
@@ -62,20 +64,21 @@ def check_site_links(dist_dir: str | Path) -> dict:
             parts = urlsplit(href)
             target = _target_path(dist, path, parts.path) if parts.path else path
             if target is None or not target.exists():
-                broken.append({"file": str(path.relative_to(dist)), "href": href, "reason": "missing file"})
+                broken.append(
+                    {"file": str(path.relative_to(dist)), "href": href, "reason": "missing file"}
+                )
                 continue
             if target.suffix != ".html" or not parts.fragment:
                 continue
-            if target == path:
-                target_ids = ids[path]
-            else:
-                target_ids = ids.get(target)
-                if target_ids is None:
-                    target_soup = BeautifulSoup(target.read_text(encoding="utf-8"), "lxml")
-                    target_ids = {t["id"] for t in target_soup.find_all(id=True)}
-                    ids[target] = target_ids
+            target_ids = ids.get(target)
+            if target_ids is None:
+                target_soup = BeautifulSoup(target.read_text(encoding="utf-8"), "lxml")
+                target_ids = {t["id"] for t in target_soup.find_all(id=True)}
+                ids[target] = target_ids
             if parts.fragment not in target_ids:
-                broken.append({"file": str(path.relative_to(dist)), "href": href, "reason": "missing anchor"})
+                broken.append(
+                    {"file": str(path.relative_to(dist)), "href": href, "reason": "missing anchor"}
+                )
 
         for img in soup.find_all("img", src=True):
             src = img["src"]
@@ -84,7 +87,9 @@ def check_site_links(dist_dir: str | Path) -> dict:
             checked += 1
             target = _target_path(dist, path, urlsplit(src).path)
             if target is None or not target.exists():
-                broken.append({"file": str(path.relative_to(dist)), "href": src, "reason": "missing image"})
+                broken.append(
+                    {"file": str(path.relative_to(dist)), "href": src, "reason": "missing image"}
+                )
 
         for source in soup.find_all("source", srcset=True):
             for item in source["srcset"].split(","):
@@ -94,12 +99,24 @@ def check_site_links(dist_dir: str | Path) -> dict:
                 checked += 1
                 target = _target_path(dist, path, urlsplit(src).path)
                 if target is None or not target.exists():
-                    broken.append({"file": str(path.relative_to(dist)), "href": src, "reason": "missing source"})
+                    broken.append(
+                        {
+                            "file": str(path.relative_to(dist)),
+                            "href": src,
+                            "reason": "missing source",
+                        }
+                    )
 
         for tag in soup.find_all(attrs={"aria-describedby": True}):
             for ref in tag["aria-describedby"].split():
                 if ref not in ids[path]:
-                    broken.append({"file": str(path.relative_to(dist)), "href": f"#{ref}", "reason": "missing aria-describedby target"})
+                    broken.append(
+                        {
+                            "file": str(path.relative_to(dist)),
+                            "href": f"#{ref}",
+                            "reason": "missing aria-describedby target",
+                        }
+                    )
 
     return {
         "ok": not duplicates and not broken,
@@ -108,3 +125,29 @@ def check_site_links(dist_dir: str | Path) -> dict:
         "duplicates": duplicates,
         "broken": broken,
     }
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description="Check links, anchors, images, and duplicate ids.")
+    parser.add_argument("dist", nargs="?", default=os.environ.get("DIST_DIR", str(ROOT / "dist")))
+    args = parser.parse_args(argv)
+    result = check_site_links(args.dist)
+
+    print("Internal link check")
+    print("=" * 78)
+    print(f"  pages checked: {result['pages']}")
+    print(f"  links/assets checked: {result['checked']:,}")
+    print(f"  duplicate ids: {len(result['duplicates'])}")
+    for item in result["duplicates"][:20]:
+        print(f"    {item['file']}  duplicate id #{item['id']}")
+    print(f"  broken references: {len(result['broken'])}")
+    for item in result["broken"][:60]:
+        print(f"    {item['file']}  ->  {item['href']}  ({item['reason']})")
+    if len(result["broken"]) > 60:
+        print(f"    … and {len(result['broken']) - 60} more")
+    print(f"Result: {'PASS' if result['ok'] else 'FAIL'}")
+    return 0 if result["ok"] else 1
+
+
+if __name__ == "__main__":
+    sys.exit(main())

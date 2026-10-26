@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Render the extracted book as a static website."""
 
 from __future__ import annotations
@@ -95,16 +94,20 @@ def main() -> None:
             }
             sidebar["chapters"].append(current_chapter)
         elif entry["kind"] == "section" and current_chapter is not None:
-            current_chapter["sections"].append({
-                "label": entry["label"],
-                "href": entry["href"],
-            })
+            current_chapter["sections"].append(
+                {
+                    "label": entry["label"],
+                    "href": entry["href"],
+                }
+            )
         elif entry["kind"] == "entry":
             href = entry["href"]
             if href.startswith("/preface/"):
                 continue
             if href.startswith("/acknowledgments/"):
-                sidebar["after"].append({"id": "acknowledgments", "label": "Acknowledgments", "href": href})
+                sidebar["after"].append(
+                    {"id": "acknowledgments", "label": "Acknowledgments", "href": href}
+                )
             elif href.startswith("/notes/"):
                 sidebar["after"].append({"id": "notes", "label": "Notes", "href": href})
             elif href.startswith("/references/"):
@@ -129,49 +132,62 @@ def main() -> None:
             }
             toc_blocks.append(current_block)
         elif entry["kind"] == "section" and current_block is not None:
-            current_block["sections"].append({
-                "label": entry["label"],
-                "href": entry["href"],
-            })
+            current_block["sections"].append(
+                {
+                    "label": entry["label"],
+                    "href": entry["href"],
+                }
+            )
         else:
-            toc_blocks.append({
-                "kind": "entry",
-                "label": entry["label"],
-                "href": entry["href"],
-                "generated": entry.get("generated", False),
-            })
+            toc_blocks.append(
+                {
+                    "kind": "entry",
+                    "label": entry["label"],
+                    "href": entry["href"],
+                    "generated": entry.get("generated", False),
+                }
+            )
             current_block = None
 
     # --- Home ------------------------------------------------------------
     home_chapters = []
-    for file, number, _title in [
-        ("Chapter001.html", 1, ""), ("Chapter002.html", 2, ""), ("Chapter003.html", 3, ""),
-        ("Chapter004.html", 4, ""), ("Chapter005.html", 5, ""), ("Chapter006.html", 6, ""),
+    for _file, number, _title in [
+        ("Chapter001.html", 1, ""),
+        ("Chapter002.html", 2, ""),
+        ("Chapter003.html", 3, ""),
+        ("Chapter004.html", 4, ""),
+        ("Chapter005.html", 5, ""),
+        ("Chapter006.html", 6, ""),
         ("Chapter007.html", 7, ""),
     ]:
         page = page_by_id[f"chapter-{number}"]
-        home_chapters.append({
-            "number": number,
-            "title": page["title"],
-            "route": page["route"],
-            "section_count": len(page.get("sections", [])),
-            "reading_minutes": page["reading_minutes"],
-        })
+        home_chapters.append(
+            {
+                "number": number,
+                "title": page["title"],
+                "route": page["route"],
+                "section_count": len(page.get("sections", [])),
+                "reading_minutes": page["reading_minutes"],
+            }
+        )
 
-    book_json_ld = json.dumps({
-        "@context": "https://schema.org",
-        "@type": "Book",
-        "name": book["meta"]["title"],
-        "author": {"@type": "Person", "name": book["meta"]["author"]},
-        "publisher": {"@type": "Organization", "name": "Basic Books"},
-        "datePublished": "2013",
-        "isbn": book["meta"]["isbn"],
-        "inLanguage": "en",
-        "numberOfPages": 366,
-        "description": book["meta"].get("description", ""),
-        "image": f"{SITE_URL}/images/cover.jpg",
-        "url": f"{SITE_URL}/",
-    }, ensure_ascii=False)
+    book_json_ld = json.dumps(
+        {
+            "@context": "https://schema.org",
+            "@type": "Book",
+            "name": book["meta"]["title"],
+            "author": {"@type": "Person", "name": book["meta"]["author"]},
+            "publisher": {"@type": "Organization", "name": "Basic Books"},
+            "datePublished": "2013",
+            "isbn": book["meta"]["isbn"],
+            "inLanguage": "en",
+            "numberOfPages": 366,
+            "description": book["meta"].get("description", ""),
+            "image": f"{SITE_URL}/images/cover.jpg",
+            "url": f"{SITE_URL}/",
+        },
+        ensure_ascii=False,
+    )
 
     # --- Render ----------------------------------------------------------
     if DIST.exists():
@@ -190,10 +206,22 @@ def main() -> None:
             )
             template = env.get_template("home.html")
             ctx = dict(
-                page=page, book=book, site_url=SITE_URL, meta_description=meta_description,
-                stats=book["stats"], home_chapters=home_chapters, book_json_ld=book_json_ld,
-                sidebar=sidebar, prev=None, next=None, fragment="", toc_blocks=[],
-                is_reading=False, show_sidebar=False, wide=False, pagefind_ignore=True,
+                page=page,
+                book=book,
+                site_url=SITE_URL,
+                meta_description=meta_description,
+                stats=book["stats"],
+                home_chapters=home_chapters,
+                book_json_ld=book_json_ld,
+                sidebar=sidebar,
+                prev=None,
+                next=None,
+                fragment="",
+                toc_blocks=[],
+                is_reading=False,
+                show_sidebar=False,
+                wide=False,
+                pagefind_ignore=True,
             )
             write_route(route, template.render(**ctx))
             continue
@@ -205,17 +233,29 @@ def main() -> None:
             )
             template = env.get_template("contents.html")
             ctx = dict(
-                page=page, book=book, site_url=SITE_URL, meta_description=meta_description,
-                stats=book["stats"], home_chapters=home_chapters, book_json_ld=book_json_ld,
-                sidebar=sidebar, prev=None, next=None, fragment="", toc_blocks=toc_blocks,
-                is_reading=False, show_sidebar=False, wide=True, pagefind_ignore=False,
+                page=page,
+                book=book,
+                site_url=SITE_URL,
+                meta_description=meta_description,
+                stats=book["stats"],
+                home_chapters=home_chapters,
+                book_json_ld=book_json_ld,
+                sidebar=sidebar,
+                prev=None,
+                next=None,
+                fragment="",
+                toc_blocks=toc_blocks,
+                is_reading=False,
+                show_sidebar=False,
+                wide=True,
+                pagefind_ignore=False,
             )
             write_route(route, template.render(**ctx))
             continue
 
         # Reading pages.
         fragment = (CONTENT / "pages" / f"{page_id}.html").read_text(encoding="utf-8")
-        read_label = f'{page["reading_minutes"]} min read'
+        read_label = f"{page['reading_minutes']} min read"
         fragment = fragment.replace('<span class="readtime">Calculating…</span>', read_label)
 
         pos = reading_order.index(page_id)
@@ -235,7 +275,9 @@ def main() -> None:
                 "General readings and notes for The Design of Everyday Things by Don Norman."
             )
         elif page_id == "references":
-            meta_description = "The full reference list for The Design of Everyday Things by Don Norman."
+            meta_description = (
+                "The full reference list for The Design of Everyday Things by Don Norman."
+            )
         elif page_id == "index":
             meta_description = "The full index to The Design of Everyday Things by Don Norman."
         else:
@@ -246,25 +288,52 @@ def main() -> None:
 
         template = env.get_template("page.html")
         ctx = dict(
-            page=page, book=book, site_url=SITE_URL, meta_description=meta_description,
-            stats=book["stats"], home_chapters=home_chapters, book_json_ld=book_json_ld,
-            sidebar=sidebar, prev=prev_page, next=next_page, fragment=fragment, toc_blocks=toc_blocks,
-            is_reading=True, show_sidebar=show_sidebar, wide=wide, pagefind_ignore=False,
+            page=page,
+            book=book,
+            site_url=SITE_URL,
+            meta_description=meta_description,
+            stats=book["stats"],
+            home_chapters=home_chapters,
+            book_json_ld=book_json_ld,
+            sidebar=sidebar,
+            prev=prev_page,
+            next=next_page,
+            fragment=fragment,
+            toc_blocks=toc_blocks,
+            is_reading=True,
+            show_sidebar=show_sidebar,
+            wide=wide,
+            pagefind_ignore=False,
         )
         write_route(route, template.render(**ctx))
 
     # 404
     page_404 = {
-        "id": "404", "type": "404", "route": "/404", "title": "Page not found",
-        "short_title": "Page not found", "display_title": "Page not found",
+        "id": "404",
+        "type": "404",
+        "route": "/404",
+        "title": "Page not found",
+        "short_title": "Page not found",
+        "display_title": "Page not found",
         "reading_minutes": 0,
     }
     ctx = dict(
-        page=page_404, book=book, site_url=SITE_URL,
+        page=page_404,
+        book=book,
+        site_url=SITE_URL,
         meta_description="Page not found.",
-        stats=book["stats"], home_chapters=[], book_json_ld=book_json_ld,
-        sidebar=sidebar, prev=None, next=None, fragment="", toc_blocks=[],
-        is_reading=False, show_sidebar=False, wide=False, pagefind_ignore=True,
+        stats=book["stats"],
+        home_chapters=[],
+        book_json_ld=book_json_ld,
+        sidebar=sidebar,
+        prev=None,
+        next=None,
+        fragment="",
+        toc_blocks=[],
+        is_reading=False,
+        show_sidebar=False,
+        wide=False,
+        pagefind_ignore=True,
     )
     (DIST / "404.html").write_text(env.get_template("404.html").render(**ctx), encoding="utf-8")
 
@@ -278,9 +347,17 @@ def main() -> None:
     )
 
     # --- Sitemap / robots ------------------------------------------------
-    routes = ["/", "/contents/", "/front-matter/", "/preface/",
-              *[f"/chapters/{n}/" for n in range(1, 8)],
-              "/acknowledgments/", "/notes/", "/references/", "/index-of-terms/"]
+    routes = [
+        "/",
+        "/contents/",
+        "/front-matter/",
+        "/preface/",
+        *[f"/chapters/{n}/" for n in range(1, 8)],
+        "/acknowledgments/",
+        "/notes/",
+        "/references/",
+        "/index-of-terms/",
+    ]
     urls = "\n".join(
         f"  <url><loc>{html.escape(SITE_URL + r)}</loc><lastmod>{TODAY}</lastmod></url>"
         for r in routes

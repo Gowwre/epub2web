@@ -8,10 +8,43 @@ import unicodedata
 from bs4 import NavigableString, Tag
 
 BLOCK_TAGS = {
-    "address", "article", "aside", "blockquote", "caption", "dd", "div", "dl",
-    "dt", "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2",
-    "h3", "h4", "h5", "h6", "header", "hr", "li", "main", "nav", "ol", "p",
-    "pre", "section", "table", "tbody", "td", "tfoot", "th", "thead", "tr", "ul",
+    "address",
+    "article",
+    "aside",
+    "blockquote",
+    "caption",
+    "dd",
+    "div",
+    "dl",
+    "dt",
+    "fieldset",
+    "figcaption",
+    "figure",
+    "footer",
+    "form",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "header",
+    "hr",
+    "li",
+    "main",
+    "nav",
+    "ol",
+    "p",
+    "pre",
+    "section",
+    "table",
+    "tbody",
+    "td",
+    "tfoot",
+    "th",
+    "thead",
+    "tr",
+    "ul",
 }
 
 
@@ -87,5 +120,5 @@ def strip_leading(el: Tag, pattern: str):
         return None
     m = re.match(pattern, str(s))
     if m:
-        s.replace_with(str(s)[m.end():])
+        s.replace_with(str(s)[m.end() :])
     return m

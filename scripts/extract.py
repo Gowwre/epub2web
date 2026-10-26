@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Turn the EPUB into semantic HTML fragments and a source-text baseline.
 
 Design rule: this script never rewrites prose. It only:
@@ -19,17 +18,31 @@ import json
 import os
 import re
 import shutil
-import unicodedata
+import sys
 import zipfile
-from collections import Counter
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from bs4 import BeautifulSoup, NavigableString, Tag
+from bs4 import BeautifulSoup, Tag
 from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
-EPUB = Path(os.environ["EPUB_PATH"]) if os.environ.get("EPUB_PATH") else next(iter(sorted(ROOT.glob("*.epub"))), None)
+sys.path.insert(0, str(ROOT))
+
+from epub2web.text import (  # noqa: E402
+    first_text_node,
+    inner,
+    normalize_text,
+    slugify,
+    strip_leading,
+    text_of,
+)
+
+EPUB = (
+    Path(os.environ["EPUB_PATH"])
+    if os.environ.get("EPUB_PATH")
+    else next(iter(sorted(ROOT.glob("*.epub"))), None)
+)
 CONTENT = Path(os.environ.get("CONTENT_DIR", ROOT / "content"))
 PAGES = CONTENT / "pages"
 PUBLIC_IMAGES = Path(os.environ.get("IMAGES_DIR", ROOT / "public" / "images"))
@@ -84,7 +97,13 @@ SPINE = [
     "Index.html",
 ]
 
-FRONT_MATTER_FILES = ["Halftitle.html", "Fm.html", "Title.html", "Copyright.html", "Dedication.html"]
+FRONT_MATTER_FILES = [
+    "Halftitle.html",
+    "Fm.html",
+    "Title.html",
+    "Copyright.html",
+    "Dedication.html",
+]
 
 
 def rewrite_href(href: str) -> str:
@@ -228,64 +247,25 @@ def clean_soup(soup: BeautifulSoup, note_map: dict[str, dict] | None = None) -> 
 # Text extraction / normalisation
 # ---------------------------------------------------------------------------
 
-BLOCK_TAGS = {
-    "address", "article", "aside", "blockquote", "caption", "dd", "div", "dl",
-    "dt", "fieldset", "figcaption", "figure", "footer", "form", "h1", "h2",
-    "h3", "h4", "h5", "h6", "header", "hr", "li", "main", "nav", "ol", "p",
-    "pre", "section", "table", "tbody", "td", "tfoot", "th", "thead", "tr", "ul",
-}
-
-
-def text_of(root: Tag) -> str:
-    """Extract visible text, preserving block boundaries but not inline gaps."""
-    parts: list[str] = []
-
-    def walk(node):
-        if isinstance(node, NavigableString):
-            parts.append(str(node))
-            return
-        if not isinstance(node, Tag):
-            return
-        if node.name in ("script", "style"):
-            return
-        if node.has_attr("data-chrome") or node.has_attr("data-generated"):
-            return
-        if node.name == "br":
-            parts.append("\n")
-            return
-        block = node.name in BLOCK_TAGS
-        if block:
-            parts.append("\n")
-        for child in node.children:
-            walk(child)
-        if block:
-            parts.append("\n")
-
-    walk(root)
-    return "".join(parts)
-
-
-def normalize_text(text: str) -> str:
-    text = unicodedata.normalize("NFC", text)
-    text = text.replace("\u00ad", "").replace("\u200b", "").replace("\ufeff", "")
-    text = text.replace("\u00a0", " ")
-    lines = []
-    for line in text.splitlines():
-        line = line.strip()
-        line = re.sub(r"^[•·]\s*", "", line)
-        line = re.sub(r"^\d+\.\s+", "", line)
-        if line:
-            lines.append(line)
-    return re.sub(r"\s+", " ", " ".join(lines)).strip()
-
-
-def tokens(text: str) -> list[str]:
-    return normalize_text(text).split()
-
-
 SMALL_WORDS = {
-    "a", "an", "and", "as", "at", "but", "by", "for", "from", "in", "into",
-    "of", "on", "or", "the", "to", "with", "vs",
+    "a",
+    "an",
+    "and",
+    "as",
+    "at",
+    "but",
+    "by",
+    "for",
+    "from",
+    "in",
+    "into",
+    "of",
+    "on",
+    "or",
+    "the",
+    "to",
+    "with",
+    "vs",
 }
 
 
@@ -301,36 +281,6 @@ def smart_title(text: str) -> str:
             out.append(word[:1].upper() + word[1:])
         capitalize_next = word.endswith(":")
     return " ".join(out)
-
-
-def slugify(text: str) -> str:
-    text = re.sub(r"<[^>]+>", "", text)
-    text = unicodedata.normalize("NFKD", text)
-    text = text.encode("ascii", "ignore").decode("ascii")
-    text = re.sub(r"[^A-Za-z0-9\s-]", "", text).strip().lower()
-    text = re.sub(r"[\s_]+", "-", text)
-    return text[:70].strip("-") or "section"
-
-
-def inner(el: Tag) -> str:
-    return "".join(str(c) for c in el.contents)
-
-
-def first_text_node(el: Tag):
-    for s in el.find_all(string=True):
-        if isinstance(s, NavigableString) and s.strip():
-            return s
-    return None
-
-
-def strip_leading(el: Tag, pattern: str) -> re.Match | None:
-    s = first_text_node(el)
-    if s is None:
-        return None
-    m = re.match(pattern, str(s))
-    if m:
-        s.replace_with(str(s)[m.end():])
-    return m
 
 
 # ---------------------------------------------------------------------------
@@ -353,12 +303,14 @@ def parse_notes(soup: BeautifulSoup) -> dict:
         if "subheading4" in classes:
             text = el.get_text(" ", strip=True)
             hid = f"notes-heading-{len(blocks) + 1}"
-            blocks.append({
-                "type": "heading",
-                "id": hid,
-                "html": inner(el).strip(),
-                "text": text,
-            })
+            blocks.append(
+                {
+                    "type": "heading",
+                    "id": hid,
+                    "html": inner(el).strip(),
+                    "text": text,
+                }
+            )
             current_group = text
             continue
         if "notes" in classes:
@@ -369,7 +321,7 @@ def parse_notes(soup: BeautifulSoup) -> dict:
                 if s is not None:
                     mm = re.match(r"^\s*\d+\s*", str(s))
                     if mm:
-                        s.replace_with(str(s)[mm.end():])
+                        s.replace_with(str(s)[mm.end() :])
             backlink = el.find("a", href=re.compile(r"#notes(\d+)$"))
             n = None
             if backlink:
@@ -400,19 +352,21 @@ def parse_notes(soup: BeautifulSoup) -> dict:
         # bodytext-bs, normal-tsa, and the hanging-indent bibliography entries
         # in the general readings section.
         cls = "hang" if "hangs" in classes else ""
-        blocks.append({
-            "type": "paragraph",
-            "html": inner(el).strip(),
-            "text": normalize_text(text_of(el)),
-            "class": cls,
-        })
+        blocks.append(
+            {
+                "type": "paragraph",
+                "html": inner(el).strip(),
+                "text": normalize_text(text_of(el)),
+                "class": cls,
+            }
+        )
 
     # Mark headings that introduce notes (for the jump chips).
     for i, block in enumerate(blocks):
         if block["type"] != "heading":
             continue
         block["has_notes"] = False
-        for nxt in blocks[i + 1:]:
+        for nxt in blocks[i + 1 :]:
             if nxt["type"] == "heading":
                 break
             if nxt["type"] == "note":
@@ -424,7 +378,7 @@ def parse_notes(soup: BeautifulSoup) -> dict:
         if block["type"] != "heading" or not block["has_notes"]:
             continue
         note_ids = []
-        for nxt in blocks[i + 1:]:
+        for nxt in blocks[i + 1 :]:
             if nxt["type"] == "heading":
                 break
             if nxt["type"] == "note":
@@ -440,6 +394,7 @@ def parse_notes(soup: BeautifulSoup) -> dict:
         "by_n": {f"n{x['n']}": x for x in notes},
     }
 
+
 def parse_toc(soup: BeautifulSoup) -> list[dict]:
     entries: list[dict] = []
     for p in soup.select("p.toc-entry, p.toc-entrya, p.toc-chapter, p.toc-level"):
@@ -454,27 +409,33 @@ def parse_toc(soup: BeautifulSoup) -> list[dict]:
                 m = re.match(r"^(\d+)\s+(.*)$", text)
                 if m:
                     number, label = m.group(1), m.group(2)
-            entries.append({
-                "kind": "chapter",
-                "number": number,
-                "label": label,
-                "href": href,
-                "generated": False,
-            })
+            entries.append(
+                {
+                    "kind": "chapter",
+                    "number": number,
+                    "label": label,
+                    "href": href,
+                    "generated": False,
+                }
+            )
         elif "toc-level" in classes:
-            entries.append({
-                "kind": "section",
-                "label": text,
-                "href": href,
-                "generated": False,
-            })
+            entries.append(
+                {
+                    "kind": "section",
+                    "label": text,
+                    "href": href,
+                    "generated": False,
+                }
+            )
         else:
-            entries.append({
-                "kind": "entry",
-                "label": text,
-                "href": href,
-                "generated": False,
-            })
+            entries.append(
+                {
+                    "kind": "entry",
+                    "label": text,
+                    "href": href,
+                    "generated": False,
+                }
+            )
     return entries
 
 
@@ -491,19 +452,21 @@ def parse_index(soup: BeautifulSoup) -> dict:
             is_sub = "indexsub" in classes or text[:1].islower()
             letter = ""
             if not is_sub:
-                key = re.sub(r"^(the|a|an)\s+", "", text, flags=re.I).lstrip("\u201c\u2018\"\'")
+                key = re.sub(r"^(the|a|an)\s+", "", text, flags=re.I).lstrip("\u201c\u2018\"'")
                 if key[:1].isdigit():
                     letter = "#"
                 else:
                     m = re.search(r"[A-Za-z]", key)
                     letter = m.group(0).upper() if m else "#"
-            entries.append({
-                "class": "index-sub" if is_sub else "index-entry",
-                "id": p.get("id", ""),
-                "html": inner(p).strip(),
-                "text": text,
-                "letter": letter,
-            })
+            entries.append(
+                {
+                    "class": "index-sub" if is_sub else "index-entry",
+                    "id": p.get("id", ""),
+                    "html": inner(p).strip(),
+                    "text": text,
+                    "letter": letter,
+                }
+            )
     return {"title": title, "entries": entries}
 
 
@@ -560,7 +523,7 @@ def image_html(img: Tag, images: dict, caption_id: str | None, has_caption: bool
     )
     picture = (
         f'<picture><source srcset="/images/{html.escape(info["webp"])}" type="image/webp">'
-        f'{img_tag}</picture>'
+        f"{img_tag}</picture>"
     )
     return (
         f'<a class="lightbox-link" href="/images/{html.escape(name)}" '
@@ -578,7 +541,7 @@ def build_figure(imgs: list[Tag], captions: list[Tag], images: dict, fig_index: 
                 figure_id = anchor["id"]
                 caption_id = anchor["id"] + "-caption"
             anchor.decompose()
-        caption_html += f'<p>{inner(cap).strip()}</p>'
+        caption_html += f"<p>{inner(cap).strip()}</p>"
     if not caption_html:
         # No caption paragraph. If alt text reads like a caption, surface it.
         alt = imgs[0].get("alt", "") if imgs else ""
@@ -589,12 +552,18 @@ def build_figure(imgs: list[Tag], captions: list[Tag], images: dict, fig_index: 
     if not body:
         return ""
     cls = "figure figure-multi" if len(imgs) > 1 else "figure"
-    figcap = f'<figcaption id="{html.escape(caption_id)}">{caption_html}</figcaption>' if has_caption else ""
+    figcap = (
+        f'<figcaption id="{html.escape(caption_id)}">{caption_html}</figcaption>'
+        if has_caption
+        else ""
+    )
     fid = f' id="{html.escape(figure_id)}"' if figure_id else ""
     return f'<figure{fid} class="{cls}" data-count="{len(imgs)}">{body}{figcap}</figure>'
 
 
-def convert_blocks(body: Tag, images: dict, note_map: dict, page_type: str = "chapter") -> tuple[str, list[dict], list[str]]:
+def convert_blocks(
+    body: Tag, images: dict, note_map: dict, page_type: str = "chapter"
+) -> tuple[str, list[dict], list[str]]:
     """Convert a cleaned body into semantic HTML."""
     blocks = [el for el in body.children if isinstance(el, Tag) and el.name in ("p", "table")]
     out: list[str] = []
@@ -627,18 +596,21 @@ def convert_blocks(body: Tag, images: dict, note_map: dict, page_type: str = "ch
             number = el.get_text(" ", strip=True)
             anchors = "".join(str(a) for a in el.find_all(id=True))
             title = ""
-            if i + 1 < len(blocks) and take_class(blocks[i + 1]) in ("chaptertitlea", "chaptertitleb"):
+            if i + 1 < len(blocks) and take_class(blocks[i + 1]) in (
+                "chaptertitlea",
+                "chaptertitleb",
+            ):
                 anchors += "".join(str(a) for a in blocks[i + 1].find_all(id=True))
                 title = blocks[i + 1].get_text(" ", strip=True)
                 i += 1
             hid = el.get("id") or f"ch-{slugify(title)}"
             out.append(
                 f'<header class="chapter-header" id="{html.escape(hid)}">'
-                f'{anchors}'
+                f"{anchors}"
                 f'<p class="chapter-number">{html.escape(number)}</p>'
                 f'<h1 class="chapter-title">{html.escape(title)}</h1>'
                 f'<p class="chapter-meta" data-chrome><!--READTIME--></p>'
-                f'</header>'
+                f"</header>"
             )
             i += 1
             continue
@@ -666,7 +638,7 @@ def convert_blocks(body: Tag, images: dict, note_map: dict, page_type: str = "ch
                 f'<header class="page-head" id="{html.escape(hid)}">'
                 f'<h1 class="page-title">{inner(el).strip()}</h1>'
                 f'<p class="chapter-meta" data-chrome><!--READTIME--></p>'
-                f'</header>'
+                f"</header>"
             )
             i += 1
             continue
@@ -699,7 +671,11 @@ def convert_blocks(body: Tag, images: dict, note_map: dict, page_type: str = "ch
         if cls in ("bulllist", "bulllista", "bulllists"):
             items = []
             j = i
-            while j < len(blocks) and take_class(blocks[j]) in ("bulllist", "bulllista", "bulllists"):
+            while j < len(blocks) and take_class(blocks[j]) in (
+                "bulllist",
+                "bulllista",
+                "bulllists",
+            ):
                 item = blocks[j]
                 strip_leading(item, r"^\s*[•·]\s*")
                 items.append(f"<li>{inner(item).strip()}</li>")
@@ -730,7 +706,11 @@ def convert_blocks(body: Tag, images: dict, note_map: dict, page_type: str = "ch
             while j < len(blocks) and take_class(blocks[j]).startswith("blockquote"):
                 items.append(f"<p>{inner(blocks[j]).strip()}</p>")
                 j += 1
-            qcls = "book-quote quote-epigraph" if cls in ("blockquotea", "blockquotei") else "book-quote"
+            qcls = (
+                "book-quote quote-epigraph"
+                if cls in ("blockquotea", "blockquotei")
+                else "book-quote"
+            )
             out.append(f'<blockquote class="{qcls}">' + "".join(items) + "</blockquote>")
             i = j
             continue
@@ -751,8 +731,16 @@ def convert_blocks(body: Tag, images: dict, note_map: dict, page_type: str = "ch
             i += 1
             continue
 
-        if cls in ("book-title", "book-titlea", "book-titleb", "book-titlec",
-                   "halftitle", "halftitlea", "halftitleb", "halftitlec"):
+        if cls in (
+            "book-title",
+            "book-titlea",
+            "book-titleb",
+            "book-titlec",
+            "halftitle",
+            "halftitlea",
+            "halftitleb",
+            "halftitlec",
+        ):
             out.append(f'<p class="title-line">{inner(el).strip()}</p>')
             i += 1
             continue
@@ -824,7 +812,9 @@ def convert_blocks(body: Tag, images: dict, note_map: dict, page_type: str = "ch
     return "".join(out), sections, warnings
 
 
-def convert_simple_page(soup: BeautifulSoup, images: dict, note_map: dict, page_type: str) -> tuple[str, list[dict], list[str]]:
+def convert_simple_page(
+    soup: BeautifulSoup, images: dict, note_map: dict, page_type: str
+) -> tuple[str, list[dict], list[str]]:
     return convert_blocks(soup.body, images, note_map, page_type)
 
 
@@ -879,7 +869,7 @@ def convert_front_matter(soups: dict[str, BeautifulSoup], images: dict) -> str:
                 elif cls == "normalfi":
                     out.append(f'<p class="also-by-note">{text}</p>')
                 elif text:
-                    out.append(f'<p>{text}</p>')
+                    out.append(f"<p>{text}</p>")
         out.append("</section>")
     return "".join(out)
 
@@ -902,7 +892,7 @@ def convert_notes_page(soup: BeautifulSoup, notes_data: dict) -> str:
             out.append(f'<h2 class="notes-group" id="{block["id"]}">{block["html"]}</h2>')
         elif block["type"] == "paragraph":
             cls = f' class="{block["class"]}"' if block.get("class") else ""
-            out.append(f'<p{cls}>{block["html"]}</p>')
+            out.append(f"<p{cls}>{block['html']}</p>")
         elif block["type"] == "note":
             note = by_n[block["n"]]
             backlink = ""
@@ -915,21 +905,28 @@ def convert_notes_page(soup: BeautifulSoup, notes_data: dict) -> str:
                 f'<article class="note" id="{note["id"]}">'
                 f'<div class="note-page">{html.escape(note["page"])}</div>'
                 f'<div class="note-body">{note["html"]}{backlink}</div>'
-                f'</article>'
+                f"</article>"
             )
     return "".join(out)
 
+
 def convert_index_page(soup: BeautifulSoup, index_data: dict) -> str:
     out = []
-    out.append('<header class="page-head"><h1 class="page-title" id="ind">' + html.escape(index_data["title"]) + "</h1></header>")
+    out.append(
+        '<header class="page-head"><h1 class="page-title" id="ind">'
+        + html.escape(index_data["title"])
+        + "</h1></header>"
+    )
     letters = []
     for entry in index_data["entries"]:
         letter = entry.get("letter", "")
         if letter and (not letters or (letter != letters[-1] and letter > letters[-1])):
             letters.append(letter)
     out.append('<div class="index-tools" data-chrome>')
-    out.append('<label class="index-filter"><span>Filter the index</span>'
-               '<input type="search" id="index-filter" placeholder="Type a name or term…" autocomplete="off"></label>')
+    out.append(
+        '<label class="index-filter"><span>Filter the index</span>'
+        '<input type="search" id="index-filter" placeholder="Type a name or term…" autocomplete="off"></label>'
+    )
     out.append('<nav class="index-letters" aria-label="Index letters">')
     for letter in letters:
         out.append(f'<a href="#letter-{letter}">{letter}</a>')
@@ -952,10 +949,13 @@ def convert_index_page(soup: BeautifulSoup, index_data: dict) -> str:
             out.append('<ul class="index-list">')
             open_list = True
         eid = f' id="{html.escape(entry["id"])}"' if entry["id"] else ""
-        out.append(f'<li{eid} class="{entry["class"]}" data-index-text="{html.escape(entry["text"])}">{entry["html"]}</li>')
+        out.append(
+            f'<li{eid} class="{entry["class"]}" data-index-text="{html.escape(entry["text"])}">{entry["html"]}</li>'
+        )
     if open_list:
         out.append("</ul>")
     return "".join(out)
+
 
 def convert_references_page(soup: BeautifulSoup, refs_data: dict) -> str:
     out = [
@@ -965,7 +965,7 @@ def convert_references_page(soup: BeautifulSoup, refs_data: dict) -> str:
     out.append('<ol class="reference-list">')
     for entry in refs_data["entries"]:
         eid = f' id="{html.escape(entry["id"])}"' if entry["id"] else ""
-        out.append(f'<li{eid}>{entry["html"]}</li>')
+        out.append(f"<li{eid}>{entry['html']}</li>")
     out.append("</ol>")
     return "".join(out)
 
@@ -1015,7 +1015,9 @@ def process_images(zf: zipfile.ZipFile, cleaned: dict[str, BeautifulSoup], cover
         cover_name = cover_src.rsplit("/", 1)[-1]
         shutil.copyfile(PUBLIC_IMAGES / cover_name, PUBLIC_IMAGES / "cover.jpg")
         if images.get(cover_name):
-            shutil.copyfile(PUBLIC_IMAGES / images[cover_name]["webp"], PUBLIC_IMAGES / "cover.webp")
+            shutil.copyfile(
+                PUBLIC_IMAGES / images[cover_name]["webp"], PUBLIC_IMAGES / "cover.webp"
+            )
         images["cover.jpg"] = {
             "webp": "cover.webp",
             "width": images.get(cover_name, {}).get("width", 438),
@@ -1050,8 +1052,11 @@ def main() -> None:
             "date": opf.find("dc:date").get_text(strip=True)[:4] if opf.find("dc:date") else "",
             "isbn": "9780465072996",
             "language": "en",
-            "description": BeautifulSoup(opf.find("dc:description").get_text(), "lxml").get_text(" ", strip=True)
-            if opf.find("dc:description") else "",
+            "description": BeautifulSoup(opf.find("dc:description").get_text(), "lxml").get_text(
+                " ", strip=True
+            )
+            if opf.find("dc:description")
+            else "",
         }
 
         raw = {name: zf.read(f"OEBPS/{name}") for name in SPINE}
@@ -1097,30 +1102,31 @@ def main() -> None:
         fragments: dict[str, str] = {}
 
         # Chapters
-        chapter_meta = {num: {"number": num, "title": title} for _, num, title in CHAPTERS}
         for file, num, title in CHAPTERS:
             soup = cleaned[file]
             fragment, sections, warnings = convert_blocks(soup.body, images, note_map, "chapter")
             pid = f"chapter-{num}"
             fragment = fragment.replace(
                 "<!--READTIME-->",
-                f'<span class="readtime">Calculating…</span>',
+                '<span class="readtime">Calculating…</span>',
             )
             fragments[pid] = fragment
-            pages.append({
-                "id": pid,
-                "type": "chapter",
-                "route": f"/chapters/{num}/",
-                "number": num,
-                "title": title,
-                "short_title": f"Chapter {num}",
-                "source_files": [file],
-                "sections": sections,
-                "words": len(source_text[file].split()),
-                "figure_count": fragment.count("<figure"),
-                "note_count": fragment.count('class="note-ref"'),
-                "warnings": warnings,
-            })
+            pages.append(
+                {
+                    "id": pid,
+                    "type": "chapter",
+                    "route": f"/chapters/{num}/",
+                    "number": num,
+                    "title": title,
+                    "short_title": f"Chapter {num}",
+                    "source_files": [file],
+                    "sections": sections,
+                    "words": len(source_text[file].split()),
+                    "figure_count": fragment.count("<figure"),
+                    "note_count": fragment.count('class="note-ref"'),
+                    "warnings": warnings,
+                }
+            )
 
         # Simple narrative pages
         for pid, file, title, route in [
@@ -1128,118 +1134,145 @@ def main() -> None:
             ("acknowledgments", "Acknowledgments.html", "Acknowledgments", "/acknowledgments/"),
         ]:
             fragment, sections, warnings = convert_simple_page(cleaned[file], images, note_map, pid)
-            fragment = fragment.replace("<!--READTIME-->", '<span class="readtime">Calculating…</span>')
+            fragment = fragment.replace(
+                "<!--READTIME-->", '<span class="readtime">Calculating…</span>'
+            )
             fragments[pid] = fragment
-            pages.append({
-                "id": pid,
-                "type": "narrative",
-                "route": route,
-                "title": title,
-                "short_title": title,
-                "source_files": [file],
-                "sections": sections,
-                "words": len(source_text[file].split()),
-                "warnings": warnings,
-            })
+            pages.append(
+                {
+                    "id": pid,
+                    "type": "narrative",
+                    "route": route,
+                    "title": title,
+                    "short_title": title,
+                    "source_files": [file],
+                    "sections": sections,
+                    "words": len(source_text[file].split()),
+                    "warnings": warnings,
+                }
+            )
 
         # Front matter
         front_html = convert_front_matter(cleaned, images)
         fragments["front-matter"] = front_html
-        pages.append({
-            "id": "front-matter",
-            "type": "frontmatter",
-            "route": "/front-matter/",
-            "title": "Front Matter",
-            "short_title": "Front matter",
-            "source_files": FRONT_MATTER_FILES,
-            "sections": [],
-            "words": sum(len(source_text[f].split()) for f in FRONT_MATTER_FILES),
-            "warnings": [],
-        })
+        pages.append(
+            {
+                "id": "front-matter",
+                "type": "frontmatter",
+                "route": "/front-matter/",
+                "title": "Front Matter",
+                "short_title": "Front matter",
+                "source_files": FRONT_MATTER_FILES,
+                "sections": [],
+                "words": sum(len(source_text[f].split()) for f in FRONT_MATTER_FILES),
+                "warnings": [],
+            }
+        )
 
         # Contents is rendered by build.py from the TOC data.
-        pages.append({
-            "id": "contents",
-            "type": "contents",
-            "route": "/contents/",
-            "title": "Contents",
-            "short_title": "Contents",
-            "source_files": ["Contents.html"],
-            "sections": [],
-            "words": len(source_text["Contents.html"].split()),
-            "warnings": [],
-        })
+        pages.append(
+            {
+                "id": "contents",
+                "type": "contents",
+                "route": "/contents/",
+                "title": "Contents",
+                "short_title": "Contents",
+                "source_files": ["Contents.html"],
+                "sections": [],
+                "words": len(source_text["Contents.html"].split()),
+                "warnings": [],
+            }
+        )
 
         # Notes
         notes_html = convert_notes_page(notes_soup, notes_data)
-        notes_html = notes_html.replace("<!--READTIME-->", '<span class="readtime">Calculating…</span>')
+        notes_html = notes_html.replace(
+            "<!--READTIME-->", '<span class="readtime">Calculating…</span>'
+        )
         fragments["notes"] = notes_html
-        pages.append({
-            "id": "notes",
-            "type": "notes",
-            "route": "/notes/",
-            "title": "General Readings and Notes",
-            "short_title": "Notes",
-            "source_files": ["Notes.html"],
-            "sections": [],
-            "words": len(source_text["Notes.html"].split()),
-            "note_count": len(notes_data["notes"]),
-            "warnings": [],
-        })
+        pages.append(
+            {
+                "id": "notes",
+                "type": "notes",
+                "route": "/notes/",
+                "title": "General Readings and Notes",
+                "short_title": "Notes",
+                "source_files": ["Notes.html"],
+                "sections": [],
+                "words": len(source_text["Notes.html"].split()),
+                "note_count": len(notes_data["notes"]),
+                "warnings": [],
+            }
+        )
 
         # References
         refs_html = convert_references_page(cleaned["References.html"], refs_data)
-        refs_html = refs_html.replace("<!--READTIME-->", '<span class="readtime">Calculating…</span>')
+        refs_html = refs_html.replace(
+            "<!--READTIME-->", '<span class="readtime">Calculating…</span>'
+        )
         fragments["references"] = refs_html
-        pages.append({
-            "id": "references",
-            "type": "references",
-            "route": "/references/",
-            "title": "References",
-            "short_title": "References",
-            "source_files": ["References.html"],
-            "sections": [],
-            "words": len(source_text["References.html"].split()),
-            "reference_count": len(refs_data["entries"]),
-            "warnings": [],
-        })
+        pages.append(
+            {
+                "id": "references",
+                "type": "references",
+                "route": "/references/",
+                "title": "References",
+                "short_title": "References",
+                "source_files": ["References.html"],
+                "sections": [],
+                "words": len(source_text["References.html"].split()),
+                "reference_count": len(refs_data["entries"]),
+                "warnings": [],
+            }
+        )
 
         # Index
         index_html = convert_index_page(cleaned["Index.html"], index_data)
         fragments["index"] = index_html
-        pages.append({
-            "id": "index",
-            "type": "index",
-            "route": "/index-of-terms/",
-            "title": "Index",
-            "short_title": "Index",
-            "source_files": ["Index.html"],
-            "sections": [],
-            "words": len(source_text["Index.html"].split()),
-            "index_count": len(index_data["entries"]),
-            "warnings": [],
-        })
+        pages.append(
+            {
+                "id": "index",
+                "type": "index",
+                "route": "/index-of-terms/",
+                "title": "Index",
+                "short_title": "Index",
+                "source_files": ["Index.html"],
+                "sections": [],
+                "words": len(source_text["Index.html"].split()),
+                "index_count": len(index_data["entries"]),
+                "warnings": [],
+            }
+        )
 
         # Landing page is generated, not a source page.
-        pages.append({
-            "id": "home",
-            "type": "home",
-            "route": "/",
-            "title": meta["title"],
-            "short_title": "Home",
-            "source_files": ["Cover.html"],
-            "sections": [],
-            "words": 0,
-            "warnings": [],
-        })
+        pages.append(
+            {
+                "id": "home",
+                "type": "home",
+                "route": "/",
+                "title": meta["title"],
+                "short_title": "Home",
+                "source_files": ["Cover.html"],
+                "sections": [],
+                "words": 0,
+                "warnings": [],
+            }
+        )
 
         # Write fragments
         for pid, fragment in fragments.items():
             (PAGES / f"{pid}.html").write_text(fragment, encoding="utf-8")
 
         # Reading order: front matter, preface, chapters, back matter.
-        reading_order = ["front-matter", "preface", *[f"chapter-{n}" for n in range(1, 8)],
-                         "acknowledgments", "notes", "references", "index"]
+        reading_order = [
+            "front-matter",
+            "preface",
+            *[f"chapter-{n}" for n in range(1, 8)],
+            "acknowledgments",
+            "notes",
+            "references",
+            "index",
+        ]
 
         book = {
             "meta": meta,
@@ -1258,11 +1291,26 @@ def main() -> None:
                 "images": len([n for n in images if n != "cover.jpg"]),
             },
         }
-        (CONTENT / "book.json").write_text(json.dumps(book, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
-        (CONTENT / "source-text.json").write_text(json.dumps(source_text, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        (CONTENT / "book.json").write_text(
+            json.dumps(book, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
+        (CONTENT / "source-text.json").write_text(
+            json.dumps(source_text, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+        )
         (CONTENT / "notes-popover.json").write_text(
-            json.dumps({f"n{n['n']}": {"page": n["page"], "text": n["text"], "href": f"/notes/#n{n['n']}"}
-                        for n in notes_data["notes"]}, indent=2, ensure_ascii=False) + "\n",
+            json.dumps(
+                {
+                    f"n{n['n']}": {
+                        "page": n["page"],
+                        "text": n["text"],
+                        "href": f"/notes/#n{n['n']}",
+                    }
+                    for n in notes_data["notes"]
+                },
+                indent=2,
+                ensure_ascii=False,
+            )
+            + "\n",
             encoding="utf-8",
         )
 

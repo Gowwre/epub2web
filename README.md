@@ -113,6 +113,29 @@ The generic path is intentionally conservative: it recognizes standard EPUB mark
 
 A single-file HTML output (inline fonts, images, search index) is a possible next step; the CLI currently emits a multi-page site with clean URLs.
 
+## Development
+
+Install the runtime and development tools:
+
+```bash
+pip install -r requirements.txt
+pip install -r requirements-dev.txt
+```
+
+Common commands:
+
+```bash
+make lint          # Ruff check + formatting check
+make format        # Ruff formatter
+make theme-check   # verify packaged theme == static theme
+make theme         # copy static/assets into epub2web/theme
+make test          # build + fidelity + links + lint + theme check
+make clean         # remove generated build artefacts
+make clean-sites   # also remove the local DontMakeMeThink / ThinkingInSystems sites
+```
+
+`static/` is the source of truth for the site's CSS/JS/fonts. `epub2web/theme/` is the packaged copy used by the CLI; `make theme` keeps them identical, and `make theme-check` fails if they drift. Site outputs are generated artefacts and are gitignored.
+
 ## Distributing without hosting
 
 `npm run package:offline` creates:
@@ -227,10 +250,12 @@ The source EPUB is intentionally not committed. `content/`, `dist/`, `public/ima
 
 ```
 scripts/
-  extract.py       EPUB → semantic fragments + source baseline
-  build.py         fragments + templates → dist/
-  verify.py        token/character fidelity gate
-  check_links.py   internal link, anchor, image, duplicate-id check
+  extract.py       DOET profile: EPUB → semantic fragments + source baseline
+  build.py         DOET profile: fragments + templates → dist/
+  verify.py        wrapper around the package fidelity gate
+  check_links.py   wrapper around the package link gate
+  sync_theme.py    sync/check packaged theme against static/
+  clean.py         remove generated build artefacts
 templates/
   base.html        document shell, metadata, header/footer, dialogs
   page.html        reading page
@@ -256,5 +281,8 @@ epub2web/          reusable CLI package
   cli.py           command-line entry point
   templates/       generic site templates
   theme/           packaged CSS, JS, fonts, favicon
-pyproject.toml     pip package / console-script definition
+pyproject.toml     pip package, Ruff config, console-script definition
+Makefile           build / test / lint / theme / clean shortcuts
+requirements.txt   runtime Python dependencies
+requirements-dev.txt  Ruff
 ```

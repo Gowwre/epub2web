@@ -8,12 +8,11 @@ from __future__ import annotations
 
 import posixpath
 import re
+import warnings
 import zipfile
 from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import unquote, urlsplit
-
-import warnings
 
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
@@ -23,8 +22,8 @@ warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 @dataclass
 class ManifestItem:
     id: str
-    href: str          # relative to the OPF directory, URL-decoded
-    path: str          # zip path
+    href: str  # relative to the OPF directory, URL-decoded
+    path: str  # zip path
     media_type: str
     properties: str = ""
 
@@ -32,11 +31,11 @@ class ManifestItem:
 @dataclass
 class TocEntry:
     label: str
-    href: str          # original href
-    path: str          # resolved zip path ('' if external)
+    href: str  # original href
+    path: str  # resolved zip path ('' if external)
     fragment: str
     depth: int
-    children: list["TocEntry"] = field(default_factory=list)
+    children: list[TocEntry] = field(default_factory=list)
 
 
 @dataclass
@@ -140,7 +139,9 @@ class Epub:
             "title": title,
             "creator": " and ".join(creators),
             "creators": creators,
-            "language": self._text(md.find("dc:language")) or self._text(md.find("language")) or "en",
+            "language": self._text(md.find("dc:language"))
+            or self._text(md.find("language"))
+            or "en",
             "publisher": self._text(md.find("dc:publisher")) or self._text(md.find("publisher")),
             "date": dates[0] if dates else "",
             "isbn": isbn,
@@ -191,13 +192,15 @@ class Epub:
         for ref in guide.find_all("reference"):
             href = ref.get("href") or ""
             path, fragment = self._resolve(self.opf_path, href)
-            result.append(GuideRef(
-                type=ref.get("type") or "",
-                title=ref.get("title") or "",
-                href=href,
-                path=path,
-                fragment=fragment,
-            ))
+            result.append(
+                GuideRef(
+                    type=ref.get("type") or "",
+                    title=ref.get("title") or "",
+                    href=href,
+                    path=path,
+                    fragment=fragment,
+                )
+            )
         return result
 
     # -- nav / NCX --------------------------------------------------------
@@ -249,8 +252,12 @@ class Epub:
                 nested = li.find("ol", recursive=False)
                 if label:
                     entry = TocEntry(
-                        label=label, href=href, path=path, fragment=fragment,
-                        depth=depth, children=[],
+                        label=label,
+                        href=href,
+                        path=path,
+                        fragment=fragment,
+                        depth=depth,
+                        children=[],
                     )
                     entries.append(entry)
                     if nested is not None:
@@ -272,8 +279,10 @@ class Epub:
         if toc_id:
             ncx_item = self.manifest.get(toc_id)
         if ncx_item is None:
-            ncx_item = next((i for i in self.manifest.values()
-                             if i.media_type == "application/x-dtbncx+xml"), None)
+            ncx_item = next(
+                (i for i in self.manifest.values() if i.media_type == "application/x-dtbncx+xml"),
+                None,
+            )
         if ncx_item is None:
             return []
         try:
@@ -294,10 +303,16 @@ class Epub:
                 href = content.get("src") if content else ""
                 path, fragment = self._resolve(ncx_item.path, href)
                 if label:
-                    entries.append(TocEntry(
-                        label=label, href=href, path=path, fragment=fragment,
-                        depth=depth, children=[],
-                    ))
+                    entries.append(
+                        TocEntry(
+                            label=label,
+                            href=href,
+                            path=path,
+                            fragment=fragment,
+                            depth=depth,
+                            children=[],
+                        )
+                    )
                 nested = point.find("navPoint")
                 if nested is not None:
                     walk(point, depth + 1)
@@ -335,15 +350,18 @@ class Epub:
         return self.zf.read(path)
 
     def html_spine(self) -> list[ManifestItem]:
-        return [item for item in self.spine
-                if item.media_type in ("application/xhtml+xml", "text/html")]
+        return [
+            item for item in self.spine if item.media_type in ("application/xhtml+xml", "text/html")
+        ]
 
     def toc_flat(self) -> list[TocEntry]:
         flat = []
+
         def walk(entries):
             for entry in entries:
                 flat.append(entry)
                 walk(entry.children)
+
         walk(self.toc)
         return flat
 

@@ -12,30 +12,48 @@ from __future__ import annotations
 import html
 import io
 import json
-import posixpath
 import re
-import shutil
+import warnings
 from pathlib import Path
 from urllib.parse import urlsplit
 
+from bs4 import BeautifulSoup, NavigableString, Tag, XMLParsedAsHTMLWarning
 from PIL import Image
-import warnings
 
-from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning, NavigableString, Tag
-
-from .epub import Epub, ManifestItem
+from .epub import Epub
 from .text import inner, normalize_text, slugify, strip_leading, text_of
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 
 FRONT_LABELS = {
-    "title page", "title", "copyright", "dedication", "contents", "table of contents",
-    "half title", "also by", "frontispiece", "preface", "foreword", "cover",
+    "title page",
+    "title",
+    "copyright",
+    "dedication",
+    "contents",
+    "table of contents",
+    "half title",
+    "also by",
+    "frontispiece",
+    "preface",
+    "foreword",
+    "cover",
 }
 BACK_LABELS = {
-    "notes", "note", "endnotes", "references", "bibliography", "index", "appendix",
-    "acknowledgments", "acknowledgements", "afterword", "glossary", "colophon",
-    "license", "copyright page",
+    "notes",
+    "note",
+    "endnotes",
+    "references",
+    "bibliography",
+    "index",
+    "appendix",
+    "acknowledgments",
+    "acknowledgements",
+    "afterword",
+    "glossary",
+    "colophon",
+    "license",
+    "copyright page",
 }
 CHAPTER_RE = re.compile(
     r"^(chapter|part|book)\s+([0-9]+|[IVXLCDM]+|one|two|three|four|five|six|seven|eight|nine|ten|"
@@ -106,15 +124,41 @@ def clean_doc(soup: BeautifulSoup) -> BeautifulSoup:
     # Divs were flattened; prose that lived directly inside a div is now a
     # bare text node. Wrap each run of text/<br> so it is not lost.
     inline_tags = {
-        "a", "abbr", "b", "bdi", "bdo", "br", "cite", "code", "data", "dfn",
-        "em", "i", "img", "kbd", "mark", "q", "s", "samp", "small", "span",
-        "strong", "sub", "sup", "time", "u", "var", "wbr",
+        "a",
+        "abbr",
+        "b",
+        "bdi",
+        "bdo",
+        "br",
+        "cite",
+        "code",
+        "data",
+        "dfn",
+        "em",
+        "i",
+        "img",
+        "kbd",
+        "mark",
+        "q",
+        "s",
+        "samp",
+        "small",
+        "span",
+        "strong",
+        "sub",
+        "sup",
+        "time",
+        "u",
+        "var",
+        "wbr",
     }
 
     def flush_run(run):
         if not run:
             return
-        if not any((isinstance(x, Tag) or (isinstance(x, NavigableString) and x.strip())) for x in run):
+        if not any(
+            (isinstance(x, Tag) or (isinstance(x, NavigableString) and x.strip())) for x in run
+        ):
             return
         paragraph = soup.new_tag("p")
         run[0].insert_before(paragraph)
@@ -123,7 +167,9 @@ def clean_doc(soup: BeautifulSoup) -> BeautifulSoup:
 
     run = []
     for child in list(body.children):
-        if isinstance(child, NavigableString) or (isinstance(child, Tag) and child.name in inline_tags):
+        if isinstance(child, NavigableString) or (
+            isinstance(child, Tag) and child.name in inline_tags
+        ):
             run.append(child)
         else:
             flush_run(run)
@@ -136,7 +182,21 @@ def clean_doc(soup: BeautifulSoup) -> BeautifulSoup:
         p.decompose()
 
     for tag in body.find_all(True):
-        if tag.name not in ("p", "table", "td", "th", "tr", "colgroup", "col", "h1", "h2", "h3", "h4", "h5", "h6"):
+        if tag.name not in (
+            "p",
+            "table",
+            "td",
+            "th",
+            "tr",
+            "colgroup",
+            "col",
+            "h1",
+            "h2",
+            "h3",
+            "h4",
+            "h5",
+            "h6",
+        ):
             tag.attrs.pop("class", None)
         tag.attrs.pop("style", None)
     for tag in body.find_all(["table", "td", "th", "tr", "colgroup", "col"]):
@@ -174,7 +234,7 @@ def number_short(number_label: str) -> str:
     value = number_label.upper()
     for prefix in ("CHAPTER", "PART", "BOOK"):
         if value.startswith(prefix + " "):
-            value = value[len(prefix) + 1:].strip()
+            value = value[len(prefix) + 1 :].strip()
             break
     m = re.match(r"([0-9]+|[IVXLCDM]+)", value)
     return m.group(1) if m else ""
@@ -199,9 +259,11 @@ def first_heading(soup: BeautifulSoup) -> Tag | None:
             return el
     for p in body.find_all("p"):
         cls = " ".join(p.get("class", [])).lower()
-        if any(k in cls for k in ("title", "heading", "subhead")):
-            if len(p.get_text(" ", strip=True)) < 140:
-                return p
+        if (
+            any(k in cls for k in ("title", "heading", "subhead"))
+            and len(p.get_text(" ", strip=True)) < 140
+        ):
+            return p
     return None
 
 
@@ -230,8 +292,11 @@ class GenericExtractor:
 
         with Epub(self.epub_path) as book:
             self.book = book
-            self.items = [item for item in book.html_spine()
-                          if item.path != (book.nav_item.path if book.nav_item else None)]
+            self.items = [
+                item
+                for item in book.html_spine()
+                if item.path != (book.nav_item.path if book.nav_item else None)
+            ]
             self.cleaned: dict[str, BeautifulSoup] = {}
             for item in self.items:
                 try:
@@ -356,25 +421,35 @@ class GenericExtractor:
             heading = first_heading(soup)
             htext = heading_text(heading) if heading else ""
             if not label:
-                label = htext or self.book._text(BeautifulSoup(self.book.read(item.path), "lxml").find("title")) or Path(item.path).stem
+                label = (
+                    htext
+                    or self.book._text(
+                        BeautifulSoup(self.book.read(item.path), "lxml").find("title")
+                    )
+                    or Path(item.path).stem
+                )
             display, number_label, title = parse_label(label)
             marker = bool(CHAPTER_RE.match(label) or CHAPTER_RE.match(htext))
             if not marker:
-                marker = bool(heading and "chaptertitle" in " ".join(heading.get("class", [])).lower())
-            pages.append({
-                "source_files": [item.path],
-                "label": label,
-                "display_title": display,
-                "title": title,
-                "number_label": number_label,
-                "number_short": number_short(number_label),
-                "marker": marker,
-                "heading": htext,
-                "words": len(text.split()),
-                "type": "chapter",
-                "id": "",
-                "route": "",
-            })
+                marker = bool(
+                    heading and "chaptertitle" in " ".join(heading.get("class", [])).lower()
+                )
+            pages.append(
+                {
+                    "source_files": [item.path],
+                    "label": label,
+                    "display_title": display,
+                    "title": title,
+                    "number_label": number_label,
+                    "number_short": number_short(number_label),
+                    "marker": marker,
+                    "heading": htext,
+                    "words": len(text.split()),
+                    "type": "chapter",
+                    "id": "",
+                    "route": "",
+                }
+            )
 
         # Where do the chapters start?
         chapter_start = next((i for i, p in enumerate(pages) if p["marker"]), None)
@@ -396,9 +471,10 @@ class GenericExtractor:
             label = normalize_text(page["label"]).lower()
             if i < chapter_start:
                 page["type"] = "frontmatter"
-            elif any(label == b or label.startswith(b + " ") or b in label for b in BACK_LABELS):
-                page["type"] = "backmatter"
-            elif i > last_chapter:
+            elif (
+                any(label == b or label.startswith(b + " ") or b in label for b in BACK_LABELS)
+                or i > last_chapter
+            ):
                 page["type"] = "backmatter"
             elif page["marker"]:
                 page["type"] = "chapter"
@@ -473,7 +549,9 @@ class GenericExtractor:
         alt = img.get("alt") or ""
         if has_caption:
             alt = ""
-        described = f' aria-describedby="{html.escape(caption_id)}"' if has_caption and caption_id else ""
+        described = (
+            f' aria-describedby="{html.escape(caption_id)}"' if has_caption and caption_id else ""
+        )
         name = html.escape(info["name"])
         w = info["width"]
         h = info["height"]
@@ -498,8 +576,29 @@ class GenericExtractor:
 
     def _convert_page(self, page: dict, soup: BeautifulSoup) -> tuple[str, list[dict], list[str]]:
         body = soup.body
-        blocks = [el for el in body.children if isinstance(el, Tag) and el.name in
-                  ("p", "h1", "h2", "h3", "h4", "h5", "h6", "table", "ul", "ol", "blockquote", "figure", "img", "div")]
+        source_path = page["source_files"][0]
+        blocks = [
+            el
+            for el in body.children
+            if isinstance(el, Tag)
+            and el.name
+            in (
+                "p",
+                "h1",
+                "h2",
+                "h3",
+                "h4",
+                "h5",
+                "h6",
+                "table",
+                "ul",
+                "ol",
+                "blockquote",
+                "figure",
+                "img",
+                "div",
+            )
+        ]
         # divs have been flattened in clean_doc; this is defensive.
         out: list[str] = []
         sections: list[dict] = []
@@ -540,8 +639,8 @@ class GenericExtractor:
                 for tag in e.find_all(id=True):
                     if not tag.get_text(strip=True):
                         tag.attrs.pop("id", None)
-            inner_html = " ".join(self._inline(e, page["source_files"][0]).strip() for e in elements)
-            display, number_label, title = parse_label(text)
+            inner_html = " ".join(self._inline(e, source_path).strip() for e in elements)
+            _, number_label, title = parse_label(text)
             # Keep the source wording exactly; the split is only layout. If
             # the heading contains a footnote/link marker, keep the whole
             # heading as the title so the marker is not duplicated or lost.
@@ -571,14 +670,22 @@ class GenericExtractor:
         # The first heading becomes the page header, preserving its text.
         if blocks:
             first = blocks[0]
-            if first.name in ("h1", "h2", "h3") or "chaptertitle" in " ".join(first.get("class", [])).lower():
+            if (
+                first.name in ("h1", "h2", "h3")
+                or "chaptertitle" in " ".join(first.get("class", [])).lower()
+            ):
                 consumed = [first]
                 i = 1
                 # "CHAPTER ONE" + title as two adjacent paragraphs/headings.
-                if (first.name == "p" and "chaptertitle" in " ".join(first.get("class", [])).lower()
-                        and i < len(blocks)
-                        and (blocks[i].name in ("h1", "h2", "h3")
-                             or "chaptertitle" in " ".join(blocks[i].get("class", [])).lower())):
+                if (
+                    first.name == "p"
+                    and "chaptertitle" in " ".join(first.get("class", [])).lower()
+                    and i < len(blocks)
+                    and (
+                        blocks[i].name in ("h1", "h2", "h3")
+                        or "chaptertitle" in " ".join(blocks[i].get("class", [])).lower()
+                    )
+                ):
                     consumed.append(blocks[i])
                     i += 1
                 out.append(header_for(consumed))
@@ -606,7 +713,9 @@ class GenericExtractor:
                 tag = {2: "h2", 3: "h3", 4: "h4"}[level]
                 hid = add_id(el)
                 c = {2: "section-title", 3: "subsection-title", 4: "subsubsection-title"}[level]
-                out.append(f'<{tag} class="{c}" id="{html.escape(hid)}">{self._inline(el, page["source_files"][0]).strip()}</{tag}>')
+                out.append(
+                    f'<{tag} class="{c}" id="{html.escape(hid)}">{self._inline(el, source_path).strip()}</{tag}>'
+                )
                 if page["type"] == "chapter" and level in (2, 3):
                     sections.append({"level": level, "id": hid, "title": heading_text(el)})
                 i += 1
@@ -623,7 +732,7 @@ class GenericExtractor:
                     caps.append(blocks[j])
                     j += 1
                 fig_index[0] += 1
-                fig = self._figure(imgs, caps, page["source_files"][0], fig_index[0])
+                fig = self._figure(imgs, caps, source_path, fig_index[0])
                 if fig:
                     out.append(fig)
                 i = j
@@ -635,7 +744,9 @@ class GenericExtractor:
                     if pcls:
                         first_para = False
                     pid = f' id="{html.escape(el["id"])}"' if el.get("id") else ""
-                    out.append(f"<p{pid}{pcls}>{self._inline(el, page['source_files'][0]).strip()}</p>")
+                    out.append(
+                        f"<p{pid}{pcls}>{self._inline(el, page['source_files'][0]).strip()}</p>"
+                    )
                     i += 1
                     continue
                 imgs = el.find_all("img")
@@ -644,41 +755,44 @@ class GenericExtractor:
                 while j < len(blocks):
                     nxt = blocks[j]
                     nxt_cls = " ".join(nxt.get("class", [])).lower()
-                    image_only = (nxt.name == "p" and nxt.find("img")
-                                  and not nxt.get_text(strip=True))
+                    image_only = (
+                        nxt.name == "p" and nxt.find("img") and not nxt.get_text(strip=True)
+                    )
                     if not (("image" in nxt_cls and not nxt.get_text(strip=True)) or image_only):
                         break
                     imgs.extend(nxt.find_all("img"))
                     anchors += self._anchors(nxt)
                     j += 1
                 caps = []
-                while j < len(blocks) and ("caption" in " ".join(blocks[j].get("class", [])).lower()
-                                           or blocks[j].name == "figcaption"):
+                while j < len(blocks) and (
+                    "caption" in " ".join(blocks[j].get("class", [])).lower()
+                    or blocks[j].name == "figcaption"
+                ):
                     caps.append(blocks[j])
                     j += 1
                 fig_index[0] += 1
-                fig = self._figure(imgs, caps, page["source_files"][0], fig_index[0])
+                fig = self._figure(imgs, caps, source_path, fig_index[0])
                 if fig:
                     out.append(anchors + fig)
                 i = j
                 continue
 
             if "caption" in cls:
-                out.append(f'<p class="orphan-caption">{self._inline(el, page["source_files"][0]).strip()}</p>')
+                out.append(f'<p class="orphan-caption">{self._inline(el, source_path).strip()}</p>')
                 i += 1
                 continue
 
             if name in ("ul", "ol"):
                 el.attrs.pop("class", None)
                 el["class"] = "book-list"
-                out.append(self._clean_tree(el, page["source_files"][0]))
+                out.append(self._clean_tree(el, source_path))
                 i += 1
                 continue
 
             if name == "blockquote":
                 el.attrs.pop("class", None)
                 el["class"] = "book-quote"
-                out.append(self._clean_tree(el, page["source_files"][0]))
+                out.append(self._clean_tree(el, source_path))
                 i += 1
                 continue
 
@@ -687,7 +801,7 @@ class GenericExtractor:
                 if "book-table" not in classes:
                     classes.insert(0, "book-table")
                 el["class"] = classes
-                out.append(f'<div class="table-wrap">{self._clean_tree(el, page["source_files"][0])}</div>')
+                out.append(f'<div class="table-wrap">{self._clean_tree(el, source_path)}</div>')
                 i += 1
                 continue
 
@@ -695,7 +809,7 @@ class GenericExtractor:
                 fig_index[0] += 1
                 imgs = el.find_all("img")
                 caps = el.find_all("figcaption")
-                out.append(self._anchors(el) + self._figure(imgs, caps, page["source_files"][0], fig_index[0]))
+                out.append(self._anchors(el) + self._figure(imgs, caps, source_path, fig_index[0]))
                 i += 1
                 continue
 
@@ -703,11 +817,17 @@ class GenericExtractor:
             if "quote" in cls or "epigraph" in cls:
                 items = []
                 j = i
-                while j < len(blocks) and ("quote" in " ".join(blocks[j].get("class", [])).lower()
-                                           or "epigraph" in " ".join(blocks[j].get("class", [])).lower()):
-                    items.append(f"<p>{self._inline(blocks[j], page["source_files"][0]).strip()}</p>")
+                while j < len(blocks) and (
+                    "quote" in " ".join(blocks[j].get("class", [])).lower()
+                    or "epigraph" in " ".join(blocks[j].get("class", [])).lower()
+                ):
+                    items.append(f"<p>{self._inline(blocks[j], source_path).strip()}</p>")
                     j += 1
-                out.append('<blockquote class="book-quote quote-epigraph">' + "".join(items) + "</blockquote>")
+                out.append(
+                    '<blockquote class="book-quote quote-epigraph">'
+                    + "".join(items)
+                    + "</blockquote>"
+                )
                 i = j
                 continue
 
@@ -715,16 +835,17 @@ class GenericExtractor:
                 items = []
                 j = i
                 start = 1
-                while j < len(blocks) and ("list" in " ".join(blocks[j].get("class", [])).lower()
-                                           or "bullet" in " ".join(blocks[j].get("class", [])).lower()):
+                while j < len(blocks) and (
+                    "list" in " ".join(blocks[j].get("class", [])).lower()
+                    or "bullet" in " ".join(blocks[j].get("class", [])).lower()
+                ):
                     item = blocks[j]
                     m = strip_leading(item, r"^\s*(?:[•·]|\d+\.)\s*")
                     if m and m.group(0).strip().endswith("."):
-                        try:
-                            start = int(re.match(r"\d+", m.group(0)).group(0))
-                        except Exception:
-                            pass
-                    items.append(f"<li>{self._inline(item, page["source_files"][0]).strip()}</li>")
+                        match = re.match(r"\d+", m.group(0))
+                        if match:
+                            start = int(match.group(0))
+                    items.append(f"<li>{self._inline(item, source_path).strip()}</li>")
                     j += 1
                 tag = "ol" if start != 1 else "ul"
                 attr = f' start="{start}"' if tag == "ol" and start != 1 else ""
@@ -746,7 +867,9 @@ class GenericExtractor:
                 tag = {2: "h2", 3: "h3", 4: "h4"}[level]
                 hid = add_id(el)
                 c = "subsection-title" if level == 3 else "section-title"
-                out.append(f'<{tag} class="{c}" id="{html.escape(hid)}">{self._inline(el, page["source_files"][0]).strip()}</{tag}>')
+                out.append(
+                    f'<{tag} class="{c}" id="{html.escape(hid)}">{self._inline(el, source_path).strip()}</{tag}>'
+                )
                 if page["type"] == "chapter" and level in (2, 3):
                     sections.append({"level": level, "id": hid, "title": heading_text(el)})
                 i += 1
@@ -759,12 +882,15 @@ class GenericExtractor:
                 i += 1
                 continue
 
-            pcls = (' class="lede"' if page["type"] == "chapter" and first_para
-                    and "right" not in cls else "")
+            pcls = (
+                ' class="lede"'
+                if page["type"] == "chapter" and first_para and "right" not in cls
+                else ""
+            )
             if pcls:
                 first_para = False
             pid = f' id="{html.escape(el["id"])}"' if el.get("id") else ""
-            out.append(f"<p{pid}{pcls}>{self._inline(el, page["source_files"][0]).strip()}</p>")
+            out.append(f"<p{pid}{pcls}>{self._inline(el, source_path).strip()}</p>")
             i += 1
 
         return "".join(out), sections, warnings
@@ -780,34 +906,42 @@ class GenericExtractor:
         for page in self.pages:
             if page["type"] == "chapter":
                 chapters += 1
-                toc.append({
-                    "kind": "chapter",
-                    "number": page["number_short"] or str(chapters),
-                    "label": page["title"],
-                    "href": page["route"],
-                    "generated": False,
-                })
+                toc.append(
+                    {
+                        "kind": "chapter",
+                        "number": page["number_short"] or str(chapters),
+                        "label": page["title"],
+                        "href": page["route"],
+                        "generated": False,
+                    }
+                )
             elif page["type"] == "part":
-                toc.append({
-                    "kind": "part",
-                    "label": page["display_title"],
-                    "href": page["route"],
-                    "generated": False,
-                })
+                toc.append(
+                    {
+                        "kind": "part",
+                        "label": page["display_title"],
+                        "href": page["route"],
+                        "generated": False,
+                    }
+                )
             else:
-                toc.append({
-                    "kind": "entry",
-                    "label": page["display_title"],
-                    "href": page["route"],
-                    "generated": False,
-                })
+                toc.append(
+                    {
+                        "kind": "entry",
+                        "label": page["display_title"],
+                        "href": page["route"],
+                        "generated": False,
+                    }
+                )
             for section in page["sections"]:
-                toc.append({
-                    "kind": "section",
-                    "label": section["title"],
-                    "href": f"{page['route']}#{section['id']}",
-                    "generated": False,
-                })
+                toc.append(
+                    {
+                        "kind": "section",
+                        "label": section["title"],
+                        "href": f"{page['route']}#{section['id']}",
+                        "generated": False,
+                    }
+                )
         self.toc = toc
         self.chapter_count = chapters
 
@@ -825,21 +959,23 @@ class GenericExtractor:
 
         pages = []
         for page in self.pages:
-            pages.append({
-                "id": page["id"],
-                "type": page["type"],
-                "route": page["route"],
-                "title": page["title"],
-                "display_title": page["display_title"],
-                "short_title": page["title"],
-                "number": page.get("number_short", ""),
-                "source_files": page["source_files"],
-                "sections": page["sections"],
-                "words": page["words"],
-                "figure_count": page.get("figure_count", 0),
-                "note_count": page.get("note_count", 0),
-                "warnings": page.get("warnings", []),
-            })
+            pages.append(
+                {
+                    "id": page["id"],
+                    "type": page["type"],
+                    "route": page["route"],
+                    "title": page["title"],
+                    "display_title": page["display_title"],
+                    "short_title": page["title"],
+                    "number": page.get("number_short", ""),
+                    "source_files": page["source_files"],
+                    "sections": page["sections"],
+                    "words": page["words"],
+                    "figure_count": page.get("figure_count", 0),
+                    "note_count": page.get("note_count", 0),
+                    "warnings": page.get("warnings", []),
+                }
+            )
 
         stats = {
             "words": sum(p["words"] for p in pages),

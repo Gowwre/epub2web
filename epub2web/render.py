@@ -115,7 +115,11 @@ class SiteRenderer:
             page.setdefault("reading_minutes", minutes(page.get("words", 0)))
             page.setdefault("display_title", page.get("title", ""))
             page.setdefault("short_title", page.get("title", ""))
-            if page.get("type") == "chapter" and page.get("number") and ":" not in page["display_title"]:
+            if (
+                page.get("type") == "chapter"
+                and page.get("number")
+                and ":" not in page["display_title"]
+            ):
                 page["display_title"] = f"Chapter {page['number']}: {page['title']}"
             page.setdefault("sections", [])
 
@@ -137,39 +141,46 @@ class SiteRenderer:
         else:
             first, last = len(self.toc), len(self.toc)
         before_entries = self.toc[:first]
-        after_entries = self.toc[last + 1:]
+        after_entries = self.toc[last + 1 :]
 
         for entry in before_entries:
             page = self._page_for_href(entry.get("href", ""))
-            before.append({
-                "id": page["id"] if page else entry.get("href", "").strip("/"),
-                "label": short_label(entry.get("label", "")),
-                "href": entry.get("href", ""),
-            })
+            before.append(
+                {
+                    "id": page["id"] if page else entry.get("href", "").strip("/"),
+                    "label": short_label(entry.get("label", "")),
+                    "href": entry.get("href", ""),
+                }
+            )
 
         for entry in chapter_entries:
             page = self._page_for_href(entry.get("href", ""))
-            chapters.append({
-                "id": page["id"] if page else entry.get("href", "").strip("/"),
-                "number": entry.get("number") or (page.get("number", "") if page else ""),
-                "label": entry.get("label", ""),
-                "href": entry.get("href", ""),
-                "sections": [
-                    {"label": s.get("label", ""), "href": s.get("href", "")}
-                    for s in self.toc
-                    if s.get("kind") == "section" and s.get("href", "").split("#")[0] == entry.get("href", "").split("#")[0]
-                ],
-            })
+            chapters.append(
+                {
+                    "id": page["id"] if page else entry.get("href", "").strip("/"),
+                    "number": entry.get("number") or (page.get("number", "") if page else ""),
+                    "label": entry.get("label", ""),
+                    "href": entry.get("href", ""),
+                    "sections": [
+                        {"label": s.get("label", ""), "href": s.get("href", "")}
+                        for s in self.toc
+                        if s.get("kind") == "section"
+                        and s.get("href", "").split("#")[0] == entry.get("href", "").split("#")[0]
+                    ],
+                }
+            )
 
         for entry in after_entries:
             if entry.get("kind") == "section":
                 continue
             page = self._page_for_href(entry.get("href", ""))
-            after.append({
-                "id": page["id"] if page else entry.get("href", "").strip("/"),
-                "label": short_label(entry.get("label", "")),
-                "href": entry.get("href", ""),
-            })
+            after.append(
+                {
+                    "id": page["id"] if page else entry.get("href", "").strip("/"),
+                    "label": short_label(entry.get("label", "")),
+                    "href": entry.get("href", ""),
+                }
+            )
         self.sidebar = {"before": before, "chapters": chapters, "after": after}
 
         # Contents page blocks.
@@ -189,14 +200,18 @@ class SiteRenderer:
                 }
                 blocks.append(current)
             elif entry.get("kind") == "section" and current is not None:
-                current["sections"].append({"label": entry.get("label", ""), "href": entry.get("href", "")})
+                current["sections"].append(
+                    {"label": entry.get("label", ""), "href": entry.get("href", "")}
+                )
             else:
-                blocks.append({
-                    "kind": "entry",
-                    "label": entry.get("label", ""),
-                    "href": entry.get("href", ""),
-                    "generated": entry.get("generated", False),
-                })
+                blocks.append(
+                    {
+                        "kind": "entry",
+                        "label": entry.get("label", ""),
+                        "href": entry.get("href", ""),
+                        "generated": entry.get("generated", False),
+                    }
+                )
                 current = None
         self.toc_blocks = blocks
 
@@ -208,10 +223,16 @@ class SiteRenderer:
         for wanted in ("notes", "references", "index"):
             for page in self.pages:
                 if wanted in page.get("title", "").lower():
-                    self.footer_links.append({"label": short_label(page["title"]), "href": page["route"]})
+                    self.footer_links.append(
+                        {"label": short_label(page["title"]), "href": page["route"]}
+                    )
                     break
         seen = set()
-        self.footer_links = [l for l in self.footer_links if not (l["href"] in seen or seen.add(l["href"]))]
+        self.footer_links = [
+            link
+            for link in self.footer_links
+            if not (link["href"] in seen or seen.add(link["href"]))
+        ]
 
     def _build_home(self) -> None:
         chapters = [p for p in self.pages if p.get("type") == "chapter"]
@@ -230,12 +251,15 @@ class SiteRenderer:
         self.home_chapters = chapters
         self.home_extras = [
             {"label": short_label(p["title"]), "href": p["route"]}
-            for p in self.pages if p.get("type") == "backmatter"
+            for p in self.pages
+            if p.get("type") == "backmatter"
         ]
         self.start_href = next((p["route"] for p in self.pages if p.get("id") == "preface"), "")
         if not self.start_href:
-            self.start_href = self.home_chapters[0]["route"] if self.home_chapters else (
-                self.pages[0]["route"] if self.pages else "/contents/"
+            self.start_href = (
+                self.home_chapters[0]["route"]
+                if self.home_chapters
+                else (self.pages[0]["route"] if self.pages else "/contents/")
             )
         self.home_heading = "The chapters" if self.home_chapters else "Contents"
 
@@ -254,20 +278,32 @@ class SiteRenderer:
         if chapter_words:
             parts.append(f"{comma(chapter_words)} words")
         if parts:
-            self.hero_intro = "The complete text, set for the browser. " + ", ".join(parts) + " — with nothing abridged."
+            self.hero_intro = (
+                "The complete text, set for the browser. "
+                + ", ".join(parts)
+                + " — with nothing abridged."
+            )
         else:
             self.hero_intro = "The complete text, set for the browser, with nothing abridged."
         self.stats_items = []
-        for label, value in (("Chapters", chapter_count), ("Words", chapter_words),
-                             ("Figures", figure_count), ("Notes", note_count)):
+        for label, value in (
+            ("Chapters", chapter_count),
+            ("Words", chapter_words),
+            ("Figures", figure_count),
+            ("Notes", note_count),
+        ):
             if value:
                 self.stats_items.append({"label": label, "value": comma(value)})
-        self.contents_intro = "Every chapter and section, plus the front and back matter. Every section is linked."
+        self.contents_intro = (
+            "Every chapter and section, plus the front and back matter. Every section is linked."
+        )
         self.contents_quick = [{"label": "Start reading", "href": self.start_href}]
         for page in self.pages:
             low = page.get("title", "").lower()
             if any(k in low for k in ("notes", "references", "index")):
-                self.contents_quick.append({"label": short_label(page["title"]), "href": page["route"]})
+                self.contents_quick.append(
+                    {"label": short_label(page["title"]), "href": page["route"]}
+                )
 
     # -- rendering --------------------------------------------------------
     def _render(self) -> None:
@@ -278,13 +314,14 @@ class SiteRenderer:
         meta = self.book["meta"]
         book_title = meta["short_title"]
         cover = meta.get("cover", "")
-        cover_webp = meta.get("cover_webp", "")
         book_json_ld = {
             "@context": "https://schema.org",
             "@type": "Book",
             "name": meta["title"],
             "author": {"@type": "Person", "name": meta["author"]} if meta.get("author") else None,
-            "publisher": {"@type": "Organization", "name": meta["publisher"]} if meta.get("publisher") else None,
+            "publisher": {"@type": "Organization", "name": meta["publisher"]}
+            if meta.get("publisher")
+            else None,
             "datePublished": meta.get("year", ""),
             "inLanguage": meta.get("language", "en"),
             "description": meta.get("description", ""),
@@ -299,87 +336,183 @@ class SiteRenderer:
 
         # Home
         home_page = {
-            "id": "home", "type": "home", "route": "/",
-            "title": book_title, "display_title": book_title,
-            "short_title": book_title, "reading_minutes": 0,
+            "id": "home",
+            "type": "home",
+            "route": "/",
+            "title": book_title,
+            "display_title": book_title,
+            "short_title": book_title,
+            "reading_minutes": 0,
         }
         home_ctx = dict(
-            page=home_page, book=self.book, site_url=self.site_url,
-            meta_description=meta.get("description") or f"{meta['title']} by {meta.get('author', '')}.",
-            stats=self.stats, home_chapters=self.home_chapters, home_extras=self.home_extras,
-            hero_intro=self.hero_intro, stats_items=self.stats_items, start_href=self.start_href,
-            home_heading=self.home_heading, book_json_ld=book_json_ld,
-            sidebar=self.sidebar, footer_links=self.footer_links, prev=None, next=None,
-            fragment="", toc_blocks=[], is_reading=False, show_sidebar=False, wide=False,
-            pagefind_ignore=True, cover_width=meta.get("cover_width", 438),
-            cover_height=meta.get("cover_height", 662), search_label="Static full-text",
-            contents_intro=self.contents_intro, contents_quick=self.contents_quick,
+            page=home_page,
+            book=self.book,
+            site_url=self.site_url,
+            meta_description=meta.get("description")
+            or f"{meta['title']} by {meta.get('author', '')}.",
+            stats=self.stats,
+            home_chapters=self.home_chapters,
+            home_extras=self.home_extras,
+            hero_intro=self.hero_intro,
+            stats_items=self.stats_items,
+            start_href=self.start_href,
+            home_heading=self.home_heading,
+            book_json_ld=book_json_ld,
+            sidebar=self.sidebar,
+            footer_links=self.footer_links,
+            prev=None,
+            next=None,
+            fragment="",
+            toc_blocks=[],
+            is_reading=False,
+            show_sidebar=False,
+            wide=False,
+            pagefind_ignore=True,
+            cover_width=meta.get("cover_width", 438),
+            cover_height=meta.get("cover_height", 662),
+            search_label="Static full-text",
+            contents_intro=self.contents_intro,
+            contents_quick=self.contents_quick,
         )
         write_route(self.dist, "/", self.env.get_template("home.html").render(**home_ctx))
 
         # Contents
         contents_page = {
-            "id": "contents", "type": "contents", "route": "/contents/",
-            "title": "Contents", "display_title": "Contents",
-            "short_title": "Contents", "reading_minutes": 0,
+            "id": "contents",
+            "type": "contents",
+            "route": "/contents/",
+            "title": "Contents",
+            "display_title": "Contents",
+            "short_title": "Contents",
+            "reading_minutes": 0,
         }
         contents_ctx = dict(
-            page=contents_page, book=self.book, site_url=self.site_url,
+            page=contents_page,
+            book=self.book,
+            site_url=self.site_url,
             meta_description=f"Contents of {meta['title']} by {meta.get('author', '')}.",
-            stats=self.stats, home_chapters=self.home_chapters, home_extras=self.home_extras,
-            hero_intro=self.hero_intro, stats_items=self.stats_items, start_href=self.start_href,
-            home_heading=self.home_heading, book_json_ld=book_json_ld,
-            sidebar=self.sidebar, footer_links=self.footer_links, prev=None, next=None,
-            fragment="", toc_blocks=self.toc_blocks, is_reading=False, show_sidebar=False,
-            wide=True, pagefind_ignore=False, contents_intro=self.contents_intro,
-            contents_quick=self.contents_quick, search_label="Static full-text",
+            stats=self.stats,
+            home_chapters=self.home_chapters,
+            home_extras=self.home_extras,
+            hero_intro=self.hero_intro,
+            stats_items=self.stats_items,
+            start_href=self.start_href,
+            home_heading=self.home_heading,
+            book_json_ld=book_json_ld,
+            sidebar=self.sidebar,
+            footer_links=self.footer_links,
+            prev=None,
+            next=None,
+            fragment="",
+            toc_blocks=self.toc_blocks,
+            is_reading=False,
+            show_sidebar=False,
+            wide=True,
+            pagefind_ignore=False,
+            contents_intro=self.contents_intro,
+            contents_quick=self.contents_quick,
+            search_label="Static full-text",
         )
-        write_route(self.dist, "/contents/", self.env.get_template("contents.html").render(**contents_ctx))
+        write_route(
+            self.dist, "/contents/", self.env.get_template("contents.html").render(**contents_ctx)
+        )
 
         # Reading pages
-        for index, page in enumerate(self.pages):
+        for page in self.pages:
             fragment_path = self.content_dir / "pages" / f"{page['id']}.html"
             if not fragment_path.exists():
                 continue
             fragment = fragment_path.read_text(encoding="utf-8")
-            fragment = fragment.replace('<span class="readtime">Calculating…</span>',
-                                        f'{page["reading_minutes"]} min read')
+            fragment = fragment.replace(
+                '<span class="readtime">Calculating…</span>', f"{page['reading_minutes']} min read"
+            )
             pos = self.reading_order.index(page["id"]) if page["id"] in self.reading_order else -1
             prev_page = self.page_by_id[self.reading_order[pos - 1]] if pos > 0 else None
-            next_page = self.page_by_id[self.reading_order[pos + 1]] if 0 <= pos < len(self.reading_order) - 1 else None
+            next_page = (
+                self.page_by_id[self.reading_order[pos + 1]]
+                if 0 <= pos < len(self.reading_order) - 1
+                else None
+            )
             wide = page.get("title", "").lower().strip() == "index" or page.get("type") == "index"
             show_sidebar = not wide
-            desc = (f"{page.get('title', '')} from {meta['title']}"
-                    + (f" by {meta['author']}" if meta.get("author") else "") + ".")
+            desc = (
+                f"{page.get('title', '')} from {meta['title']}"
+                + (f" by {meta['author']}" if meta.get("author") else "")
+                + "."
+            )
             ctx = dict(
-                page=page, book=self.book, site_url=self.site_url, meta_description=desc,
-                stats=self.stats, home_chapters=self.home_chapters, home_extras=self.home_extras,
-                hero_intro=self.hero_intro, stats_items=self.stats_items, start_href=self.start_href,
-                home_heading=self.home_heading, book_json_ld=book_json_ld,
-                sidebar=self.sidebar, footer_links=self.footer_links, prev=prev_page, next=next_page,
-                fragment=fragment, toc_blocks=self.toc_blocks, is_reading=True,
-                show_sidebar=show_sidebar, wide=wide, pagefind_ignore=False,
-                contents_intro=self.contents_intro, contents_quick=self.contents_quick,
-                search_label="Static full-text", cover_width=meta.get("cover_width", 438),
+                page=page,
+                book=self.book,
+                site_url=self.site_url,
+                meta_description=desc,
+                stats=self.stats,
+                home_chapters=self.home_chapters,
+                home_extras=self.home_extras,
+                hero_intro=self.hero_intro,
+                stats_items=self.stats_items,
+                start_href=self.start_href,
+                home_heading=self.home_heading,
+                book_json_ld=book_json_ld,
+                sidebar=self.sidebar,
+                footer_links=self.footer_links,
+                prev=prev_page,
+                next=next_page,
+                fragment=fragment,
+                toc_blocks=self.toc_blocks,
+                is_reading=True,
+                show_sidebar=show_sidebar,
+                wide=wide,
+                pagefind_ignore=False,
+                contents_intro=self.contents_intro,
+                contents_quick=self.contents_quick,
+                search_label="Static full-text",
+                cover_width=meta.get("cover_width", 438),
                 cover_height=meta.get("cover_height", 662),
             )
             write_route(self.dist, page["route"], self.env.get_template("page.html").render(**ctx))
 
         # 404
-        p404 = {"id": "404", "type": "404", "route": "/404", "title": "Page not found",
-                "display_title": "Page not found", "short_title": "Page not found", "reading_minutes": 0}
+        p404 = {
+            "id": "404",
+            "type": "404",
+            "route": "/404",
+            "title": "Page not found",
+            "display_title": "Page not found",
+            "short_title": "Page not found",
+            "reading_minutes": 0,
+        }
         ctx = dict(
-            page=p404, book=self.book, site_url=self.site_url, meta_description="Page not found.",
-            stats=self.stats, home_chapters=self.home_chapters, home_extras=self.home_extras,
-            hero_intro=self.hero_intro, stats_items=self.stats_items, start_href=self.start_href,
-            home_heading=self.home_heading, book_json_ld=book_json_ld, sidebar=self.sidebar,
-            footer_links=self.footer_links, prev=None, next=None, fragment="", toc_blocks=[],
-            is_reading=False, show_sidebar=False, wide=False, pagefind_ignore=True,
-            contents_intro=self.contents_intro, contents_quick=self.contents_quick,
-            search_label="Static full-text", cover_width=meta.get("cover_width", 438),
+            page=p404,
+            book=self.book,
+            site_url=self.site_url,
+            meta_description="Page not found.",
+            stats=self.stats,
+            home_chapters=self.home_chapters,
+            home_extras=self.home_extras,
+            hero_intro=self.hero_intro,
+            stats_items=self.stats_items,
+            start_href=self.start_href,
+            home_heading=self.home_heading,
+            book_json_ld=book_json_ld,
+            sidebar=self.sidebar,
+            footer_links=self.footer_links,
+            prev=None,
+            next=None,
+            fragment="",
+            toc_blocks=[],
+            is_reading=False,
+            show_sidebar=False,
+            wide=False,
+            pagefind_ignore=True,
+            contents_intro=self.contents_intro,
+            contents_quick=self.contents_quick,
+            search_label="Static full-text",
+            cover_width=meta.get("cover_width", 438),
             cover_height=meta.get("cover_height", 662),
         )
-        (self.dist / "404.html").write_text(self.env.get_template("404.html").render(**ctx), encoding="utf-8")
+        (self.dist / "404.html").write_text(
+            self.env.get_template("404.html").render(**ctx), encoding="utf-8"
+        )
 
     # -- assets -----------------------------------------------------------
     def _assets(self) -> None:
@@ -405,7 +538,8 @@ class SiteRenderer:
         (self.dist / "sitemap.xml").write_text(
             '<?xml version="1.0" encoding="UTF-8"?>\n'
             '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-            f"{urls}\n</urlset>\n", encoding="utf-8"
+            f"{urls}\n</urlset>\n",
+            encoding="utf-8",
         )
         (self.dist / "robots.txt").write_text(
             f"User-agent: *\nAllow: /\nSitemap: {self.site_url}/sitemap.xml\n", encoding="utf-8"
