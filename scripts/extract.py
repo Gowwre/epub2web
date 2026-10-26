@@ -133,8 +133,12 @@ def clean_soup(soup: BeautifulSoup, note_map: dict[str, dict] | None = None) -> 
         return soup
 
     # Print-only elements. `.hide` is display:none in the EPUB; `.dropcap`
-    # is a decorative ornament, not a letter.
+    # is a decorative ornament, not a letter. If a hidden element ever carries
+    # real text, fail loudly rather than silently losing it.
     for el in body.select(".hide"):
+        hidden = el.get_text(" ", strip=True)
+        if hidden:
+            raise ValueError(f"Refusing to drop hidden text: {hidden[:100]!r}")
         el.decompose()
     for el in body.select(".dropcap"):
         el.decompose()
@@ -539,7 +543,7 @@ def image_html(img: Tag, images: dict, caption_id: str | None, has_caption: bool
     name = src.rsplit("/", 1)[-1]
     info = images.get(name)
     if not info:
-        return ""
+        raise ValueError(f"Image referenced by the book is missing: {name}")
     alt = img.get("alt", "") or ""
     if has_caption:
         alt = ""
