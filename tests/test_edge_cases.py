@@ -8,9 +8,10 @@ import pytest
 from bs4 import BeautifulSoup
 from epub2web.cli import main
 from epub2web.epub import Epub
-from epub2web.generic import GenericExtractor
+from epub2web.generic import BACK_LABELS, FRONT_LABELS, GenericExtractor, label_matches, marker_kind
 from epub2web.links import check_site_links
 from epub2web.render import render_site
+from epub2web.text import match_key
 from epub2web.verify import verify_site
 from PIL import Image
 
@@ -197,6 +198,37 @@ def test_nested_nav_entries_are_not_duplicated(epub_factory):
             "A Section",
             "Chapter Two",
         ]
+
+
+def test_body_level_toc_anchors_survive(epub_factory, tmp_path: Path):
+    variant = epub_factory(
+        "body-anchor.epub",
+        replacements={
+            CH1: [
+                (
+                    b"</body>",
+                    b'<p><a href="ch2.xhtml#chapter-two-body">go to chapter two</a></p></body>',
+                )
+            ],
+            CH2: [(b"<body>", b'<body id="chapter-two-body">')],
+        },
+    )
+    site = tmp_path / "site"
+    assert _build(variant, site) == 0
+    assert 'id="chapter-two-body"' in (site / "read" / "2" / "index.html").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_part_and_backmatter_label_detection():
+    assert match_key("Man\u2019s Search for Meaning") == match_key("Man's Search for Meaning")
+    assert marker_kind("I: Experiences in a Concentration Camp", "I") == "part"
+    assert marker_kind("Chapter One", "Chapter One") == "chapter"
+    assert marker_kind("II: Logotherapy in a Nutshell", "II") == "part"
+    assert label_matches("Preface to the 1992 Edition", FRONT_LABELS)
+    assert label_matches("Postscript 1984", BACK_LABELS)
+    assert label_matches("Copyright", BACK_LABELS)
+    assert not label_matches("The Notebook", BACK_LABELS)
 
 
 def test_base_path_does_not_rewrite_literal_text(epub_factory, tmp_path: Path):

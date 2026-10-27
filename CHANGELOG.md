@@ -16,3 +16,4 @@
 - Sanitization of untrusted EPUB markup and safe JSON-LD metadata escaping.
 - Nested navigation, structural containers, preformatted text, definition lists, and MathML are preserved.
 - Persistent run diagnostics: human-readable logs, JSONL events, fidelity/link/summary artifacts, and `--log-dir`/`--log-file`.
+- Preserve Calibre-style body-level TOC anchors and improve part/front/back matter detection for books without numbered chapters.

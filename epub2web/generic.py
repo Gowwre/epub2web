@@ -26,7 +26,7 @@ from bs4 import BeautifulSoup, NavigableString, Tag, XMLParsedAsHTMLWarning
 from PIL import Image, ImageOps
 
 from .epub import Epub
-from .text import inner, normalize_text, slugify, strip_leading, text_of
+from .text import inner, match_key, normalize_text, slugify, strip_leading, text_of
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 logger = logging.getLogger(__name__)
@@ -43,6 +43,10 @@ FRONT_LABELS = {
     "frontispiece",
     "preface",
     "foreword",
+    "introduction",
+    "translator's note",
+    "editor's note",
+    "author's note",
     "cover",
 }
 BACK_LABELS = {
@@ -59,7 +63,17 @@ BACK_LABELS = {
     "glossary",
     "colophon",
     "license",
+    "copyright",
     "copyright page",
+    "postscript",
+    "epilogue",
+    "about the author",
+    "about the publisher",
+    "further reading",
+    "permissions",
+    "credits",
+    "sources",
+    "chronology",
 }
 CHAPTER_RE = re.compile(
     r"^(chapter|part|book)\s+([0-9]+|[IVXLCDM]+|one|two|three|four|five|six|seven|eight|nine|ten|"
@@ -68,6 +82,7 @@ CHAPTER_RE = re.compile(
     re.I,
 )
 NUMBER_RE = re.compile(r"^(\d+)([.:)]?)\s+(.*)$")
+ROMAN_PART_RE = re.compile(r"^([IVXLCDM]+)\s*[:.\u2014\u2013-]\s*(\S.*)$", re.I)
 
 DANGEROUS_TAGS = (
     "script",
@@ -130,6 +145,27 @@ RASTER_EXTENSIONS = {
     "webp": ".webp",
     "avif": ".avif",
 }
+
+
+def label_matches(label: str, labels: set[str]) -> bool:
+    key = match_key(label)
+    for raw in labels:
+        candidate = match_key(raw)
+        if key == candidate or key.startswith(candidate + " ") or key.startswith(candidate + ":"):
+            return True
+    return False
+
+
+def marker_kind(label: str, heading: str, heading_class: str = "") -> str:
+    for text in (label, heading):
+        if CHAPTER_RE.match(text):
+            return "part" if text.lower().startswith(("part ", "book ")) else "chapter"
+    if "chaptertitle" in heading_class:
+        return "chapter"
+    for text in (label, heading):
+        if ROMAN_PART_RE.match(text):
+            return "part"
+    return ""
 
 
 def safe_url(value: str, tag_name: str = "", attribute: str = "") -> bool:
@@ -206,6 +242,18 @@ def clean_doc(soup: BeautifulSoup) -> BeautifulSoup:
     body = soup.body
     if body is None:
         return soup
+    # Calibre and some other tools put the TOC target on <body id="...">.
+    # Move that id onto the first content block so links to it survive.
+    if body.get("id"):
+        target = body.find(["h1", "h2", "h3", "h4", "h5", "h6", "p", "table", "figure"])
+        if target is not None and not target.get("id"):
+            target["id"] = body["id"]
+        else:
+            anchor = soup.new_tag("span")
+            anchor["class"] = "anchor"
+            anchor["id"] = body["id"]
+            body.insert(0, anchor)
+        del body["id"]
     # EPUBs are untrusted input. Strip active content and attributes that
     # could execute in the generated site or silently hide text from the
     # fidelity gate (for example, a source element with data-chrome).
@@ -746,11 +794,8 @@ class GenericExtractor:
                     or Path(item.path).stem
                 )
             display, number_label, title = parse_label(label)
-            marker = bool(CHAPTER_RE.match(label) or CHAPTER_RE.match(htext))
-            if not marker:
-                marker = bool(
-                    heading and "chaptertitle" in " ".join(heading.get("class", [])).lower()
-                )
+            heading_class = " ".join(heading.get("class", [])).lower() if heading else ""
+            kind = marker_kind(label, htext, heading_class)
             pages.append(
                 {
                     "source_files": [item.path],
@@ -759,7 +804,8 @@ class GenericExtractor:
                     "title": title,
                     "number_label": number_label,
                     "number_short": number_short(number_label),
-                    "marker": marker,
+                    "marker": bool(kind),
+                    "marker_kind": kind,
                     "heading": htext,
                     "words": len(text.split()),
                     "type": "chapter",
@@ -771,36 +817,42 @@ class GenericExtractor:
         # Where do the chapters start?
         chapter_start = next((i for i, p in enumerate(pages) if p["marker"]), None)
         if chapter_start is None:
-            book_title = normalize_text(self.book.metadata.get("title", "")).lower()
+            book_title = match_key(self.book.metadata.get("title", ""))
             for i, p in enumerate(pages):
-                label = normalize_text(p["label"]).lower()
-                if label in FRONT_LABELS or label == book_title:
+                if label_matches(p["label"], FRONT_LABELS):
+                    continue
+                if book_title and match_key(p["label"]) == book_title:
                     continue
                 chapter_start = i
                 break
         if chapter_start is None:
             chapter_start = 0
 
-        last_chapter = max((i for i, p in enumerate(pages) if p["marker"]), default=chapter_start)
+        chapter_markers = [i for i, p in enumerate(pages) if p.get("marker_kind") == "chapter"]
+        last_chapter = max(chapter_markers, default=-1)
+        back_start = len(pages)
+        search_from = max(chapter_start, last_chapter + 1)
+        for i, page in enumerate(pages):
+            if i >= search_from and label_matches(page["label"], BACK_LABELS):
+                back_start = i
+                break
+        if chapter_markers and back_start == len(pages):
+            back_start = last_chapter + 1
+
         for i, page in enumerate(pages):
             page["id"] = f"page-{i + 1}"
             page["route"] = f"/read/{i + 1}/"
-            label = normalize_text(page["label"]).lower()
+            kind = page.get("marker_kind", "")
             if i < chapter_start:
                 page["type"] = "frontmatter"
-            elif (
-                any(
-                    label == b or label.startswith(b + " ") or f" {b} " in f" {label} "
-                    for b in BACK_LABELS
-                )
-                or i > last_chapter
-            ):
+            elif i >= back_start:
                 page["type"] = "backmatter"
-            elif page["marker"]:
+            elif kind == "part":
+                page["type"] = "part"
+            elif kind == "chapter":
                 page["type"] = "chapter"
-            elif page["words"] < 200:
-                # Unnumbered divider pages such as "Things You Need to
-                # Get Right" are part headings, not chapters.
+            elif page["words"] < 50 and page["label"].isupper():
+                # Short all-caps divider pages are part headings.
                 page["type"] = "part"
             else:
                 page["type"] = "chapter"

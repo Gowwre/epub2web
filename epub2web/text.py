@@ -92,6 +92,24 @@ def normalize_text(text: str) -> str:
     return re.sub(r"\s+", " ", " ".join(lines)).strip()
 
 
+_MATCH_TRANSLATION = str.maketrans(
+    {
+        "\u2018": "'",
+        "\u2019": "'",
+        "\u201c": '"',
+        "\u201d": '"',
+        "\u2013": "-",
+        "\u2014": "-",
+        "\u2212": "-",
+    }
+)
+
+
+def match_key(text: str) -> str:
+    """Normalize punctuation for title/label comparisons, never for display."""
+    return normalize_text(text).lower().translate(_MATCH_TRANSLATION)
+
+
 def tokens(text: str) -> list[str]:
     return normalize_text(text).split()
 
