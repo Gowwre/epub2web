@@ -60,8 +60,17 @@ Every `npm run build`, `npm run check`, `npm run verify`, and `npm run links` in
 - `logs/build.jsonl` — the same events as structured JSON Lines
 - `logs/build-summary.json` — machine-readable status, exit code, stage timings, and site URL
 - `logs/fidelity-report.json` — the last fidelity report, even if `content/` is later cleaned
+- `logs/build-error.zip` — a single support bundle created on failure, containing the README, full log, JSONL events, summary, and fidelity report
 
-On failure the pipeline prints the relevant stage, exit code, and log path. If logging itself is unavailable, the build warns once and continues. Logs are local build diagnostics and are gitignored. Use `make clean-logs` to remove them.
+On failure the pipeline prints the relevant stage, exit code, and the support ZIP path:
+
+```text
+Build failed in stage 'verify' (exit 1).
+Report:  /path/to/logs/build-error.zip
+         attach this file when reporting the problem
+```
+
+Attach that one ZIP when asking for help. If logging itself is unavailable, the build warns once and continues. Logs are local build diagnostics and are gitignored. Use `make clean-logs` to remove them.
 
 Logs can contain local paths, book metadata, and short excerpts from failed fidelity comparisons. Review a log before sharing it publicly.
 
@@ -96,7 +105,7 @@ epub2web book.epub -o out --no-search --no-verify
 epub2web book.epub -o out --log-dir ./logs --log-file ./logs/manual-run.log
 ```
 
-The CLI uses the same logging core as the build pipeline. On failure it prints the log path; `~/.epub2web/logs` is the default location.
+The CLI uses the same logging core as the build pipeline. On failure it creates a support ZIP and prints its path; the default report directory is `./epub2web-reports/`, and `--report-dir` overrides it. Individual logs default to `~/.epub2web/logs`.
 
 The output is a static site folder:
 

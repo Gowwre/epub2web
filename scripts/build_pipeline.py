@@ -144,6 +144,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     session = setup_logging(log_dir=LOG_DIR, filename="build.log", rotate=True)
+    (LOG_DIR / "build-error.zip").unlink(missing_ok=True)
     log_environment(
         session,
         argv=[sys.argv[0], *sys.argv[1:]] if argv is None else [sys.argv[0], *argv],
@@ -161,6 +162,7 @@ def main(argv: list[str] | None = None) -> int:
     }
     status = "error"
     exit_code = 2
+    failure_error = ""
     try:
         stages = plan_stages(args.only, args.links, args.package)
         session.info(
@@ -178,12 +180,16 @@ def main(argv: list[str] | None = None) -> int:
     except StageFailed as exc:
         status = "failed"
         exit_code = 1
+        failure_error = f"stage {exc.stage!r} failed with exit code {exc.code}"
+        session.context["error"] = failure_error
         session.error("stage failed", stage=exc.stage, exit=exc.code)
         print(f"\nBuild failed in stage {exc.stage!r} (exit {exc.code}).", file=sys.stderr)
         return 1
     except Exception as exc:
         status = "error"
         exit_code = 2
+        failure_error = str(exc)
+        session.context["error"] = failure_error
         session.exception("pipeline crashed", error=str(exc))
         print(f"\nBuild pipeline error: {exc}", file=sys.stderr)
         return 2
@@ -194,9 +200,22 @@ def main(argv: list[str] | None = None) -> int:
         write_fidelity_artifact(session, started)
         session.write_artifact("summary", summary, filename="build-summary.json")
         session.finish(status, exit_code=exit_code)
-        log_path = log_path_for_user(session)
-        if log_path:
-            print(f"Log:     {log_path}", file=sys.stderr if exit_code else sys.stdout)
+        report = None
+        if exit_code != 0:
+            report = session.write_support_bundle(
+                status=status,
+                exit_code=exit_code,
+                error=failure_error,
+                report_dir=LOG_DIR,
+                filename="build-error.zip",
+            )
+        if report is not None:
+            print(f"Report:  {report}", file=sys.stderr)
+            print("         attach this file when reporting the problem", file=sys.stderr)
+        else:
+            log_path = log_path_for_user(session)
+            if log_path:
+                print(f"Log:     {log_path}", file=sys.stderr if exit_code else sys.stdout)
         session.close()
 
 
