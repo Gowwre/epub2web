@@ -6,6 +6,7 @@ metadata/cover conventions. No network, no LLM, no heuristics about prose.
 
 from __future__ import annotations
 
+import logging
 import posixpath
 import re
 import warnings
@@ -17,6 +18,7 @@ from urllib.parse import unquote, urlsplit
 from bs4 import BeautifulSoup, XMLParsedAsHTMLWarning
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+logger = logging.getLogger(__name__)
 
 MAX_EPUB_BYTES = 2 * 1024**3
 MAX_ENTRY_BYTES = 512 * 1024**2
@@ -75,6 +77,15 @@ class Epub:
             self.nav_item = self._find_nav_item()
             self.toc: list[TocEntry] = self._read_toc()
             self.cover_item = self._find_cover()
+            logger.debug(
+                "EPUB loaded",
+                extra={
+                    "path": str(self.path),
+                    "spine": len(self.spine),
+                    "toc": len(self.toc),
+                    "cover": self.cover_item.path if self.cover_item else "",
+                },
+            )
         except Exception:
             self.zf.close()
             raise

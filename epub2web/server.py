@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import http.server
+import logging
 import threading
 import webbrowser
 from functools import partial
 from pathlib import Path
 from typing import ClassVar
 from urllib.parse import quote
+
+logger = logging.getLogger(__name__)
 
 
 def _make_server(handler, port: int) -> http.server.ThreadingHTTPServer:
@@ -77,6 +80,10 @@ def serve_directory(
     server = _make_server(handler, port)
     url = f"http://127.0.0.1:{server.server_address[1]}{base_url}/"
 
+    logger.info(
+        "preview server started",
+        extra={"url": url, "directory": str(directory), "base_path": base_path},
+    )
     print()
     print("  epub2web preview")
     print("  " + "-" * 40)

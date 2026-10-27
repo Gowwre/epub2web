@@ -16,6 +16,7 @@ import hashlib
 import html
 import io
 import json
+import logging
 import re
 import warnings
 from pathlib import Path
@@ -28,6 +29,7 @@ from .epub import Epub
 from .text import inner, normalize_text, slugify, strip_leading, text_of
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
+logger = logging.getLogger(__name__)
 
 FRONT_LABELS = {
     "title page",
@@ -460,6 +462,7 @@ class GenericExtractor:
 
     # -- page planning ----------------------------------------------------
     def run(self) -> dict:
+        logger.info("extracting book", extra={"epub": str(self.epub_path)})
         self.content_dir.mkdir(parents=True, exist_ok=True)
         self.pages_dir.mkdir(parents=True, exist_ok=True)
         self.images_dir.mkdir(parents=True, exist_ok=True)
@@ -474,6 +477,7 @@ class GenericExtractor:
             self.items = list(book.html_spine())
             if not self.items:
                 raise ValueError("EPUB spine contains no readable HTML documents")
+            logger.debug("spine documents", extra={"count": len(self.items)})
             self.cleaned: dict[str, BeautifulSoup] = {}
             for item in self.items:
                 try:
@@ -484,14 +488,17 @@ class GenericExtractor:
 
             self.cover_info = self._process_cover()
             self.images = self._process_images()
+            logger.info("images processed", extra={"count": len(self.images)})
             if self.image_errors:
                 shown = "\n  ".join(self.image_errors[:8])
                 extra = len(self.image_errors) - 8
                 if extra > 0:
                     shown += f"\n  … and {extra} more"
+                logger.error("image references failed", extra={"count": len(self.image_errors)})
                 raise ValueError(f"could not process image references:\n  {shown}")
 
             self.pages = self._plan_pages()
+            logger.debug("pages planned", extra={"count": len(self.pages)})
             if not self.pages:
                 raise ValueError("no readable pages found in the EPUB spine")
             self.page_by_path = {p["source_files"][0]: p for p in self.pages}
@@ -521,6 +528,16 @@ class GenericExtractor:
             self._write_toc()
             self._write_pages(fragments)
             self._write_book(source_text)
+            stats = self.book_data.get("stats", {})
+            logger.info(
+                "book extracted",
+                extra={
+                    "pages": len(self.pages),
+                    "words": stats.get("words", 0),
+                    "figures": stats.get("figures", 0),
+                    "images": stats.get("images", 0),
+                },
+            )
             return self.book_data
 
     # -- images -----------------------------------------------------------

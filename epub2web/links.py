@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import re
 import sys
@@ -11,6 +12,7 @@ from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
 
+logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -166,6 +168,20 @@ def check_site_links(dist_dir: str | Path, base_path: str = "") -> dict:
                     }
                 )
 
+    for item in broken:
+        logger.info("broken reference", extra=item)
+    for item in duplicates:
+        logger.info("duplicate id", extra=item)
+    logger.info(
+        "link gate",
+        extra={
+            "status": "pass" if not broken and not duplicates else "fail",
+            "pages": len(html_files),
+            "checked": checked,
+            "broken": len(broken),
+            "duplicates": len(duplicates),
+        },
+    )
     return {
         "ok": not duplicates and not broken,
         "pages": len(html_files),

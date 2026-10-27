@@ -8,6 +8,12 @@ import pytest
 from PIL import Image
 
 
+@pytest.fixture(autouse=True)
+def _isolate_logs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep run logs inside the test directory, never the developer's home."""
+    monkeypatch.setenv("EPUB2WEB_LOG_DIR", str(tmp_path / "logs"))
+
+
 def _write_epub(path: Path) -> None:
     container = """<?xml version="1.0"?>
 <container version="1.0" xmlns="urn:oasis:names:tc:opendocument:xmlns:container">

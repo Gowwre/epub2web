@@ -107,6 +107,29 @@ A failed build is not allowed to damage a working site.
 
 That makes failure modes explicit: the tool stops rather than silently dropping a figure, a page, or a scriptable payload.
 
+## Diagnostics and logs
+
+Every command writes a run id, environment details, stage timings, and errors to a persistent log. On failure the CLI prints the log path, so the full traceback and gate report survive after the terminal scrolls away.
+
+```bash
+epub2web book.epub -o site
+# On failure:
+# error: ...
+# Log:     /home/you/.epub2web/logs/epub2web-20261027-094549-ea00310295.log
+```
+
+Use `--log-dir` or `--log-file` to choose another location. Each run produces:
+
+- `epub2web-*.log` — human-readable stages, warnings, gate failures, traceback
+- `epub2web-*.jsonl` — the same events as structured JSON lines
+- `epub2web-*-fidelity.json` — the complete text/image gate result, when that gate runs
+- `epub2web-*-links.json` — the complete link/anchor report, when that gate runs
+- `epub2web-*-summary.json` — machine-readable run summary
+
+Logging never makes a build fail: if the log directory is not writable, the command warns once and continues. The default directory keeps the latest 20 runs; set `EPUB2WEB_LOG_DIR` to change it.
+
+Logs are local diagnostics. They can contain file paths, book metadata, and short excerpts from failed comparisons, so review a log before attaching it to a public issue.
+
 ## CLI
 
 ```bash
@@ -129,6 +152,8 @@ epub2web book.epub -o my-site --site-url https://example.com
 | `--no-links` | Skip the internal-link gate (development only) |
 | `--force` | Safely replace an existing epub2web output directory |
 | `--keep-work` | Keep extraction files and a failed site for inspection |
+| `--log-dir DIR` | Directory for run diagnostics (default: `~/.epub2web/logs`) |
+| `--log-file FILE` | Write this run's human-readable log to an exact file |
 | `--version` | Print the version |
 
 A run looks like this:

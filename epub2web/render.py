@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import html
 import json
+import logging
 import os
 import shutil
 from datetime import date
@@ -14,6 +15,8 @@ from bs4 import BeautifulSoup, Comment, Tag
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from .text import normalize_text, text_of
+
+logger = logging.getLogger(__name__)
 
 DEFAULT_TEMPLATES = Path(__file__).resolve().parent / "templates"
 DEFAULT_STATIC = Path(__file__).resolve().parent / "theme"
@@ -118,11 +121,26 @@ class SiteRenderer:
 
     def run(self) -> dict:
         self._prepare()
+        logger.info(
+            "rendering site",
+            extra={
+                "output": str(self.dist),
+                "pages": len(self.pages),
+                "base_path": self.base_path,
+            },
+        )
         self._render()
         self._apply_base_path()
         self._write_search_index()
         self._assets()
         self._sitemap()
+        logger.info(
+            "site rendered",
+            extra={
+                "output": str(self.dist),
+                "search_entries": self.search_entries,
+            },
+        )
         return self.book
 
     # -- preparation ------------------------------------------------------

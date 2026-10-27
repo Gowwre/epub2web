@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import difflib
 import json
+import logging
 import os
 import sys
 from pathlib import Path
@@ -19,6 +20,7 @@ from bs4 import BeautifulSoup
 
 from .text import normalize_text, text_of
 
+logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[1]
 
 
@@ -120,12 +122,36 @@ def verify_site(
         if result["expected"] != result["actual"]:
             failures += 1
 
+    for row in rows:
+        if row["status"] != "ok":
+            logger.info(
+                "fidelity mismatch",
+                extra={
+                    "page": row["page"],
+                    "status": row["status"],
+                    "source_tokens": row["source_tokens"],
+                    "output_tokens": row["output_tokens"],
+                    "detail": row["detail"],
+                },
+            )
+    for key, result in checks.items():
+        if result["expected"] != result["actual"]:
+            logger.info("structural mismatch", extra={"check": key, **result})
+
     report = {
         "pass": failures == 0,
         "failures": failures,
         "pages": rows,
         "checks": checks,
     }
+    logger.info(
+        "fidelity gate",
+        extra={
+            "status": "pass" if failures == 0 else "fail",
+            "pages": len(rows),
+            "failures": failures,
+        },
+    )
     report_path = content_dir / "fidelity-report.json"
     report_path.write_text(
         json.dumps(report, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"

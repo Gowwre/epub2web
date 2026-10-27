@@ -15,3 +15,4 @@
 - Actionable failures for missing, invalid, and remote images; data-URI image support.
 - Sanitization of untrusted EPUB markup and safe JSON-LD metadata escaping.
 - Nested navigation, structural containers, preformatted text, definition lists, and MathML are preserved.
+- Persistent run diagnostics: human-readable logs, JSONL events, fidelity/link/summary artifacts, and `--log-dir`/`--log-file`.

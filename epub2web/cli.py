@@ -16,6 +16,7 @@ from . import __version__
 from .epub import Epub
 from .generic import GenericExtractor
 from .links import check_site_links
+from .logging import LogSession, log_environment, log_path_for_user, setup_logging
 from .render import normalize_base_path, render_site
 from .server import serve_directory
 from .text import slugify
@@ -142,6 +143,12 @@ def publish_site(staging: Path, output: Path) -> None:
     shutil.rmtree(backup, ignore_errors=True)
 
 
+def _print_log_path(session: LogSession) -> None:
+    path = log_path_for_user(session)
+    if path:
+        print(f"Log:     {path}", file=sys.stderr)
+
+
 def main(argv: list[str] | None = None) -> int:
     configure_console()
     parser = argparse.ArgumentParser(
@@ -181,9 +188,69 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="keep extraction files and a failed site for inspection",
     )
+    parser.add_argument(
+        "--log-dir",
+        type=Path,
+        help="directory for run logs (default: ~/.epub2web/logs)",
+    )
+    parser.add_argument(
+        "--log-file",
+        type=Path,
+        help="write this run's human-readable log to an exact file",
+    )
     parser.add_argument("--version", action="version", version=f"epub2web {__version__}")
     args = parser.parse_args(argv)
 
+    session = setup_logging(log_dir=args.log_dir, log_file=args.log_file)
+    argv_for_log = list(sys.argv if argv is None else [sys.argv[0], *argv])
+    log_environment(session, argv=argv_for_log)
+    session.info(
+        "command parsed",
+        output=str(args.output) if args.output else None,
+        base_path=args.base_path,
+        site_url=args.site_url,
+        serve=args.serve,
+    )
+
+    status = "error"
+    exit_code = 2
+    try:
+        exit_code = _run(args, parser, session)
+        status = "ok" if exit_code == 0 else "failed"
+        if exit_code != 0 or args.log_dir or args.log_file:
+            _print_log_path(session)
+        return exit_code
+    except KeyboardInterrupt:
+        status = "interrupted"
+        exit_code = 130
+        session.warning("interrupted by user")
+        print("\nStopped.", file=sys.stderr)
+        _print_log_path(session)
+        return 130
+    except SystemExit as exc:
+        code = exc.code if isinstance(exc.code, int) else 2
+        if code != 0:
+            status = "usage"
+            exit_code = code
+            session.error("command exited with an error", exit_code=code)
+            _print_log_path(session)
+        else:
+            status = "ok"
+            exit_code = 0
+        raise
+    except Exception as exc:
+        status = "error"
+        exit_code = 2
+        session.exception("command failed", error=str(exc))
+        print(f"\nerror: {exc}", file=sys.stderr)
+        _print_log_path(session)
+        return 2
+    finally:
+        session.finish(status, exit_code=exit_code)
+        session.close()
+
+
+def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: LogSession) -> int:
     started = time.perf_counter()
     try:
         base_path = normalize_base_path(args.base_path)
@@ -205,14 +272,29 @@ def main(argv: list[str] | None = None) -> int:
     try:
         info = detect(epub)
     except Exception as exc:
+        session.exception("could not read EPUB", error=str(exc))
         print(f"error: could not read EPUB: {exc}", file=sys.stderr)
         return 2
+    session.info(
+        "EPUB detected",
+        epub=str(epub),
+        title=info.get("title", ""),
+        author=info.get("author", ""),
+        bytes=epub.stat().st_size,
+    )
 
     title_for_slug = args.title or info["title"] or ""
     slug = slugify(title_for_slug, fallback="") if title_for_slug else ""
     if not slug:
         slug = slugify(epub.stem, fallback="") or "book"
     output = (args.output.expanduser() if args.output else Path.cwd() / f"{slug}-site").resolve()
+    session.info(
+        "output selected",
+        output=str(output),
+        site_url=args.site_url,
+        base_path=base_path,
+        force=args.force,
+    )
     try:
         check_output(output, epub)
     except ValueError as exc:
@@ -233,20 +315,30 @@ def main(argv: list[str] | None = None) -> int:
     staging: Path | None = None
     published = False
     try:
-        try:
-            output.parent.mkdir(parents=True, exist_ok=True)
-            work = Path(tempfile.mkdtemp(prefix="epub2web-"))
-            staging = Path(tempfile.mkdtemp(prefix=f".{output.name}-build-", dir=output.parent))
-        except OSError as exc:
-            print(f"error: could not create the output directory: {exc}", file=sys.stderr)
-            return 2
+        output.parent.mkdir(parents=True, exist_ok=True)
+        work = Path(tempfile.mkdtemp(prefix="epub2web-"))
+        staging = Path(tempfile.mkdtemp(prefix=f".{output.name}-build-", dir=output.parent))
         content = work / "content"
         images = work / "images"
+        session.info(
+            "workspace created",
+            work=str(work),
+            staging=str(staging),
+            output=str(output),
+        )
 
         print(f"EPUB:    {info['title'] or epub.name}")
         if info.get("author"):
             print(f"Author:  {info['author']}")
 
+        session.info(
+            "build started",
+            title=info.get("title", ""),
+            author=info.get("author", ""),
+            output=str(output),
+            site_url=site_url,
+            base_path=base_path,
+        )
         build(
             epub,
             staging,
@@ -259,6 +351,13 @@ def main(argv: list[str] | None = None) -> int:
         )
         book = json.loads((content / "book.json").read_text(encoding="utf-8"))
         stats = book.get("stats", {})
+        session.info(
+            "book parsed",
+            pages=len(book.get("pages", [])),
+            words=stats.get("words", 0),
+            figures=stats.get("figures", 0),
+            images=stats.get("images", 0),
+        )
         print(f"Pages:   {len(book.get('pages', []))}")
         print(f"Words:   {stats.get('words', 0):,}")
         if stats.get("figures"):
@@ -269,6 +368,14 @@ def main(argv: list[str] | None = None) -> int:
             result = verify_site(content, staging, verbose=False)
             verified = result["pass"]
             exact = sum(1 for row in result["pages"] if row["status"] == "ok")
+            session.info(
+                "fidelity gate",
+                status="pass" if verified else "fail",
+                exact=exact,
+                pages=len(result["pages"]),
+                failures=result["failures"],
+            )
+            session.write_artifact("fidelity", result)
             print(
                 f"Verify:  {'PASS' if verified else 'FAIL'} ({exact}/{len(result['pages'])} pages exact)"
             )
@@ -292,6 +399,14 @@ def main(argv: list[str] | None = None) -> int:
         if not args.no_links:
             link_result = check_site_links(staging, base_path=base_path)
             links_ok = link_result["ok"]
+            session.info(
+                "link gate",
+                status="pass" if links_ok else "fail",
+                checked=link_result["checked"],
+                broken=len(link_result["broken"]),
+                duplicates=len(link_result["duplicates"]),
+            )
+            session.write_artifact("links", link_result)
             print(
                 f"Links:   {'PASS' if links_ok else 'FAIL'} "
                 f"({link_result['checked']:,} checked, {len(link_result['broken'])} broken, "
@@ -309,16 +424,50 @@ def main(argv: list[str] | None = None) -> int:
         search_index = staging / "search-index.json"
         if search_index.exists():
             search_count = len(json.loads(search_index.read_text(encoding="utf-8")))
+        session.info("search index", entries=search_count)
         print(f"Search:  {search_count:,} sections indexed")
 
+        elapsed = time.perf_counter() - started
+        summary = {
+            "status": "ok" if verified and links_ok else "failed",
+            "duration_s": round(elapsed, 3),
+            "epub": str(epub),
+            "title": info.get("title", ""),
+            "author": info.get("author", ""),
+            "output": str(output),
+            "site_url": site_url,
+            "base_path": base_path,
+            "pages": len(book.get("pages", [])),
+            "words": stats.get("words", 0),
+            "figures": stats.get("figures", 0),
+            "images": stats.get("images", 0),
+            "verify": {
+                "enabled": not args.no_verify,
+                "pass": verified,
+            },
+            "links": {
+                "enabled": not args.no_links,
+                "pass": links_ok,
+            },
+            "search_sections": search_count,
+        }
         if not verified or not links_ok:
-            print(f"Time:    {time.perf_counter() - started:.2f}s")
+            session.write_artifact("summary", summary)
+            session.error(
+                "build rejected by gates",
+                fidelity=verified,
+                links=links_ok,
+                output=str(output),
+            )
+            print(f"Time:    {elapsed:.2f}s")
             return 1
 
         publish_site(staging, output)
         published = True
+        session.write_artifact("summary", summary)
+        session.info("site published", output=str(output), package=base_path or "/")
         print(f"Site:    {output / 'index.html'}")
-        print(f"Time:    {time.perf_counter() - started:.2f}s")
+        print(f"Time:    {elapsed:.2f}s")
 
         if args.serve:
             serve_directory(
@@ -330,9 +479,6 @@ def main(argv: list[str] | None = None) -> int:
         else:
             print(f"Preview: epub2web {epub.name} --serve")
         return 0
-    except Exception as exc:
-        print(f"\nerror: {exc}", file=sys.stderr)
-        return 2
     finally:
         if work is not None:
             if args.keep_work:
