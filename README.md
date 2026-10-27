@@ -4,6 +4,8 @@ A complete, browser-optimized edition of Don Norman's 2013 revised and expanded 
 
 **Verified:** 118,977 source tokens match the built pages exactly — token-for-token and character-for-character. 40 figures, 71 notes, 159 references, and 1,081 index entries are all present. 3,826 internal links and assets resolve; no broken anchors, no duplicate ids.
 
+> **Reading an EPUB?** Install once with `pip install -e .`, then run `epub2web book.epub --serve`. It builds the site, opens your browser, and refreshes the same site next time. See [Read a book in one step](#read-a-book-in-one-step).
+
 ---
 
 ## Quick start
@@ -39,7 +41,7 @@ npm run dev
 Put the source EPUB in the project root. The DOET `npm run build` pipeline is book-specific and uses the first `*.epub`. For another book, use the reusable CLI with the generic profile:
 
 ```bash
-epub2web book.epub -o book-site --profile generic
+epub2web book.epub -o book-site --profile generic --serve
 ```
 
 The EPUB itself, the derived `content/`, and `dist/` are gitignored; the code and design assets are not.
@@ -76,36 +78,67 @@ Logs can contain local paths, book metadata, and short excerpts from failed fide
 
 ## Reusable CLI: `epub2web`
 
-The extraction/render pipeline is also packaged as a deterministic CLI. It takes an EPUB and produces a complete static HTML site with the same design system:
+The extraction/render pipeline is also packaged as a deterministic CLI. It takes an EPUB and produces a complete static HTML site with the same design system.
+
+### Read a book in one step
 
 ```bash
 pip install -e .
+epub2web book.epub --serve
+```
+
+This converts the EPUB, creates a site folder named after the book (for example `book-site/`), starts a preview at a local address, and opens your browser. The first run creates the site; every later run refreshes that same folder and reopens the preview. There is no "output already exists" error.
+
+Press **Ctrl+C** in the terminal to stop the preview. The site stays on disk. To read it again later, run the same command again.
+
+The preview listens on `127.0.0.1` only, so it is visible on this computer and is not exposed to the network. If a browser does not open automatically, open the address printed in the terminal. Useful options:
+
+```bash
+# Do not open a browser automatically (for example over SSH)
+epub2web book.epub --serve --no-browser
+
+# Try a different port if 8000 is already in use
+epub2web book.epub --serve --port 9000
+```
+
+The preview automatically tries the next free port if the requested one is busy.
+
+### Build without a preview
+
+```bash
 epub2web book.epub -o my-site
 ```
+
+Without `--serve`, the command builds the site and exits. Re-running it against a folder that `epub2web` created refreshes that site in place. The new site is built in a temporary folder and swapped in only after the fidelity and link checks pass, so a failed rerun leaves the previous site untouched.
+
+If the output folder exists but was not created by `epub2web`, the command stops rather than overwriting it. Choose another folder with `-o`, or pass `--force` to replace it.
 
 Or, without installing:
 
 ```bash
-python3 -m epub2web book.epub -o my-site
+python3 -m epub2web book.epub --serve
 ```
 
 Examples:
 
 ```bash
-# Force the generic EPUB heuristics
-epub2web alice.epub -o alice-site --profile generic
+# Build and read a book in one step
+epub2web alice.epub --serve
+
+# Force the generic EPUB heuristics, then preview
+epub2web alice.epub -o alice-site --profile generic --serve
 
 # Use the exact profile for this book (auto-detected)
-epub2web "the-design-of-everyday-things.epub" -o doet-site
+epub2web "the-design-of-everyday-things.epub" -o doet-site --serve
 
-# Skip the search index / fidelity report if you are iterating
+# Build only; skip the search index / fidelity report if you are iterating
 epub2web book.epub -o out --no-search --no-verify
 
 # Choose where diagnostics are written
 epub2web book.epub -o out --log-dir ./logs --log-file ./logs/manual-run.log
 ```
 
-The CLI uses the same logging core as the build pipeline. On failure it creates a support ZIP and prints its path; the default report directory is `./epub2web-reports/`, and `--report-dir` overrides it. Individual logs default to `~/.epub2web/logs`.
+The CLI uses the same logging core as the build pipeline. On a build failure it creates a support ZIP and prints its path; the default report directory is `./epub2web-reports/`, and `--report-dir` overrides it. Individual logs default to `~/.epub2web/logs`. Invalid command-line usage is reported directly without creating a support ZIP.
 
 The output is a static site folder:
 
@@ -118,6 +151,7 @@ my-site/
   assets/                   fonts, CSS, JS
   images/                   optimized figures
   pagefind/                 search index, if Pagefind is installed
+  .epub2web-site.json       marker used to refresh the site safely on later runs
 ```
 
 A run reports both gates:

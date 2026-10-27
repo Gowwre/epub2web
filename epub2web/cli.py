@@ -14,17 +14,80 @@ import tempfile
 import time
 from pathlib import Path
 
+from . import __version__
 from .epub import Epub
 from .generic import GenericExtractor
 from .links import check_site_links
 from .logging import LogSession, log_environment, log_path_for_user, setup_logging
 from .render import render_site
+from .serve import DEFAULT_PORT, serve_site
 from .text import slugify
 from .verify import verify_site
 
 ROOT = Path(__file__).resolve().parents[1]
 TEMPLATES = Path(__file__).resolve().parent / "templates"
 THEME = Path(__file__).resolve().parent / "theme"
+SITE_MARKER = ".epub2web-site.json"
+
+
+def _port_number(value: str) -> int:
+    try:
+        port = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("port must be a whole number") from exc
+    if not 1 <= port <= 65535:
+        raise argparse.ArgumentTypeError("port must be between 1 and 65535")
+    return port
+
+
+def _looks_like_epub2web_site(path: Path) -> bool:
+    """Recognize sites produced by this tool so a rerun can refresh them safely."""
+    if (path / SITE_MARKER).is_file():
+        return True
+    index = path / "index.html"
+    try:
+        with index.open(encoding="utf-8", errors="replace") as handle:
+            head = handle.read(65_536)
+    except OSError:
+        return False
+    if "epub2web-theme" in head or 'name="generator" content="epub2web"' in head:
+        return True
+
+    # Sites built before the marker existed used the shared reader theme.
+    app = path / "assets" / "app.js"
+    try:
+        with app.open(encoding="utf-8", errors="replace") as handle:
+            app_head = handle.read(1_024)
+    except OSError:
+        return False
+    return "browser edition" in app_head and "data-theme-toggle" in head
+
+
+def _create_staging(output: Path) -> Path:
+    output.parent.mkdir(parents=True, exist_ok=True)
+    return Path(tempfile.mkdtemp(prefix=f".{output.name}.epub2web-", dir=output.parent))
+
+
+def _publish_site(staging: Path, output: Path) -> None:
+    if output.is_symlink() or output.is_file():
+        output.unlink()
+    elif output.exists():
+        shutil.rmtree(output)
+    os.replace(staging, output)
+
+
+def _write_site_marker(site: Path, info: dict, profile: str, pages: int) -> None:
+    marker = {
+        "generator": "epub2web",
+        "version": __version__,
+        "title": info.get("title", ""),
+        "author": info.get("author", ""),
+        "profile": profile,
+        "pages": pages,
+    }
+    (site / SITE_MARKER).write_text(
+        json.dumps(marker, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
 
 
 def configure_console() -> None:
@@ -156,9 +219,15 @@ def main(argv: list[str] | None = None) -> int:
         prog="epub2web",
         description="Convert an EPUB into a complete, browser-optimized static website. "
         "Deterministic: no network calls, no LLM, no prose rewriting.",
+        epilog="Example: epub2web book.epub --serve",
     )
     parser.add_argument("epub", type=Path, help="input .epub")
-    parser.add_argument("-o", "--output", type=Path, help="output site directory")
+    parser.add_argument(
+        "-o",
+        "--output",
+        type=Path,
+        help="output site directory (default: <title>-site; an existing epub2web site is refreshed)",
+    )
     parser.add_argument(
         "--profile",
         choices=("auto", "generic", "doet"),
@@ -173,7 +242,27 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--no-search", action="store_true", help="skip the Pagefind index")
     parser.add_argument("--no-verify", action="store_true", help="skip the fidelity gate")
     parser.add_argument("--no-links", action="store_true", help="skip the internal link check")
-    parser.add_argument("--force", action="store_true", help="replace an existing output directory")
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="replace an existing folder even if it was not created by epub2web",
+    )
+    parser.add_argument(
+        "--serve",
+        action="store_true",
+        help="after a successful build, serve the site locally and open it in a browser",
+    )
+    parser.add_argument(
+        "--port",
+        type=_port_number,
+        default=DEFAULT_PORT,
+        help=f"first local port to try for --serve (default: {DEFAULT_PORT})",
+    )
+    parser.add_argument(
+        "--no-browser",
+        action="store_true",
+        help="do not open a browser automatically when using --serve",
+    )
     parser.add_argument(
         "--keep-work", action="store_true", help="keep the intermediate content directory"
     )
@@ -203,6 +292,8 @@ def main(argv: list[str] | None = None) -> int:
         output=str(args.output) if args.output else None,
         profile=args.profile,
         site_url=args.site_url,
+        serve=args.serve,
+        port=args.port if args.serve else None,
     )
 
     status = "error"
@@ -240,7 +331,7 @@ def main(argv: list[str] | None = None) -> int:
         session.context.update({"status": status, "exit_code": exit_code})
         session.finish(status, exit_code=exit_code)
         report = None
-        if exit_code not in (0, 130):
+        if exit_code not in (0, 130) and status != "usage":
             report = session.write_support_bundle(
                 status=status,
                 exit_code=exit_code,
@@ -253,7 +344,7 @@ def main(argv: list[str] | None = None) -> int:
         elif report is not None:
             print(f"Report:  {report}", file=sys.stderr)
             print("         attach this file when reporting the problem", file=sys.stderr)
-        else:
+        elif status != "usage":
             _print_log_path(session)
         session.close()
 
@@ -294,11 +385,38 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: Log
 
     slug = slugify(args.title or info["title"] or epub.stem) or "book"
     output = (args.output.expanduser() if args.output else Path.cwd() / f"{slug}-site").resolve()
+    if output == Path(output.anchor):
+        parser.error("refusing to use a filesystem root as the output folder")
+
+    existing = output.exists()
+    cwd = Path.cwd().resolve()
+    if existing and (output == cwd or output in cwd.parents):
+        parser.error(
+            "refusing to replace the current folder or one of its parents; "
+            "choose a new subfolder with -o"
+        )
+    if existing and not args.force:
+        if not output.is_dir():
+            parser.error(
+                f"output path already exists and is not a folder: {output} (use --force to replace it)"
+            )
+        if not _looks_like_epub2web_site(output):
+            try:
+                empty = not any(output.iterdir())
+            except OSError:
+                empty = False
+            if not empty:
+                parser.error(
+                    f"output folder already exists and was not created by epub2web: {output}\n"
+                    "Choose a different folder with -o, or pass --force to replace it."
+                )
+
     session.context.update(
         {
             "output": str(output),
             "site_url": args.site_url,
             "profile": profile,
+            "refresh": existing,
         }
     )
     session.info(
@@ -307,37 +425,38 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: Log
         profile=profile,
         site_url=args.site_url,
         force=args.force,
+        refresh=existing,
     )
-    if output.exists():
-        if not args.force:
-            parser.error(f"output already exists: {output} (use --force to replace it)")
-        shutil.rmtree(output)
-    output.mkdir(parents=True, exist_ok=True)
 
+    staging = _create_staging(output)
     work = Path(tempfile.mkdtemp(prefix="epub2web-"))
     content = work / "content"
     images = work / "images"
     site_url = args.site_url.rstrip("/")
-    session.info("workspace created", work=str(work), output=str(output))
+    session.info("workspace created", work=str(work), staging=str(staging), output=str(output))
+    published = False
 
     try:
         print(f"EPUB:    {info['title'] or epub.name}")
         if info.get("author"):
             print(f"Author:  {info['author']}")
         print(f"Profile: {profile}")
+        if existing:
+            print("Output:  refreshing the existing site")
         session.info(
             "build started",
             title=info.get("title", ""),
             author=info.get("author", ""),
             profile=profile,
             output=str(output),
+            staging=str(staging),
             site_url=site_url,
         )
 
         if profile == "doet":
-            run_doet(epub, content, images, output, site_url, session)
+            run_doet(epub, content, images, staging, site_url, session)
         else:
-            run_generic(epub, content, images, output, site_url, args.title, args.author)
+            run_generic(epub, content, images, staging, site_url, args.title, args.author)
 
         book = json.loads((content / "book.json").read_text(encoding="utf-8"))
         stats = book.get("stats", {})
@@ -356,7 +475,7 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: Log
 
         verified = True
         if not args.no_verify:
-            result = verify_site(content, output, verbose=False)
+            result = verify_site(content, staging, verbose=False)
             verified = result["pass"]
             exact = sum(1 for row in result["pages"] if row["status"] == "ok")
             session.info(
@@ -382,7 +501,7 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: Log
 
         links_ok = True
         if not args.no_links:
-            link_result = check_site_links(output)
+            link_result = check_site_links(staging)
             links_ok = link_result["ok"]
             session.info(
                 "link gate",
@@ -408,7 +527,7 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: Log
         search_count = 0
         if not args.no_search:
             try:
-                if run_pagefind(output, session):
+                if run_pagefind(staging, session):
                     search_count = 1
                     print("Search:  Pagefind index built")
                 else:
@@ -421,8 +540,9 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: Log
         session.info("search index", built=bool(search_count))
 
         elapsed = time.perf_counter() - started
+        build_ok = verified and links_ok
         summary = {
-            "status": "ok" if verified and links_ok else "failed",
+            "status": "ok" if build_ok else "failed",
             "duration_s": round(elapsed, 3),
             "epub": str(epub),
             "title": info.get("title", ""),
@@ -439,19 +559,52 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: Log
             "search_index": bool(search_count),
         }
         session.write_artifact("summary", summary)
-        print(f"Time:    {elapsed:.2f}s")
-        if not verified or not links_ok:
+
+        if not build_ok:
             session.context["error"] = "build rejected by the fidelity or link gate"
             session.error(
                 "build rejected by gates",
                 fidelity=verified,
                 links=links_ok,
                 output=str(output),
+                staging=str(staging),
             )
+            print(f"Time:    {elapsed:.2f}s")
+            print()
+            print("The build failed its checks, so no preview was started.")
+            if existing:
+                print(f"Your existing site was left unchanged: {output}")
+            else:
+                print("No site was published.")
             return 1
+
+        _write_site_marker(staging, info, profile, len(book.get("pages", [])))
+        _publish_site(staging, output)
+        published = True
+        session.info("site published", output=str(output), profile=profile)
+        print(f"Time:    {elapsed:.2f}s")
+
+        if args.serve:
+            print()
+            session.info("preview starting", port=args.port, browser=not args.no_browser)
+            exit_code = serve_site(
+                output,
+                title=info.get("title", "") or epub.stem,
+                port=args.port,
+                open_browser=not args.no_browser,
+            )
+            session.info("preview stopped", exit_code=exit_code)
+            if exit_code != 0:
+                session.context["error"] = "could not start the local preview server"
+            return exit_code
+
+        print()
+        print("Done. Run the same command with --serve to read it in your browser.")
         session.info("build completed", output=str(output), profile=profile)
         return 0
     finally:
+        if not published:
+            shutil.rmtree(staging, ignore_errors=True)
         if args.keep_work:
             print(f"Work:    {work}")
         else:
