@@ -1,3 +1,4 @@
 include LICENSE README.md CHANGELOG.md CONTRIBUTING.md CODE_OF_CONDUCT.md THIRD_PARTY_NOTICES.md RELEASING.md
 recursive-include tests *.py
-recursive-include docs *.png
+recursive-include docs *.png *.md
+recursive-include scripts *.py

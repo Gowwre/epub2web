@@ -51,6 +51,30 @@ epub2web book.epub --serve
 
 Python 3.10+ is the only requirement.
 
+## Desktop GUI
+
+A small cross-platform Tkinter GUI is included:
+
+```bash
+pip install -e .
+epub2web-gui
+```
+
+Choose an EPUB, click **Convert**, and the finished site opens in your default
+browser. The site is built under `~/Documents/epub2web/<book>-site` (or
+`~/epub2web/<book>-site` if there is no `Documents` folder). The preview server
+stays running while you read; use **Stop** to shut it down. Closing the window
+also stops it.
+
+On Linux, install Tk first if your distribution does not include it:
+
+```bash
+sudo apt install python3-tk
+```
+
+See [docs/gui.md](https://github.com/Gowwre/epub2web/blob/main/docs/gui.md) for the
+architecture and PyInstaller packaging instructions.
+
 ## What you get
 
 A complete static site with:

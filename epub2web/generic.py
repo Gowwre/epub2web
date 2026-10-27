@@ -235,7 +235,77 @@ def dedupe_fragment_ids(fragment: str) -> str:
             del tag["id"]
         else:
             seen.add(value)
-    return "".join(str(child) for child in root.contents)
+    return "".join(
+        str(child) if isinstance(child, Tag) else html.escape(str(child), quote=False)
+        for child in root.contents
+    )
+
+
+def repair_malformed_external_hrefs(body: Tag) -> None:
+    """Repair a common print-conversion typo: ``(https://...``.
+
+    A leading parenthesis before an absolute URL makes the link relative. Keep
+    the punctuation in the visible text, but normalize the href.
+    """
+    for a in body.find_all("a", href=True):
+        href = a["href"].strip()
+        if href.startswith("(") and href[1:].lower().startswith(("http://", "https://")):
+            a["href"] = href[1:]
+
+
+def repair_missing_note_anchors(soup: BeautifulSoup, body: Tag) -> None:
+    """Add anchors for paired ``#fnN``/``#ffnN`` links when the EPUB lost ids.
+
+    Some print-conversion pipelines keep footnote references and backlinks but
+    strip the matching ``id`` attributes. Pair the two link forms and insert
+    empty anchors so navigation works without changing the text.
+    """
+    existing = {tag["id"] for tag in body.find_all(id=True)}
+    links = body.find_all("a", href=True)
+
+    def href(link: Tag) -> str:
+        return (link.get("href") or "").strip()
+
+    for link in links:
+        match = re.fullmatch(r"#fn(\d+)", href(link))
+        if not match:
+            continue
+        target_id = f"fn{match.group(1)}"
+        if target_id in existing:
+            continue
+        backlink = f"#ffn{match.group(1)}"
+        item = next(
+            (
+                li
+                for li in body.find_all("li")
+                if any(href(candidate) == backlink for candidate in li.find_all("a", href=True))
+            ),
+            None,
+        )
+        if item is None:
+            continue
+        anchor = soup.new_tag("span")
+        anchor["id"] = target_id
+        item.insert(0, anchor)
+        existing.add(target_id)
+
+    for link in links:
+        match = re.fullmatch(r"#ffn(\d+)", href(link))
+        if not match:
+            continue
+        target_id = f"ffn{match.group(1)}"
+        if target_id in existing:
+            continue
+        reference = next(
+            (candidate for candidate in links if href(candidate) == f"#fn{match.group(1)}"),
+            None,
+        )
+        if reference is None:
+            continue
+        anchor = soup.new_tag("span")
+        anchor["id"] = target_id
+        reference.insert_before(anchor)
+        existing.add(target_id)
 
 
 def clean_doc(soup: BeautifulSoup) -> BeautifulSoup:
@@ -434,6 +504,9 @@ def clean_doc(soup: BeautifulSoup) -> BeautifulSoup:
             del tag["id"]
         else:
             seen_ids.add(value)
+
+    repair_malformed_external_hrefs(body)
+    repair_missing_note_anchors(soup, body)
     return soup
 
 

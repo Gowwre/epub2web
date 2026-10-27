@@ -298,6 +298,58 @@ def test_data_uri_image_is_embedded(epub_factory, tmp_path: Path):
     assert images[0].read_bytes().startswith(b"\x89PNG")
 
 
+def test_escaped_text_that_looks_like_markup_survives(epub_factory, tmp_path: Path):
+    variant = epub_factory(
+        "escaped.epub",
+        replacements={
+            CH1: [(b"</body>", b"<p>Use &lt;insert your name&gt; &amp; continue.</p></body>")]
+        },
+    )
+    site = tmp_path / "site"
+    assert _build(variant, site) == 0
+    html = (site / "read" / "1" / "index.html").read_text(encoding="utf-8")
+    assert "Use &lt;insert your name&gt; &amp; continue." in html
+    assert "<insert" not in html
+
+
+def test_malformed_external_href_with_leading_parenthesis_is_repaired(epub_factory, tmp_path: Path):
+    variant = epub_factory(
+        "external.epub",
+        replacements={
+            CH1: [
+                (
+                    b"</body>",
+                    b'<p><a href="(https://example.com/wiki/Pipeline(computing)">pipeline</a></p></body>',
+                )
+            ]
+        },
+    )
+    site = tmp_path / "site"
+    assert _build(variant, site) == 0
+    html = (site / "read" / "1" / "index.html").read_text(encoding="utf-8")
+    assert 'href="https://example.com/wiki/Pipeline(computing)"' in html
+
+
+def test_missing_footnote_targets_are_repaired(epub_factory, tmp_path: Path):
+    variant = epub_factory(
+        "notes.epub",
+        replacements={
+            CH1: [
+                (
+                    b"</body>",
+                    b'<p>Text<a href="#fn1">1</a>.</p>'
+                    b'<ol><li>Note<a href="#ffn1">back</a></li></ol></body>',
+                )
+            ]
+        },
+    )
+    site = tmp_path / "site"
+    assert _build(variant, site) == 0
+    html = (site / "read" / "1" / "index.html").read_text(encoding="utf-8")
+    assert 'id="fn1"' in html
+    assert 'id="ffn1"' in html
+
+
 def test_link_gate_checks_html_and_css_assets(tiny_epub, tmp_path: Path):
     content = tmp_path / "content"
     images = tmp_path / "images"

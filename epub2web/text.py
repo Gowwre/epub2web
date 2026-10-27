@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import re
 import unicodedata
 
@@ -124,7 +125,23 @@ def slugify(text: str, fallback: str = "section") -> str:
 
 
 def inner(el: Tag) -> str:
-    return "".join(str(c) for c in el.contents)
+    """Serialize inline contents, escaping source text that looks like markup.
+
+    BeautifulSoup keeps text such as ``&lt;insert your name&gt;`` as a text
+    node. Concatenating ``str(node)`` would put the literal ``<insert ...>``
+    into the generated page, where the browser parses it as a real element and
+    drops the visible words. Escape text nodes while leaving inline tags as
+    HTML.
+    """
+    parts: list[str] = []
+    for child in el.contents:
+        if isinstance(child, (Comment, Doctype, ProcessingInstruction)):
+            continue
+        if isinstance(child, Tag):
+            parts.append(str(child))
+        else:
+            parts.append(html.escape(str(child), quote=False))
+    return "".join(parts)
 
 
 def first_text_node(el: Tag):

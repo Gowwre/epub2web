@@ -22,3 +22,12 @@ License: https://openfontlicense.org/
 
 Each dependency remains under its own license. See the installed distributions
 for the full texts.
+
+## Tcl/Tk
+
+The optional desktop GUI uses Tkinter and the Tcl/Tk runtime. Tcl/Tk is
+distributed under its own BSD-style license:
+https://www.tcl.tk/software/tcltk/license.html
+
+If you distribute a PyInstaller app that bundles Tcl/Tk, include the license
+files supplied with the Tcl/Tk distribution.

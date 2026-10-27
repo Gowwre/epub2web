@@ -38,9 +38,15 @@ dev = [
   "build>=1.2",
   "twine>=5",
 ]
+gui-build = [
+  "pyinstaller>=6",
+]
 
 [project.scripts]
 epub2web = "epub2web.cli:main"
+
+[project.gui-scripts]
+epub2web-gui = "epub2web.gui:main"
 
 [project.urls]
 Homepage = "https://github.com/Gowwre/epub2web"
@@ -69,7 +75,7 @@ filterwarnings = ["ignore::bs4.XMLParsedAsHTMLWarning"]
 [tool.ruff]
 target-version = "py310"
 line-length = 100
-src = ["epub2web", "tests"]
+src = ["epub2web", "tests", "scripts"]
 extend-exclude = ["build", "dist", "*.egg-info"]
 
 [tool.ruff.lint]

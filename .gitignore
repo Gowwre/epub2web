@@ -12,5 +12,6 @@ venv/
 .*-build-*/
 .*-old-*/
 *.epub
+*.spec
 .DS_Store
 epub2web-reports/

@@ -3,6 +3,9 @@
 ## Unreleased
 
 - Re-running a command for an existing epub2web site now refreshes it automatically instead of failing with an “output already exists” error. Unrelated folders are still refused.
+- Add a cross-platform Tkinter desktop GUI (`epub2web-gui`) with a toolkit-independent worker controller, preview lifecycle controls, and PyInstaller worker-mode support.
+- Preserve escaped source text that resembles markup, repair missing `#fnN`/`#ffnN` footnote anchors, and normalize malformed external links produced by print conversions.
+- Report both fidelity and internal-link gate failures in the desktop GUI.
 
 ## 0.1.0 — 2026-10-26
 
