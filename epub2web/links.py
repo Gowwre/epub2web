@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import logging
 import os
 import re
 import sys
@@ -11,11 +12,12 @@ from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
 
+logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def _is_external(href: str) -> bool:
-    return bool(re.match(r"^(https?:|mailto:|tel:|javascript:|data:)", href, re.IGNORECASE))
+    return href.startswith("//") or bool(urlsplit(href).scheme)
 
 
 def _target_path(dist: Path, base: Path, path: str) -> Path | None:
@@ -31,9 +33,16 @@ def _target_path(dist: Path, base: Path, path: str) -> Path | None:
     return candidate
 
 
-def check_site_links(dist_dir: str | Path) -> dict:
+def check_site_links(dist_dir: str | Path, base_path: str = "") -> dict:
     dist = Path(dist_dir).resolve()
-    html_files = sorted(p for p in dist.rglob("*.html") if "pagefind" not in p.parts)
+    base_path = "" if not base_path or base_path.strip("/") == "" else "/" + base_path.strip("/")
+
+    def site_path(value: str) -> str:
+        if base_path and (value == base_path or value.startswith(base_path + "/")):
+            return value[len(base_path) :] or "/"
+        return value
+
+    html_files = sorted(dist.rglob("*.html"))
     soups: dict[Path, BeautifulSoup] = {}
     ids: dict[Path, set[str]] = {}
     duplicates: list[dict] = []
@@ -58,11 +67,11 @@ def check_site_links(dist_dir: str | Path) -> dict:
     for path, soup in soups.items():
         for a in soup.find_all("a", href=True):
             href = a["href"].strip()
-            if not href or href == "#" or _is_external(href) or href.startswith("/pagefind/"):
+            if not href or href == "#" or _is_external(href):
                 continue
             checked += 1
             parts = urlsplit(href)
-            target = _target_path(dist, path, parts.path) if parts.path else path
+            target = _target_path(dist, path, site_path(parts.path)) if parts.path else path
             if target is None or not target.exists():
                 broken.append(
                     {"file": str(path.relative_to(dist)), "href": href, "reason": "missing file"}
@@ -85,19 +94,42 @@ def check_site_links(dist_dir: str | Path) -> dict:
             if _is_external(src):
                 continue
             checked += 1
-            target = _target_path(dist, path, urlsplit(src).path)
+            target = _target_path(dist, path, site_path(urlsplit(src).path))
             if target is None or not target.exists():
                 broken.append(
                     {"file": str(path.relative_to(dist)), "href": src, "reason": "missing image"}
                 )
 
+        for tags, attribute in (
+            (soup.find_all("link", href=True), "href"),
+            (soup.find_all("script", src=True), "src"),
+        ):
+            for element in tags:
+                value = element[attribute].strip()
+                if not value or _is_external(value) or value.startswith("#"):
+                    continue
+                checked += 1
+                target = _target_path(dist, path, site_path(urlsplit(value).path))
+                if target is None or not target.exists():
+                    broken.append(
+                        {
+                            "file": str(path.relative_to(dist)),
+                            "href": value,
+                            "reason": "missing asset",
+                        }
+                    )
+
         for source in soup.find_all("source", srcset=True):
+            # Data URIs contain commas, so do not split those. Generated
+            # srcsets are plain paths; source EPUB srcsets are not emitted.
+            if "data:" in source["srcset"]:
+                continue
             for item in source["srcset"].split(","):
                 src = item.strip().split(" ")[0]
                 if not src or _is_external(src):
                     continue
                 checked += 1
-                target = _target_path(dist, path, urlsplit(src).path)
+                target = _target_path(dist, path, site_path(urlsplit(src).path))
                 if target is None or not target.exists():
                     broken.append(
                         {
@@ -107,17 +139,49 @@ def check_site_links(dist_dir: str | Path) -> dict:
                         }
                     )
 
-        for tag in soup.find_all(attrs={"aria-describedby": True}):
-            for ref in tag["aria-describedby"].split():
-                if ref not in ids[path]:
-                    broken.append(
-                        {
-                            "file": str(path.relative_to(dist)),
-                            "href": f"#{ref}",
-                            "reason": "missing aria-describedby target",
-                        }
-                    )
+        for attribute in ("aria-describedby", "aria-labelledby"):
+            for tag in soup.find_all(attrs={attribute: True}):
+                for ref in tag[attribute].split():
+                    if ref not in ids[path]:
+                        broken.append(
+                            {
+                                "file": str(path.relative_to(dist)),
+                                "href": f"#{ref}",
+                                "reason": f"missing {attribute} target",
+                            }
+                        )
 
+    for stylesheet in sorted(dist.rglob("*.css")):
+        text = stylesheet.read_text(encoding="utf-8")
+        for match in re.finditer(r"url\(\s*['\"]?([^'\"\)]+)['\"]?\s*\)", text):
+            value = match.group(1).strip()
+            if not value or _is_external(value) or value.startswith(("#", "data:")):
+                continue
+            checked += 1
+            target = _target_path(dist, stylesheet, site_path(urlsplit(value).path))
+            if target is None or not target.exists():
+                broken.append(
+                    {
+                        "file": str(stylesheet.relative_to(dist)),
+                        "href": value,
+                        "reason": "missing stylesheet asset",
+                    }
+                )
+
+    for item in broken:
+        logger.info("broken reference", extra=item)
+    for item in duplicates:
+        logger.info("duplicate id", extra=item)
+    logger.info(
+        "link gate",
+        extra={
+            "status": "pass" if not broken and not duplicates else "fail",
+            "pages": len(html_files),
+            "checked": checked,
+            "broken": len(broken),
+            "duplicates": len(duplicates),
+        },
+    )
     return {
         "ok": not duplicates and not broken,
         "pages": len(html_files),
@@ -130,8 +194,9 @@ def check_site_links(dist_dir: str | Path) -> dict:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Check links, anchors, images, and duplicate ids.")
     parser.add_argument("dist", nargs="?", default=os.environ.get("DIST_DIR", str(ROOT / "dist")))
+    parser.add_argument("--base-path", default="", help="subpath used at build time")
     args = parser.parse_args(argv)
-    result = check_site_links(args.dist)
+    result = check_site_links(args.dist, base_path=args.base_path)
 
     print("Internal link check")
     print("=" * 78)
