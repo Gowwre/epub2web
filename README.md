@@ -36,7 +36,13 @@ npm run package:offline
 npm run dev
 ```
 
-Put the source EPUB in the project root. The extractor finds the first `*.epub`. The EPUB itself, the derived `content/`, and `dist/` are gitignored; the code and design assets are not.
+Put the source EPUB in the project root. The DOET `npm run build` pipeline is book-specific and uses the first `*.epub`. For another book, use the reusable CLI with the generic profile:
+
+```bash
+epub2web book.epub -o book-site --profile generic
+```
+
+The EPUB itself, the derived `content/`, and `dist/` are gitignored; the code and design assets are not.
 
 To build for a real domain:
 
