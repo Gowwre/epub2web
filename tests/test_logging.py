@@ -95,6 +95,35 @@ def test_gate_failure_writes_artifacts(epub_factory, tmp_path: Path, capsys):
     assert list((tmp_path / "logs").glob("*-links.json"))
 
 
+def test_report_is_still_created_when_logging_fails(epub_factory, tmp_path: Path, capsys):
+    bad = epub_factory(
+        "broken.epub",
+        replacements={CH1: [(b'src="images/cover.png"', b'src="images/missing.png"')]},
+    )
+    blocker = tmp_path / "blocker"
+    blocker.write_text("not a directory", encoding="utf-8")
+    assert (
+        _build(
+            bad,
+            tmp_path / "site",
+            "--log-file",
+            str(blocker / "run.log"),
+            "--report-dir",
+            str(tmp_path / "reports"),
+        )
+        == 2
+    )
+    stderr = capsys.readouterr().err
+    assert "file logging disabled" in stderr
+    assert "Report:" in stderr
+    reports = list((tmp_path / "reports").glob("*.zip"))
+    assert len(reports) == 1
+    with zipfile.ZipFile(reports[0]) as archive:
+        readme = archive.read("README.txt").decode("utf-8")
+        assert "Log file unavailable." in readme
+        assert "missing from the EPUB" in readme
+
+
 def test_unwritable_log_does_not_stop_the_build(tiny_epub, tmp_path: Path, capsys):
     blocker = tmp_path / "blocker"
     blocker.write_text("not a directory", encoding="utf-8")
