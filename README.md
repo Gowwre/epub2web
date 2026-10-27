@@ -20,7 +20,7 @@ The easiest way is [`uv`](https://docs.astral.sh/uv/). Install from GitHub:
 uvx --from git+https://github.com/Gowwre/epub2web epub2web book.epub --serve
 ```
 
-That builds `./book-site/`, starts a local server on `127.0.0.1`, and opens your browser. Press `Ctrl+C` to stop.
+That builds `./book-site/`, starts a local server on `127.0.0.1`, and opens your browser. Press `Ctrl+C` to stop. Run the same command again to refresh the site and reopen the preview; no `--force` is needed.
 
 Once the package is published on PyPI, the shorter form works too:
 
@@ -98,7 +98,8 @@ That makes the tool useful for authors, translators, publishers, and anyone who 
 
 A failed build is not allowed to damage a working site.
 
-- The site is built in a staging directory, verified, and only then swapped into place. If extraction or a gate fails, an existing `--force` target is left untouched and no half-built output is published.
+- The site is built in a staging directory, verified, and only then swapped into place. If extraction or a gate fails, an existing site is left untouched and no half-built output is published.
+- Re-running a command for a site that epub2web created refreshes that site automatically. A non-empty folder that does not look like an epub2web site is refused instead of being overwritten.
 - `--force` refuses to replace the current directory, the home directory, any directory containing the input EPUB, or a non-empty directory that does not look like an epub2web site.
 - Missing images, invalid images, and remote image references stop the build with the page and file named. Embedded base64 data-URI images are extracted into the site.
 - An EPUB with no readable spine pages fails instead of producing an empty website.
@@ -151,7 +152,7 @@ epub2web book.epub -o my-site --site-url https://example.com
 | `--base-path PATH` | Build for a subpath, e.g. `/epub2web` (default: site root) |
 | `--no-verify` | Skip the text-fidelity gate (development only) |
 | `--no-links` | Skip the internal-link gate (development only) |
-| `--force` | Safely replace an existing epub2web output directory |
+| `--force` | Force replacement; reruns refresh an epub2web site automatically |
 | `--keep-work` | Keep extraction files and a failed site for inspection |
 | `--log-dir DIR` | Directory for run diagnostics (default: `~/.epub2web/logs`) |
 | `--log-file FILE` | Write this run's human-readable log to an exact file |

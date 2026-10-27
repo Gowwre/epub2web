@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Re-running a command for an existing epub2web site now refreshes it automatically instead of failing with an “output already exists” error. Unrelated folders are still refused.
+
 ## 0.1.0 — 2026-10-26
 
 - First public release.

@@ -336,12 +336,20 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: Log
         check_output(output, epub)
     except ValueError as exc:
         parser.error(str(exc))
-    if output.exists() and not args.force:
+    existing = output.exists()
+    nonempty = False
+    refresh = False
+    if existing:
         try:
-            if any(output.iterdir()):
-                parser.error(f"output already exists: {output} (use --force to replace it)")
+            nonempty = any(output.iterdir())
         except OSError as exc:
             parser.error(f"cannot read output directory {output}: {exc}")
+        refresh = nonempty and output_looks_like_site(output)
+    if existing and not args.force and nonempty and not refresh:
+        parser.error(
+            f"output already exists and was not created by epub2web: {output}\n"
+            "Choose a different folder with -o, or pass --force to replace it."
+        )
     if args.force and not output_looks_like_site(output):
         parser.error(
             f"refusing to replace {output}: it does not look like an epub2web site "
@@ -367,6 +375,8 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: Log
         print(f"EPUB:    {info['title'] or epub.name}")
         if info.get("author"):
             print(f"Author:  {info['author']}")
+        if refresh:
+            print("Output:  refreshing the existing site")
 
         session.info(
             "build started",
