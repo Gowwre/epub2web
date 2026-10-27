@@ -109,16 +109,17 @@ That makes failure modes explicit: the tool stops rather than silently dropping 
 
 ## Diagnostics and logs
 
-Every command writes a run id, environment details, stage timings, and errors to a persistent log. On failure the CLI prints the log path, so the full traceback and gate report survive after the terminal scrolls away.
+Every command writes a run id, environment details, stage timings, and errors to a persistent log. On failure the CLI also creates one support ZIP and prints its path prominently:
 
-```bash
-epub2web book.epub -o site
-# On failure:
-# error: ...
-# Log:     /home/you/.epub2web/logs/epub2web-20261027-094549-ea00310295.log
+```text
+error: ...
+Report:  /home/you/project/epub2web-reports/epub2web-report-20261027-121019-12b49c2dd2.zip
+         attach this file when reporting the problem
 ```
 
-Use `--log-dir` or `--log-file` to choose another location. Each run produces:
+The support ZIP contains `README.txt`, the full human log, JSONL events, a machine-readable summary, and any fidelity/link reports. End users only need to send that one file. Use `--report-dir` or `EPUB2WEB_REPORT_DIR` to choose where it is written; the default is `./epub2web-reports/` in the directory where the command ran.
+
+Use `--log-dir` or `--log-file` to choose where the individual logs live. Each run produces:
 
 - `epub2web-*.log` — human-readable stages, warnings, gate failures, traceback
 - `epub2web-*.jsonl` — the same events as structured JSON lines
@@ -128,7 +129,7 @@ Use `--log-dir` or `--log-file` to choose another location. Each run produces:
 
 Logging never makes a build fail: if the log directory is not writable, the command warns once and continues. The default directory keeps the latest 20 runs; set `EPUB2WEB_LOG_DIR` to change it.
 
-Logs are local diagnostics. They can contain file paths, book metadata, and short excerpts from failed comparisons, so review a log before attaching it to a public issue.
+Logs and support ZIPs are local diagnostics. They can contain file paths, book metadata, and short excerpts from failed comparisons, so review them before attaching to a public issue. The support ZIP includes a README with the same warning and instructions.
 
 ## CLI
 
@@ -154,6 +155,7 @@ epub2web book.epub -o my-site --site-url https://example.com
 | `--keep-work` | Keep extraction files and a failed site for inspection |
 | `--log-dir DIR` | Directory for run diagnostics (default: `~/.epub2web/logs`) |
 | `--log-file FILE` | Write this run's human-readable log to an exact file |
+| `--report-dir DIR` | Directory for failure support ZIPs (default: `./epub2web-reports`) |
 | `--version` | Print the version |
 
 A run looks like this:

@@ -1,4 +1,5 @@
 import json
+import zipfile
 from pathlib import Path
 
 from epub2web.cli import main
@@ -13,6 +14,7 @@ def _build(epub: Path, site: Path, *extra: str) -> int:
 def test_success_writes_logs_and_artifacts(tiny_epub, tmp_path: Path):
     site = tmp_path / "site"
     assert _build(tiny_epub, site) == 0
+    assert not list((tmp_path / "reports").glob("*.zip"))
 
     logs = list((tmp_path / "logs").glob("epub2web-*.log"))
     assert len(logs) == 1
@@ -44,13 +46,24 @@ def test_failure_writes_traceback_and_prints_log_path(epub_factory, tmp_path: Pa
     )
     assert _build(bad, tmp_path / "site") == 2
     stderr = capsys.readouterr().err
-    assert "Log:" in stderr
+    assert "Report:" in stderr
+    assert "attach this file" in stderr
+
     logs = list((tmp_path / "logs").glob("epub2web-*.log"))
     assert len(logs) == 1
     text = logs[0].read_text(encoding="utf-8")
     assert "Traceback" in text
     assert "missing from the EPUB" in text
     assert "run finished status=error" in text
+
+    reports = list((tmp_path / "reports").glob("*.zip"))
+    assert len(reports) == 1
+    with zipfile.ZipFile(reports[0]) as archive:
+        names = set(archive.namelist())
+        assert {"README.txt", "run.log", "events.jsonl", "context.json"} <= names
+        readme = archive.read("README.txt").decode("utf-8")
+        assert "Attach this ZIP file" in readme
+        assert "missing from the EPUB" in readme
 
 
 def test_gate_failure_writes_artifacts(epub_factory, tmp_path: Path, capsys):
@@ -63,7 +76,13 @@ def test_gate_failure_writes_artifacts(epub_factory, tmp_path: Path, capsys):
     site = tmp_path / "site"
     assert _build(bad_link, site) == 1
     assert not site.exists()
-    assert "Log:" in capsys.readouterr().err
+    assert "Report:" in capsys.readouterr().err
+
+    reports = list((tmp_path / "reports").glob("*.zip"))
+    assert len(reports) == 1
+    with zipfile.ZipFile(reports[0]) as archive:
+        names = set(archive.namelist())
+        assert {"README.txt", "summary.json", "fidelity.json", "links.json"} <= names
 
     logs = list((tmp_path / "logs").glob("epub2web-*.log"))
     assert len(logs) == 1

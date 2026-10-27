@@ -14,9 +14,11 @@ import logging
 import os
 import platform
 import re
+import shlex
 import sys
 import time
 import uuid
+import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from logging.handlers import RotatingFileHandler
@@ -121,6 +123,8 @@ class LogSession:
     started: float
     path: Path | None = None
     jsonl_path: Path | None = None
+    context: dict[str, Any] = field(default_factory=dict)
+    artifacts: dict[str, Path] = field(default_factory=dict)
     _handlers: list[logging.Handler] = field(default_factory=list)
     _closed: bool = False
 
@@ -161,7 +165,133 @@ class LogSession:
         except OSError as exc:
             self.warning("could not write log artifact", artifact=name, error=str(exc))
             return None
+        self.artifacts[name] = target
         self.info("log artifact written", artifact=str(target))
+        return target
+
+    def flush(self) -> None:
+        for handler in self._handlers:
+            with contextlib.suppress(Exception):
+                handler.flush()
+
+    def current_log_lines(self) -> list[str]:
+        """Return this run's section of the log, not older runs in a shared file."""
+        if self.path is None or not self.path.exists():
+            return []
+        try:
+            lines = self.path.read_text(encoding="utf-8", errors="replace").splitlines()
+        except OSError:
+            return []
+        marker = f"run_id={self.run_id}"
+        start = 0
+        for index, line in enumerate(lines):
+            if "run started" in line and marker in line:
+                start = index
+        return lines[start:]
+
+    def write_support_bundle(
+        self,
+        *,
+        status: str,
+        exit_code: int,
+        error: str = "",
+        report_dir: str | Path | None = None,
+        filename: str | None = None,
+    ) -> Path | None:
+        """Create one ZIP that an end user can attach to a bug report."""
+        self.flush()
+        self.context.setdefault("run_id", self.run_id)
+        self.context.setdefault("status", status)
+        self.context.setdefault("exit_code", exit_code)
+        self.context.setdefault("generated", datetime.now(timezone.utc).isoformat())
+        if error:
+            self.context["error"] = error
+
+        directory = (
+            Path(report_dir).expanduser()
+            if report_dir
+            else Path(os.environ.get("EPUB2WEB_REPORT_DIR", Path.cwd() / "epub2web-reports"))
+        )
+        if not directory.is_absolute():
+            directory = Path.cwd() / directory
+        directory = directory.resolve()
+        target = directory / (
+            filename or f"epub2web-report-{time.strftime('%Y%m%d-%H%M%S')}-{self.run_id}.zip"
+        )
+
+        environment = self.context.get("environment", {})
+        command = environment.get("argv") if isinstance(environment, dict) else None
+        if isinstance(command, list):
+            command = shlex.join(str(part) for part in command)
+        run_lines = self.current_log_lines()
+        log_tail = "\n".join(run_lines[-120:]) if run_lines else "Log file unavailable."
+        readme = f"""epub2web support report
+=====================
+
+Run ID:       {self.run_id}
+Status:       {status}
+Exit code:    {exit_code}
+Generated:    {self.context["generated"]}
+Command:      {command or "(unknown)"}
+Working dir:  {environment.get("cwd", Path.cwd()) if isinstance(environment, dict) else Path.cwd()}
+Python:       {environment.get("python", "unknown") if isinstance(environment, dict) else "unknown"}
+Platform:     {environment.get("platform", "unknown") if isinstance(environment, dict) else "unknown"}
+
+What to do
+----------
+Attach this ZIP file to the issue or message you send to the maintainer.
+It contains the full run log, JSONL events, the run summary, and gate reports
+when those gates ran. Do not paste individual files unless asked; the ZIP is
+the report.
+
+Privacy
+-------
+These diagnostics can contain local file paths, book metadata, and short
+excerpts from failed text comparisons. Review the contents before sharing
+them publicly.
+
+Error
+-----
+{error or "(see the log and summary in this bundle)"}
+
+Recent log
+----------
+{log_tail}
+"""
+        try:
+            directory.mkdir(parents=True, exist_ok=True)
+            with zipfile.ZipFile(target, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+                archive.writestr("README.txt", readme)
+                archive.writestr(
+                    "context.json",
+                    json.dumps(self.context, ensure_ascii=False, indent=2, default=str) + "\n",
+                )
+                if run_lines:
+                    archive.writestr("run.log", "\n".join(run_lines) + "\n")
+                if self.jsonl_path is not None and self.jsonl_path.exists():
+                    try:
+                        events = self.jsonl_path.read_text(
+                            encoding="utf-8", errors="replace"
+                        ).splitlines()
+                    except OSError:
+                        events = []
+                    current = (
+                        [line for line in events if json.loads(line).get("run_id") == self.run_id]
+                        if events
+                        else []
+                    )
+                    if current or events:
+                        archive.writestr("events.jsonl", "\n".join(current or events[-120:]) + "\n")
+                for artifact_name, artifact_path in self.artifacts.items():
+                    if artifact_path.exists():
+                        archive.write(artifact_path, arcname=f"{_safe_name(artifact_name)}.json")
+        except Exception as exc:
+            print(f"warning: could not create support report: {exc}", file=sys.stderr)
+            with contextlib.suppress(OSError):
+                target.unlink(missing_ok=True)
+            return None
+
+        self.info("support report written", report=str(target))
         return target
 
     def finish(self, status: str, **fields: Any) -> None:
@@ -285,6 +415,7 @@ def setup_logging(
             limit = keep or DEFAULT_KEEP_RUNS
         _prune_runs(session.path.parent, limit)
 
+    session.context.update({"run_id": run_id, "status": "running"})
     session.info(
         "run started",
         run_id=run_id,
@@ -296,16 +427,17 @@ def setup_logging(
 
 def log_environment(session: LogSession, argv: list[str] | None = None, **fields: Any) -> None:
     """Log the runtime context that makes a failure reproducible."""
-    session.info(
-        "environment",
-        python=platform.python_version(),
-        implementation=platform.python_implementation(),
-        platform=platform.platform(),
-        cwd=str(Path.cwd()),
-        executable=sys.executable,
-        argv=argv if argv is not None else sys.argv,
+    environment = {
+        "python": platform.python_version(),
+        "implementation": platform.python_implementation(),
+        "platform": platform.platform(),
+        "cwd": str(Path.cwd()),
+        "executable": sys.executable,
+        "argv": argv if argv is not None else sys.argv,
         **fields,
-    )
+    }
+    session.context["environment"] = environment
+    session.info("environment", **environment)
 
 
 def log_path_for_user(session: LogSession) -> str | None:

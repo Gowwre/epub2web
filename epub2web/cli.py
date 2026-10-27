@@ -198,12 +198,18 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         help="write this run's human-readable log to an exact file",
     )
+    parser.add_argument(
+        "--report-dir",
+        type=Path,
+        help="directory for the failure support ZIP (default: ./epub2web-reports)",
+    )
     parser.add_argument("--version", action="version", version=f"epub2web {__version__}")
     args = parser.parse_args(argv)
 
     session = setup_logging(log_dir=args.log_dir, log_file=args.log_file)
     argv_for_log = list(sys.argv if argv is None else [sys.argv[0], *argv])
     log_environment(session, argv=argv_for_log)
+    session.context["command"] = argv_for_log
     session.info(
         "command parsed",
         output=str(args.output) if args.output else None,
@@ -217,23 +223,21 @@ def main(argv: list[str] | None = None) -> int:
     try:
         exit_code = _run(args, parser, session)
         status = "ok" if exit_code == 0 else "failed"
-        if exit_code != 0 or args.log_dir or args.log_file:
-            _print_log_path(session)
         return exit_code
     except KeyboardInterrupt:
         status = "interrupted"
         exit_code = 130
+        session.context["error"] = "interrupted by user"
         session.warning("interrupted by user")
         print("\nStopped.", file=sys.stderr)
-        _print_log_path(session)
         return 130
     except SystemExit as exc:
         code = exc.code if isinstance(exc.code, int) else 2
         if code != 0:
             status = "usage"
             exit_code = code
+            session.context["error"] = f"usage error (exit {code})"
             session.error("command exited with an error", exit_code=code)
-            _print_log_path(session)
         else:
             status = "ok"
             exit_code = 0
@@ -241,12 +245,29 @@ def main(argv: list[str] | None = None) -> int:
     except Exception as exc:
         status = "error"
         exit_code = 2
+        session.context["error"] = str(exc)
         session.exception("command failed", error=str(exc))
         print(f"\nerror: {exc}", file=sys.stderr)
-        _print_log_path(session)
         return 2
     finally:
+        session.context.update({"status": status, "exit_code": exit_code})
         session.finish(status, exit_code=exit_code)
+        report = None
+        if exit_code not in (0, 130):
+            report = session.write_support_bundle(
+                status=status,
+                exit_code=exit_code,
+                error=str(session.context.get("error", "")),
+                report_dir=args.report_dir,
+            )
+        if exit_code == 0:
+            if args.log_dir or args.log_file:
+                _print_log_path(session)
+        elif report is not None:
+            print(f"Report:  {report}", file=sys.stderr)
+            print("         attach this file when reporting the problem", file=sys.stderr)
+        else:
+            _print_log_path(session)
         session.close()
 
 
@@ -272,9 +293,17 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: Log
     try:
         info = detect(epub)
     except Exception as exc:
+        session.context["error"] = f"could not read EPUB: {exc}"
         session.exception("could not read EPUB", error=str(exc))
         print(f"error: could not read EPUB: {exc}", file=sys.stderr)
         return 2
+    session.context.update(
+        {
+            "epub": str(epub),
+            "title": info.get("title", ""),
+            "author": info.get("author", ""),
+        }
+    )
     session.info(
         "EPUB detected",
         epub=str(epub),
@@ -288,6 +317,14 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: Log
     if not slug:
         slug = slugify(epub.stem, fallback="") or "book"
     output = (args.output.expanduser() if args.output else Path.cwd() / f"{slug}-site").resolve()
+    session.context.update(
+        {
+            "output": str(output),
+            "site_url": args.site_url,
+            "base_path": base_path,
+            "profile": "generic",
+        }
+    )
     session.info(
         "output selected",
         output=str(output),
@@ -453,6 +490,7 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: Log
         }
         if not verified or not links_ok:
             session.write_artifact("summary", summary)
+            session.context["error"] = "build rejected by the fidelity or link gate"
             session.error(
                 "build rejected by gates",
                 fidelity=verified,

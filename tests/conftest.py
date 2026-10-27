@@ -12,6 +12,7 @@ from PIL import Image
 def _isolate_logs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Keep run logs inside the test directory, never the developer's home."""
     monkeypatch.setenv("EPUB2WEB_LOG_DIR", str(tmp_path / "logs"))
+    monkeypatch.setenv("EPUB2WEB_REPORT_DIR", str(tmp_path / "reports"))
 
 
 def _write_epub(path: Path) -> None:

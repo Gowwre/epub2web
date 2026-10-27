@@ -13,3 +13,4 @@ venv/
 .*-old-*/
 *.epub
 .DS_Store
+epub2web-reports/
