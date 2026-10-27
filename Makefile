@@ -1,7 +1,7 @@
 PY ?= python3
 RUFF ?= $(shell command -v ruff >/dev/null 2>&1 && echo ruff || echo uvx ruff)
 
-.PHONY: build check test verify links lint lint-js format theme theme-check clean clean-sites
+.PHONY: build check test verify links lint lint-js format theme theme-check clean clean-sites clean-logs
 
 build:
 	npm run build
@@ -12,10 +12,10 @@ check:
 test: check theme-check lint lint-js
 
 verify:
-	$(PY) scripts/verify.py
+	npm run verify
 
 links:
-	$(PY) scripts/check_links.py
+	npm run links
 
 lint:
 	$(RUFF) check epub2web scripts
@@ -39,3 +39,6 @@ clean:
 
 clean-sites:
 	$(PY) scripts/clean.py --sites DontMakeMeThink ThinkingInSystems
+
+clean-logs:
+	rm -rf logs

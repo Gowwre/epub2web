@@ -23,6 +23,9 @@ npm run build
 # Build + link check
 npm run check
 
+# Inspect diagnostics from the last run
+tail -n 80 logs/build.log
+
 # Reusable CLI (optional)
 pip install -e .
 
@@ -42,6 +45,19 @@ SITE_URL="https://your-domain.example" npm run build
 ```
 
 Upload `dist/` to any static host. The site assumes it is served from the domain root.
+
+## Logs and diagnostics
+
+Every `npm run build`, `npm run check`, `npm run verify`, and `npm run links` invocation goes through `scripts/build_pipeline.py`, which writes:
+
+- `logs/build.log` — timestamped stages, full subprocess output, warnings, and tracebacks; rotated at 5 MB with five backups
+- `logs/build.jsonl` — the same events as structured JSON Lines
+- `logs/build-summary.json` — machine-readable status, exit code, stage timings, and site URL
+- `logs/fidelity-report.json` — the last fidelity report, even if `content/` is later cleaned
+
+On failure the pipeline prints the relevant stage, exit code, and log path. If logging itself is unavailable, the build warns once and continues. Logs are local build diagnostics and are gitignored. Use `make clean-logs` to remove them.
+
+Logs can contain local paths, book metadata, and short excerpts from failed fidelity comparisons. Review a log before sharing it publicly.
 
 ## Reusable CLI: `epub2web`
 
@@ -69,7 +85,12 @@ epub2web "the-design-of-everyday-things.epub" -o doet-site
 
 # Skip the search index / fidelity report if you are iterating
 epub2web book.epub -o out --no-search --no-verify
+
+# Choose where diagnostics are written
+epub2web book.epub -o out --log-dir ./logs --log-file ./logs/manual-run.log
 ```
+
+The CLI uses the same logging core as the build pipeline. On failure it prints the log path; `~/.epub2web/logs` is the default location.
 
 The output is a static site folder:
 
@@ -132,6 +153,7 @@ make theme         # copy static/assets into epub2web/theme
 make test          # build + fidelity + links + lint + theme check
 make clean         # remove generated build artefacts
 make clean-sites   # also remove the local DontMakeMeThink / ThinkingInSystems sites
+make clean-logs    # remove logs/
 ```
 
 `static/` is the source of truth for the site's CSS/JS/fonts. `epub2web/theme/` is the packaged copy used by the CLI; `make theme` keeps them identical, and `make theme-check` fails if they drift. Site outputs are generated artefacts and are gitignored.
@@ -194,7 +216,8 @@ EPUB
   ├─ scripts/build.py         → dist/
   ├─ Pagefind                 → dist/pagefind/
   ├─ scripts/verify.py        token + character gate
-  └─ scripts/check_links.py   internal links, anchors, images, ids
+  ├─ scripts/check_links.py   internal links, anchors, images, ids
+  └─ scripts/build_pipeline.py logs + ordered stage execution
 ```
 
 ### What the extractor does
@@ -252,6 +275,7 @@ The source EPUB is intentionally not committed. `content/`, `dist/`, `public/ima
 scripts/
   extract.py       DOET profile: EPUB → semantic fragments + source baseline
   build.py         DOET profile: fragments + templates → dist/
+  build_pipeline.py logged orchestration for extract/build/search/verify/links
   verify.py        wrapper around the package fidelity gate
   check_links.py   wrapper around the package link gate
   sync_theme.py    sync/check packaged theme against static/
@@ -278,6 +302,7 @@ epub2web/          reusable CLI package
   render.py        generic site renderer
   verify.py        generic fidelity gate
   links.py         generic link/anchor/duplicate-id gate
+  logging.py       run logs, JSONL events, artifacts
   cli.py           command-line entry point
   templates/       generic site templates
   theme/           packaged CSS, JS, fonts, favicon
