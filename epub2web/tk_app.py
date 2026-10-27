@@ -8,6 +8,7 @@ without touching the worker or process lifecycle.
 from __future__ import annotations
 
 import contextlib
+import os
 import queue
 import sys
 import threading
@@ -15,7 +16,7 @@ import tkinter as tk
 import tkinter.font as tkfont
 import webbrowser
 from pathlib import Path
-from tkinter import filedialog, messagebox, ttk
+from tkinter import filedialog, ttk
 
 from .controller import (
     BuildController,
@@ -28,6 +29,53 @@ from .controller import (
 APP_TITLE = "epub2web"
 LOG_LINE_LIMIT = 2000
 
+# The desktop palette mirrors the reader theme in theme/assets/styles.css.
+BG = "#f5f0e6"
+SURFACE = "#fbf8f1"
+SURFACE_ALT = "#eee7da"
+INK = "#1f1b16"
+INK_2 = "#4c4439"
+MUTED = "#6e6354"
+RULE = "#ded6c8"
+RULE_STRONG = "#c9bfae"
+ACCENT = "#b23a1b"
+ACCENT_2 = "#8d2c12"
+ACCENT_HOVER = "#c64a28"
+ACCENT_SOFT = "#f5e1d7"
+ACCENT_INK = "#fff8ef"
+SUCCESS = "#2f6b4f"
+DANGER = "#a52f22"
+LOG_BG = "#191714"
+LOG_FG = "#e8e0d2"
+LOG_MUTED = "#9a9184"
+LOG_ERROR = "#ff9e8d"
+LOG_SUCCESS = "#8fd6a8"
+LOG_ACCENT = "#f2b38a"
+
+
+def _font_candidates() -> tuple[list[str], list[str], list[str]]:
+    if sys.platform == "win32":
+        ui = ["Segoe UI", "Inter", "Noto Sans"]
+        display = ["Georgia", "Cambria", "Noto Serif", "DejaVu Serif"]
+        mono = ["Cascadia Mono", "Consolas", "Courier New"]
+    elif sys.platform == "darwin":
+        ui = ["SF Pro Display", "Helvetica Neue", "Inter", "Noto Sans"]
+        display = ["Georgia", "Iowan Old Style", "Palatino", "Noto Serif"]
+        mono = ["SF Mono", "Menlo", "Monaco"]
+    else:
+        ui = ["Inter", "Noto Sans", "Cantarell", "DejaVu Sans"]
+        display = ["Fraunces", "Literata", "Noto Serif", "DejaVu Serif"]
+        mono = ["JetBrains Mono", "Cascadia Mono", "Noto Sans Mono", "DejaVu Sans Mono"]
+    return ui, display, mono
+
+
+def _pick_font(root: tk.Misc, candidates: list[str]) -> str:
+    available = set(tkfont.families(root))
+    for name in candidates:
+        if name in available:
+            return name
+    return tkfont.nametofont("TkDefaultFont").actual("family")
+
 
 class Epub2WebApp:
     """Main application window. All Tk calls stay on the Tk main thread."""
@@ -35,23 +83,38 @@ class Epub2WebApp:
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
         self.root.title(APP_TITLE)
-        self.root.minsize(640, 520)
-        self.root.geometry("760x640")
+        self.root.minsize(720, 600)
+        self.root.configure(bg=BG)
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        self._center_window()
+        self._set_icon()
 
         self.epub: Path | None = None
         self.output: Path | None = None
         self.preview_url: str | None = None
         self.controller: BuildController | None = None
         self.events: queue.Queue[BuildEvent] = queue.Queue()
+        self.book_info_queue: queue.Queue[tuple[Path, dict]] = queue.Queue()
         self._building = False
         self._preview_running = False
         self._auto_open_preview = False
         self._poll_id: str | None = None
         self._last_dir = self._default_open_dir()
+        self._log_scroll_first = 0.0
+        self._log_scroll_last = 1.0
+        self._log_thumb_top = 0.0
+        self._log_thumb_bottom = 0.0
+        self._log_drag_start = 0
+        self._log_drag_first = 0.0
+        self._log_dragging = False
 
+        self._configure_fonts()
+        self._configure_styles()
         self._build_ui()
         self._refresh_controls()
+        self._set_status("Choose an EPUB to begin.", "muted")
+        self._set_log_hint("Fidelity and link checks appear here.")
+        self._append_log("Choose an EPUB to begin.", tag="muted")
         self._poll()
 
     @staticmethod
@@ -59,107 +122,461 @@ class Epub2WebApp:
         downloads = Path.home() / "Downloads"
         return downloads if downloads.is_dir() else Path.home()
 
-    # -- construction -----------------------------------------------------
+    def _center_window(self) -> None:
+        screen_w = self.root.winfo_screenwidth()
+        screen_h = self.root.winfo_screenheight()
+        width = min(860, max(720, screen_w - 80))
+        height = min(740, max(600, screen_h - 80))
+        x = max(0, (screen_w - width) // 2)
+        y = max(0, (screen_h - height) // 2)
+        self.root.geometry(f"{width}x{height}+{x}+{y}")
+
+    def _set_icon(self) -> None:
+        icon_path = Path(__file__).resolve().parent / "theme" / "gui-icon.png"
+        try:
+            self._icon_image = tk.PhotoImage(file=str(icon_path))
+            self.root.iconphoto(True, self._icon_image)
+        except (OSError, tk.TclError):
+            self._icon_image = None
+
+    # -- typography and widgets -------------------------------------------
+    def _configure_fonts(self) -> None:
+        ui_candidates, display_candidates, mono_candidates = _font_candidates()
+        self.ui_family = _pick_font(self.root, ui_candidates)
+        self.display_family = _pick_font(self.root, display_candidates)
+        self.mono_family = _pick_font(self.root, mono_candidates)
+
+        self.font_brand = tkfont.Font(family=self.ui_family, size=8, weight="bold")
+        self.font_body = tkfont.Font(family=self.ui_family, size=10)
+        self.font_small = tkfont.Font(family=self.ui_family, size=9)
+        self.font_filename = tkfont.Font(family=self.ui_family, size=12, weight="bold")
+        self.font_display = tkfont.Font(family=self.display_family, size=25, weight="bold")
+        self.font_dialog = tkfont.Font(family=self.display_family, size=18, weight="bold")
+        self.font_mono = tkfont.Font(family=self.mono_family, size=9)
+
+    def _configure_styles(self) -> None:
+        style = ttk.Style(self.root)
+        with contextlib.suppress(tk.TclError):
+            style.theme_use("clam")
+        self.style = style
+
+        style.configure(
+            "Primary.TButton",
+            background=ACCENT,
+            foreground=ACCENT_INK,
+            bordercolor=ACCENT,
+            lightcolor=ACCENT,
+            darkcolor=ACCENT,
+            relief="flat",
+            padding=(22, 11),
+            font=(self.ui_family, 10, "bold"),
+            focuscolor=ACCENT_2,
+        )
+        style.map(
+            "Primary.TButton",
+            background=[
+                ("disabled", "#e3d7c8"),
+                ("pressed", ACCENT_2),
+                ("active", ACCENT_HOVER),
+            ],
+            foreground=[
+                ("disabled", "#8f7f6d"),
+                ("pressed", ACCENT_INK),
+                ("active", ACCENT_INK),
+            ],
+            bordercolor=[
+                ("disabled", "#e3d7c8"),
+                ("pressed", ACCENT_2),
+                ("active", ACCENT_HOVER),
+            ],
+            lightcolor=[
+                ("disabled", "#e3d7c8"),
+                ("pressed", ACCENT_2),
+                ("active", ACCENT_HOVER),
+            ],
+            darkcolor=[
+                ("disabled", "#e3d7c8"),
+                ("pressed", ACCENT_2),
+                ("active", ACCENT_HOVER),
+            ],
+        )
+
+        style.configure(
+            "Secondary.TButton",
+            background=SURFACE,
+            foreground=INK_2,
+            bordercolor=RULE_STRONG,
+            lightcolor=SURFACE,
+            darkcolor=SURFACE,
+            relief="flat",
+            padding=(16, 10),
+            font=(self.ui_family, 9, "bold"),
+            focuscolor=ACCENT,
+        )
+        style.map(
+            "Secondary.TButton",
+            background=[
+                ("disabled", "#f7f2e9"),
+                ("pressed", SURFACE_ALT),
+                ("active", SURFACE_ALT),
+            ],
+            foreground=[
+                ("disabled", "#b4a795"),
+                ("pressed", INK),
+                ("active", INK),
+            ],
+            bordercolor=[
+                ("disabled", "#e5dccd"),
+                ("pressed", ACCENT),
+                ("active", ACCENT),
+            ],
+            lightcolor=[("pressed", SURFACE_ALT), ("active", SURFACE_ALT)],
+            darkcolor=[("pressed", SURFACE_ALT), ("active", SURFACE_ALT)],
+        )
+
+        style.configure(
+            "Ghost.TButton",
+            background=SURFACE,
+            foreground=ACCENT,
+            bordercolor=ACCENT,
+            lightcolor=SURFACE,
+            darkcolor=SURFACE,
+            relief="flat",
+            padding=(16, 10),
+            font=(self.ui_family, 9, "bold"),
+            focuscolor=ACCENT,
+        )
+        style.map(
+            "Ghost.TButton",
+            background=[
+                ("disabled", SURFACE),
+                ("pressed", ACCENT_SOFT),
+                ("active", ACCENT_SOFT),
+            ],
+            foreground=[
+                ("disabled", MUTED),
+                ("pressed", ACCENT_2),
+                ("active", ACCENT_2),
+            ],
+            bordercolor=[
+                ("disabled", RULE),
+                ("pressed", ACCENT_2),
+                ("active", ACCENT_2),
+            ],
+            lightcolor=[("pressed", ACCENT_SOFT), ("active", ACCENT_SOFT)],
+            darkcolor=[("pressed", ACCENT_SOFT), ("active", ACCENT_SOFT)],
+        )
+
+        style.configure(
+            "Accent.Horizontal.TProgressbar",
+            troughcolor=SURFACE_ALT,
+            background=ACCENT,
+            bordercolor=SURFACE_ALT,
+            lightcolor=ACCENT,
+            darkcolor=ACCENT,
+            thickness=4,
+        )
+
     def _build_ui(self) -> None:
-        # Keep references to every font object: Tkinter deletes a Font when its
-        # Python wrapper is garbage-collected, and widgets only store the name.
-        self.base_font = tkfont.nametofont("TkDefaultFont")
-        self.heading_font = self.base_font.copy()
-        self.heading_font.configure(size=18, weight="bold")
-        self.subtitle_font = self.base_font.copy()
-        self.subtitle_font.configure(size=10)
-        self.log_font = tkfont.nametofont("TkFixedFont").copy()
-        self.log_font.configure(size=9)
+        tk.Frame(self.root, bg=ACCENT, height=4).pack(fill="x")
 
-        root = self.root
-        root.columnconfigure(0, weight=1)
-        root.rowconfigure(0, weight=1)
-
-        outer = ttk.Frame(root, padding=(20, 18))
-        outer.grid(row=0, column=0, sticky="nsew")
+        outer = tk.Frame(self.root, bg=BG, padx=28, pady=24)
+        outer.pack(fill="both", expand=True)
         outer.columnconfigure(0, weight=1)
         outer.rowconfigure(7, weight=1)
 
-        ttk.Label(outer, text="Turn an EPUB into a website", font=self.heading_font).grid(
-            row=0, column=0, sticky="w"
+        self._build_header(outer)
+        self._build_source_card(outer)
+        self._build_output_row(outer)
+        self._build_actions(outer)
+        self._build_progress(outer)
+        self._build_status(outer)
+        self._build_log(outer)
+
+    def _build_header(self, outer: tk.Frame) -> None:
+        header = tk.Frame(outer, bg=BG)
+        header.grid(row=0, column=0, sticky="ew")
+
+        brand = tk.Frame(header, bg=BG)
+        brand.pack(fill="x")
+        mark = tk.Canvas(brand, width=10, height=10, bg=BG, highlightthickness=0)
+        mark.create_oval(1, 1, 9, 9, fill=ACCENT, outline="")
+        mark.pack(side="left", pady=(1, 0))
+        tk.Label(
+            brand,
+            text="epub2web",
+            bg=BG,
+            fg=ACCENT,
+            font=self.font_brand,
+        ).pack(side="left", padx=(8, 0))
+
+        tk.Label(
+            header,
+            text="Turn an EPUB into a website",
+            bg=BG,
+            fg=INK,
+            font=self.font_display,
+            anchor="w",
+        ).pack(fill="x", pady=(14, 0))
+        tk.Label(
+            header,
+            text="A readable web edition, verified against the source.",
+            bg=BG,
+            fg=MUTED,
+            font=self.font_body,
+            anchor="w",
+        ).pack(fill="x", pady=(6, 0))
+
+    def _build_source_card(self, outer: tk.Frame) -> None:
+        card = tk.Frame(outer, bg=SURFACE, highlightbackground=RULE, highlightthickness=1)
+        card.grid(row=1, column=0, sticky="ew", pady=(26, 10))
+        card.columnconfigure(0, weight=1)
+
+        inner = tk.Frame(card, bg=SURFACE, padx=20, pady=16)
+        inner.grid(row=0, column=0, sticky="ew")
+        inner.columnconfigure(1, weight=1)
+
+        eyebrow = tk.Frame(inner, bg=SURFACE)
+        eyebrow.grid(row=0, column=0, columnspan=3, sticky="ew", pady=(0, 12))
+        tk.Label(
+            eyebrow,
+            text="SOURCE",
+            bg=SURFACE,
+            fg=MUTED,
+            font=self.font_brand,
+        ).pack(side="left")
+        tk.Label(
+            eyebrow,
+            text="EPUB 2 / 3",
+            bg=ACCENT_SOFT,
+            fg=ACCENT,
+            font=self.font_brand,
+            padx=8,
+            pady=3,
+        ).pack(side="right")
+
+        icon = tk.Canvas(inner, width=44, height=44, bg=SURFACE, highlightthickness=0)
+        icon.grid(row=1, column=0, rowspan=2, sticky="nw", padx=(0, 14))
+        self._draw_book_icon(icon)
+
+        self.file_name_var = tk.StringVar(value="No EPUB selected")
+        self.file_path_var = tk.StringVar(value="Choose a reflowable EPUB 2/3 file to begin.")
+        tk.Label(
+            inner,
+            textvariable=self.file_name_var,
+            bg=SURFACE,
+            fg=INK,
+            font=self.font_filename,
+            anchor="w",
+            justify="left",
+            wraplength=420,
+        ).grid(row=1, column=1, sticky="ew")
+        self.file_path_label = tk.Label(
+            inner,
+            textvariable=self.file_path_var,
+            bg=SURFACE,
+            fg=MUTED,
+            font=self.font_small,
+            anchor="w",
+            justify="left",
+            wraplength=420,
         )
-        ttk.Label(
-            outer,
-            text="Choose a reflowable EPUB 2/3 book, then convert it to a static site.",
-            font=self.subtitle_font,
-        ).grid(row=1, column=0, sticky="w", pady=(4, 0))
+        self.file_path_label.grid(row=2, column=1, sticky="ew", pady=(3, 0))
 
-        file_frame = ttk.LabelFrame(outer, text="EPUB file", padding=(12, 8))
-        file_frame.grid(row=2, column=0, sticky="ew", pady=(16, 8))
-        file_frame.columnconfigure(0, weight=1)
-
-        self.file_var = tk.StringVar(value="No file selected")
-        self.file_entry = ttk.Entry(file_frame, textvariable=self.file_var, state="readonly")
-        self.file_entry.grid(row=0, column=0, sticky="ew", padx=(0, 8))
         self.choose_button = ttk.Button(
-            file_frame,
+            inner,
             text="Choose EPUB…",
+            style="Ghost.TButton",
             command=self._choose_epub,
         )
-        self.choose_button.grid(row=0, column=1)
+        self.choose_button.grid(row=1, column=2, rowspan=2, sticky="e", padx=(16, 0))
 
-        self.output_var = tk.StringVar(value="Output: choose an EPUB to see the destination.")
-        ttk.Label(
-            outer,
+    @staticmethod
+    def _draw_book_icon(canvas: tk.Canvas) -> None:
+        canvas.create_polygon(
+            8,
+            13,
+            21,
+            10,
+            21,
+            36,
+            8,
+            39,
+            fill=SURFACE,
+            outline=ACCENT,
+            width=2,
+        )
+        canvas.create_polygon(
+            21,
+            10,
+            34,
+            13,
+            34,
+            39,
+            21,
+            36,
+            fill=SURFACE,
+            outline=ACCENT,
+            width=2,
+        )
+        canvas.create_line(21, 10, 21, 36, fill=ACCENT, width=2)
+
+    def _build_output_row(self, outer: tk.Frame) -> None:
+        output = tk.Frame(outer, bg=BG)
+        output.grid(row=2, column=0, sticky="ew", pady=(0, 8))
+        output.columnconfigure(1, weight=1)
+        tk.Label(
+            output,
+            text="OUTPUT",
+            bg=BG,
+            fg=MUTED,
+            font=self.font_brand,
+        ).grid(row=0, column=0, sticky="nw", padx=(2, 12), pady=(2, 0))
+        self.output_var = tk.StringVar(value="The generated site will appear here.")
+        tk.Label(
+            output,
             textvariable=self.output_var,
-            wraplength=680,
+            bg=BG,
+            fg=INK_2,
+            font=self.font_small,
+            anchor="w",
             justify="left",
-        ).grid(row=3, column=0, sticky="w")
+            wraplength=600,
+        ).grid(row=0, column=1, sticky="w")
 
-        actions = ttk.Frame(outer)
-        actions.grid(row=4, column=0, sticky="ew", pady=(14, 6))
-        self.convert_button = ttk.Button(actions, text="Convert", command=self._convert)
+    def _build_actions(self, outer: tk.Frame) -> None:
+        actions = tk.Frame(outer, bg=BG)
+        actions.grid(row=3, column=0, sticky="ew", pady=(12, 0))
+        self.convert_button = ttk.Button(
+            actions,
+            text="Convert",
+            style="Primary.TButton",
+            command=self._convert,
+        )
         self.convert_button.pack(side="left")
-        self.stop_button = ttk.Button(actions, text="Stop", command=self._stop)
+        self.stop_button = ttk.Button(
+            actions,
+            text="Stop",
+            style="Secondary.TButton",
+            command=self._stop,
+        )
         self.stop_button.pack(side="left", padx=(8, 0))
         self.open_button = ttk.Button(
             actions,
             text="Open preview",
+            style="Secondary.TButton",
             command=self._open_preview,
         )
         self.open_button.pack(side="left", padx=(8, 0))
 
-        self.progress = ttk.Progressbar(outer, mode="indeterminate")
-        self.progress.grid(row=5, column=0, sticky="ew", pady=(4, 4))
+    def _build_progress(self, outer: tk.Frame) -> None:
+        self.progress = ttk.Progressbar(
+            outer,
+            style="Accent.Horizontal.TProgressbar",
+            mode="indeterminate",
+        )
+        self.progress.grid(row=4, column=0, sticky="ew", pady=(14, 0))
         self.progress.grid_remove()
 
+    def _build_status(self, outer: tk.Frame) -> None:
+        status = tk.Frame(outer, bg=BG)
+        status.grid(row=5, column=0, sticky="ew", pady=(12, 0))
+        status.columnconfigure(1, weight=1)
+        self.status_dot = tk.Canvas(status, width=10, height=10, bg=BG, highlightthickness=0)
+        self.status_dot.grid(row=0, column=0, sticky="w", pady=(2, 0))
+        self._status_dot_id = self.status_dot.create_oval(1, 1, 9, 9, fill=MUTED, outline="")
         self.status_var = tk.StringVar(value="Choose an EPUB to begin.")
-        ttk.Label(
-            outer,
+        self.status_label = tk.Label(
+            status,
             textvariable=self.status_var,
-            wraplength=680,
+            bg=BG,
+            fg=INK_2,
+            font=self.font_small,
+            anchor="w",
             justify="left",
-        ).grid(row=6, column=0, sticky="w")
+            wraplength=640,
+        )
+        self.status_label.grid(row=0, column=1, sticky="w", padx=(8, 0))
 
-        log_frame = ttk.LabelFrame(outer, text="Build log", padding=(8, 6))
-        log_frame.grid(row=7, column=0, sticky="nsew", pady=(12, 0))
-        log_frame.columnconfigure(0, weight=1)
-        log_frame.rowconfigure(0, weight=1)
+    def _build_log(self, outer: tk.Frame) -> None:
+        log_header = tk.Frame(outer, bg=BG)
+        log_header.grid(row=6, column=0, sticky="ew", pady=(22, 8))
+        tk.Label(
+            log_header,
+            text="BUILD LOG",
+            bg=BG,
+            fg=MUTED,
+            font=self.font_brand,
+        ).pack(side="left")
+        self.log_hint_var = tk.StringVar(value="Fidelity and link checks appear here.")
+        tk.Label(
+            log_header,
+            textvariable=self.log_hint_var,
+            bg=BG,
+            fg=MUTED,
+            font=self.font_small,
+        ).pack(side="right")
+
+        log_card = tk.Frame(
+            outer,
+            bg=LOG_BG,
+            highlightbackground="#2c2822",
+            highlightthickness=1,
+        )
+        log_card.grid(row=7, column=0, sticky="nsew")
+        log_card.columnconfigure(0, weight=1)
+        log_card.rowconfigure(0, weight=1)
 
         self.log = tk.Text(
-            log_frame,
-            height=12,
+            log_card,
+            height=10,
             wrap="word",
             state="disabled",
-            font=self.log_font,
+            font=self.font_mono,
+            bg=LOG_BG,
+            fg=LOG_FG,
+            insertbackground=LOG_FG,
+            selectbackground=ACCENT,
+            selectforeground=ACCENT_INK,
+            relief="flat",
             borderwidth=0,
-            highlightthickness=1,
-            highlightbackground="#d0d0d0",
+            highlightthickness=0,
+            padx=16,
+            pady=14,
+            spacing1=2,
+            spacing3=2,
         )
-        scrollbar = ttk.Scrollbar(log_frame, orient="vertical", command=self.log.yview)
-        self.log.configure(yscrollcommand=scrollbar.set)
         self.log.grid(row=0, column=0, sticky="nsew")
-        scrollbar.grid(row=0, column=1, sticky="ns")
-        self.log.tag_configure("error", foreground="#b3261e")
-        self.log.tag_configure("success", foreground="#1b5e20")
-        self.log.tag_configure("preview", foreground="#0b5cad")
+        self.log.bind("<MouseWheel>", self._on_log_mousewheel)
+        self.log.bind("<Button-4>", lambda _event: self.log.yview_scroll(-3, "units"))
+        self.log.bind("<Button-5>", lambda _event: self.log.yview_scroll(3, "units"))
 
-        self.choose_button.focus_set()
+        self.log_scroll = tk.Canvas(
+            log_card,
+            width=12,
+            bg=LOG_BG,
+            highlightthickness=0,
+            cursor="hand2",
+        )
+        self.log_scroll.grid(row=0, column=1, sticky="ns")
+        self.log_scroll.bind(
+            "<Configure>",
+            lambda _event: self._update_log_scrollbar(
+                self._log_scroll_first, self._log_scroll_last
+            ),
+        )
+        self.log_scroll.bind("<Button-1>", self._scrollbar_press)
+        self.log_scroll.bind("<B1-Motion>", self._scrollbar_drag)
+        self.log_scroll.bind("<ButtonRelease-1>", self._scrollbar_release)
+        self.log_scroll.bind("<MouseWheel>", self._on_log_mousewheel)
+        self.log_scroll.bind("<Button-4>", lambda _event: self.log.yview_scroll(-3, "units"))
+        self.log_scroll.bind("<Button-5>", lambda _event: self.log.yview_scroll(3, "units"))
+        self.log.configure(yscrollcommand=self._update_log_scrollbar)
+
+        self.log.tag_configure("error", foreground=LOG_ERROR)
+        self.log.tag_configure("success", foreground=LOG_SUCCESS)
+        self.log.tag_configure("preview", foreground=LOG_ACCENT)
+        self.log.tag_configure("muted", foreground=LOG_MUTED)
 
     # -- user actions -----------------------------------------------------
     def _choose_epub(self) -> None:
@@ -173,18 +590,71 @@ class Epub2WebApp:
             return
         path = Path(filename)
         if not path.is_file():
-            messagebox.showerror(APP_TITLE, f"File not found:\n{path}")
+            self._show_error(
+                "File not found",
+                "The selected EPUB is no longer available.",
+                str(path),
+            )
             return
 
         self.epub = path
         self._last_dir = path.parent
+        self.controller = None
+        self.preview_url = None
         self.output = default_output_dir(path)
-        self.file_var.set(str(path))
-        self.output_var.set(f"Output: {self.output}")
+        self.file_name_var.set(self._friendly_filename(path))
+        self.file_path_var.set(self._display_path(path))
+        self.output_var.set(self._display_path(self.output))
         self._reset_log()
-        self._append_log(f"Selected {path}")
-        self._set_status("Ready to convert.")
+        self._append_log(f"Selected {self._friendly_filename(path)}", tag="muted")
+        self._set_status("Ready to convert.", "ready")
+        self._set_log_hint("Fidelity and link checks appear here.")
         self._refresh_controls()
+        threading.Thread(
+            target=self._load_book_info,
+            args=(path,),
+            daemon=True,
+            name="epub2web-metadata",
+        ).start()
+
+    @staticmethod
+    def _friendly_filename(path: Path) -> str:
+        name = path.stem.strip()
+        if " -- " in name:
+            name = name.split(" -- ", 1)[0]
+        name = name.replace("_", " ").strip()
+        return name or path.name
+
+    @staticmethod
+    def _display_path(path: Path, name_limit: int = 44) -> str:
+        try:
+            parent = "~" + os.sep + str(path.parent.relative_to(Path.home()))
+        except ValueError:
+            parent = str(path.parent)
+        name = path.name
+        if len(name) > name_limit:
+            name = name[: name_limit - 1].rstrip() + "…"
+        return f"{parent.rstrip(os.sep + '/')}{os.sep}{name}"
+
+    def _load_book_info(self, path: Path) -> None:
+        try:
+            from .cli import detect
+
+            info = detect(path)
+        except Exception:
+            return
+        self.book_info_queue.put((path, info))
+
+    def _apply_book_info(self, path: Path, info: dict) -> None:
+        if self.epub != path or self.controller is not None:
+            return
+        title = str(info.get("title") or "").strip()
+        if not title:
+            return
+        self.file_name_var.set(title)
+        self.output = default_output_dir(path, title=title)
+        self.output_var.set(self._display_path(self.output))
+        self._set_status("Ready to convert.", "ready")
 
     def _convert(self) -> None:
         if self.epub is None or self.output is None or self._building:
@@ -195,7 +665,7 @@ class Epub2WebApp:
         try:
             self.output.parent.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            messagebox.showerror(APP_TITLE, f"Could not create the output folder:\n{exc}")
+            self._show_error("Could not create the output folder", str(exc))
             return
 
         self.preview_url = None
@@ -203,9 +673,10 @@ class Epub2WebApp:
         self._preview_running = False
         self._auto_open_preview = False
         self._refresh_controls()
-        self._set_status("Converting…")
+        self._set_status("Converting…", "accent")
+        self._set_log_hint("Running fidelity and link checks…")
         self._reset_log()
-        self._append_log(f"Converting {self.epub.name} …")
+        self._append_log(f"Converting {self.file_name_var.get()} …")
 
         try:
             controller = BuildController(
@@ -219,14 +690,16 @@ class Epub2WebApp:
         except Exception as exc:
             self._building = False
             self._refresh_controls()
-            self._set_status("Could not start conversion.")
+            self._set_status("Could not start conversion.", "error")
+            self._set_log_hint("Build failed. See the error below.")
             self._append_log(f"error: {exc}", tag="error")
-            messagebox.showerror(APP_TITLE, f"Could not start conversion:\n{exc}")
+            self._show_error("Could not start conversion", str(exc))
 
     def _stop(self) -> None:
         if self.controller is None:
             return
-        self._set_status("Stopping…")
+        self._set_status("Stopping…", "accent")
+        self._set_log_hint("Stopping the preview server…")
         self.stop_button.configure(state="disabled")
         self.controller.stop(timeout=5.0)
         # The controller emits a "stopped" event from its reader thread; the
@@ -238,12 +711,14 @@ class Epub2WebApp:
         try:
             opened = webbrowser.open(self.preview_url)
         except Exception as exc:
-            messagebox.showerror(APP_TITLE, f"Could not open the browser:\n{exc}")
+            self._show_error("Could not open the browser", str(exc))
             return
         if not opened:
-            messagebox.showinfo(
-                APP_TITLE,
-                f"Open this address in your browser:\n\n{self.preview_url}",
+            self._show_info(
+                "Open preview",
+                "Open this address in your browser:",
+                self.preview_url,
+                "PREVIEW ADDRESS",
             )
 
     def _open_preview_async(self) -> None:
@@ -261,6 +736,12 @@ class Epub2WebApp:
     def _poll(self) -> None:
         try:
             while True:
+                path, info = self.book_info_queue.get_nowait()
+                self._apply_book_info(path, info)
+        except queue.Empty:
+            pass
+        try:
+            while True:
                 self._handle_event(self.events.get_nowait())
         except queue.Empty:
             pass
@@ -269,16 +750,12 @@ class Epub2WebApp:
 
     def _handle_event(self, event: BuildEvent) -> None:
         if event.kind == "log":
-            tag = None
-            if event.message.startswith("error:") or "FAIL" in event.message:
-                tag = "error"
-            elif "PASS" in event.message:
-                tag = "success"
-            self._append_log(event.message, tag=tag)
+            self._append_log(event.message, tag=self._log_tag(event.message))
             return
 
         if event.kind == "site":
-            self._set_status("Site built. Starting preview…")
+            self._set_status("Site built. Starting preview…", "accent")
+            self._set_log_hint("Starting the local preview server…")
             return
 
         if event.kind == "preview":
@@ -287,13 +764,14 @@ class Epub2WebApp:
             self._preview_running = bool(self.preview_url)
             self._refresh_controls()
             if self.preview_url:
-                self._set_status(f"Preview running at {self.preview_url}")
+                self._set_status(f"Preview running at {self.preview_url}", "success")
+                self._set_log_hint("Preview running. Use Stop to close the local server.")
                 self._append_log("Preview server started.", tag="preview")
                 if not self._auto_open_preview:
                     self._auto_open_preview = True
                     self.root.after(100, self._open_preview_async)
             else:
-                self._set_status("Preview unavailable.")
+                self._set_status("Preview unavailable.", "error")
             return
 
         if event.kind == "success":
@@ -306,11 +784,16 @@ class Epub2WebApp:
             )
             self._refresh_controls()
             if self.preview_url:
-                self._set_status(f"Preview running at {self.preview_url}")
+                self._set_status(f"Preview running at {self.preview_url}", "success")
+                self._set_log_hint("Preview running. Use Stop to close the local server.")
             else:
                 site = str(event.data.get("site") or "")
-                self._set_status("Conversion complete." + (f" Site: {site}" if site else ""))
-                self._append_log("Conversion complete.", tag="success")
+                self._set_status("Conversion complete.", "success")
+                self._set_log_hint("All checks passed.")
+                self._append_log(
+                    "Conversion complete." + (f" Site: {site}" if site else ""),
+                    tag="success",
+                )
             return
 
         if event.kind == "failure":
@@ -319,13 +802,16 @@ class Epub2WebApp:
             self.preview_url = None
             self._refresh_controls()
             message = event.message or "Conversion failed."
-            self._set_status(message)
+            self._set_status(message, "error")
+            self._set_log_hint("Build failed. The support report is ready.")
             self._append_log(message, tag="error")
             report = str(event.data.get("report") or "")
-            detail = message
-            if report:
-                detail += f"\n\nSupport report:\n{report}"
-            messagebox.showerror(APP_TITLE, detail)
+            self._show_error(
+                "Build failed",
+                message,
+                f"Support report:\n{report}" if report else "",
+                "SUPPORT REPORT" if report else "DETAILS",
+            )
             return
 
         if event.kind == "stopped":
@@ -333,8 +819,17 @@ class Epub2WebApp:
             self._preview_running = False
             self.preview_url = None
             self._refresh_controls()
-            self._set_status("Stopped.")
-            self._append_log(event.message or "Stopped.")
+            self._set_status("Stopped.", "muted")
+            self._set_log_hint("Fidelity and link checks appear here.")
+
+    def _log_tag(self, message: str) -> str | None:
+        if message.startswith(("Report:", "Log:")):
+            return "muted"
+        if message.startswith("error:") or "FAIL" in message:
+            return "error"
+        if "PASS" in message:
+            return "success"
+        return None
 
     def _refresh_controls(self) -> None:
         locked = self._building or self._preview_running
@@ -360,6 +855,81 @@ class Epub2WebApp:
         self.log.configure(state="normal")
         self.log.delete("1.0", "end")
         self.log.configure(state="disabled")
+        self._update_log_scrollbar("0.0", "1.0")
+
+    def _update_log_scrollbar(self, first: str | float, last: str | float) -> None:
+        self._log_scroll_first = float(first)
+        self._log_scroll_last = float(last)
+        self.log_scroll.delete("scrollbar")
+
+        if self._log_scroll_first <= 0.0 and self._log_scroll_last >= 1.0:
+            self._log_thumb_top = 0.0
+            self._log_thumb_bottom = 0.0
+            return
+        height = self.log_scroll.winfo_height()
+        if height <= 1:
+            return
+
+        pad = 4.0
+        usable = max(1.0, height - 2 * pad)
+        top = pad + self._log_scroll_first * usable
+        bottom = pad + self._log_scroll_last * usable
+        if bottom - top < 26:
+            bottom = min(height - pad, top + 26)
+            top = max(pad, bottom - 26)
+        self._log_thumb_top = top
+        self._log_thumb_bottom = bottom
+        self.log_scroll.create_line(
+            6,
+            pad,
+            6,
+            height - pad,
+            width=6,
+            fill="#2a2620",
+            capstyle="round",
+            tags="scrollbar",
+        )
+        self.log_scroll.create_line(
+            6,
+            top,
+            6,
+            bottom,
+            width=6,
+            fill="#5f5548",
+            activefill="#8a7d6b",
+            capstyle="round",
+            tags="scrollbar",
+        )
+
+    def _scrollbar_press(self, event: tk.Event) -> None:
+        if self._log_thumb_top <= 0.0:
+            return
+        if self._log_thumb_top <= event.y <= self._log_thumb_bottom:
+            self._log_dragging = True
+            self._log_drag_start = event.y
+            self._log_drag_first = self.log.yview()[0]
+        elif event.y < self._log_thumb_top:
+            self.log.yview_scroll(-1, "pages")
+        else:
+            self.log.yview_scroll(1, "pages")
+
+    def _scrollbar_drag(self, event: tk.Event) -> None:
+        if not self._log_dragging:
+            return
+        usable = max(1, self.log_scroll.winfo_height() - 8)
+        target = self._log_drag_first + (event.y - self._log_drag_start) / usable
+        self.log.yview_moveto(max(0.0, min(1.0, target)))
+
+    def _scrollbar_release(self, _event: tk.Event) -> None:
+        self._log_dragging = False
+
+    def _on_log_mousewheel(self, event: tk.Event) -> str:
+        if event.delta:
+            steps = int(-event.delta / 120)
+            if steps == 0:
+                steps = -1 if event.delta > 0 else 1
+            self.log.yview_scroll(steps, "units")
+        return "break"
 
     def _append_log(self, text: str, *, tag: str | None = None) -> None:
         self.log.configure(state="normal")
@@ -378,8 +948,152 @@ class Epub2WebApp:
             self.log.delete("1.0", f"{line_count - LOG_LINE_LIMIT}.0")
             self.log.configure(state="disabled")
 
-    def _set_status(self, text: str) -> None:
+    def _set_status(self, text: str, tone: str = "muted") -> None:
+        dot, foreground = {
+            "muted": (MUTED, INK_2),
+            "ready": (SUCCESS, INK_2),
+            "accent": (ACCENT, INK_2),
+            "success": (SUCCESS, SUCCESS),
+            "error": (DANGER, DANGER),
+        }.get(tone, (MUTED, INK_2))
         self.status_var.set(text)
+        self.status_dot.itemconfigure(self._status_dot_id, fill=dot)
+        self.status_label.configure(fg=foreground)
+
+    def _set_log_hint(self, text: str) -> None:
+        self.log_hint_var.set(text)
+
+    def _show_error(
+        self,
+        title: str,
+        message: str,
+        detail: str = "",
+        detail_label: str = "DETAILS",
+    ) -> None:
+        self._show_dialog(
+            title,
+            message,
+            detail,
+            detail_label,
+            bar_color=DANGER,
+        )
+
+    def _show_info(
+        self,
+        title: str,
+        message: str,
+        detail: str = "",
+        detail_label: str = "DETAILS",
+    ) -> None:
+        self._show_dialog(
+            title,
+            message,
+            detail,
+            detail_label,
+            bar_color=SUCCESS,
+        )
+
+    def _show_dialog(
+        self,
+        title: str,
+        message: str,
+        detail: str = "",
+        detail_label: str = "DETAILS",
+        *,
+        bar_color: str = DANGER,
+    ) -> None:
+        dialog = tk.Toplevel(self.root)
+        dialog.title(f"{APP_TITLE} — {title}")
+        dialog.transient(self.root)
+        dialog.resizable(False, False)
+        dialog.configure(bg=BG)
+        if self._icon_image is not None:
+            with contextlib.suppress(tk.TclError):
+                dialog.iconphoto(True, self._icon_image)
+
+        def close() -> None:
+            with contextlib.suppress(tk.TclError):
+                dialog.grab_release()
+            with contextlib.suppress(tk.TclError):
+                dialog.destroy()
+
+        tk.Frame(dialog, bg=bar_color, height=4).pack(fill="x")
+        outer = tk.Frame(dialog, bg=BG, padx=18, pady=18)
+        outer.pack(fill="both", expand=True)
+        card = tk.Frame(
+            outer,
+            bg=SURFACE,
+            highlightbackground=RULE,
+            highlightthickness=1,
+        )
+        card.pack(fill="both", expand=True)
+        inner = tk.Frame(card, bg=SURFACE, padx=22, pady=20)
+        inner.pack(fill="both", expand=True)
+
+        tk.Label(
+            inner,
+            text=title,
+            bg=SURFACE,
+            fg=INK,
+            font=self.font_dialog,
+            anchor="w",
+            justify="left",
+            wraplength=430,
+        ).pack(fill="x")
+        tk.Label(
+            inner,
+            text=message,
+            bg=SURFACE,
+            fg=INK_2,
+            font=self.font_body,
+            anchor="w",
+            justify="left",
+            wraplength=430,
+        ).pack(fill="x", pady=(8, 0))
+
+        if detail:
+            tk.Label(
+                inner,
+                text=detail_label,
+                bg=SURFACE,
+                fg=MUTED,
+                font=self.font_brand,
+                anchor="w",
+            ).pack(fill="x", pady=(16, 6))
+            box = tk.Text(
+                inner,
+                height=3,
+                wrap="word",
+                bg=SURFACE_ALT,
+                fg=INK_2,
+                font=self.font_mono,
+                relief="flat",
+                borderwidth=0,
+                highlightthickness=1,
+                highlightbackground=RULE,
+                padx=10,
+                pady=8,
+            )
+            box.insert("1.0", detail)
+            box.configure(state="disabled")
+            box.pack(fill="x")
+
+        actions = tk.Frame(inner, bg=SURFACE)
+        actions.pack(fill="x", pady=(18, 0))
+        ok = ttk.Button(actions, text="OK", style="Primary.TButton", command=close)
+        ok.pack(side="right")
+
+        dialog.bind("<Escape>", lambda _event: close())
+        dialog.protocol("WM_DELETE_WINDOW", close)
+        dialog.update_idletasks()
+        width = dialog.winfo_reqwidth()
+        height = dialog.winfo_reqheight()
+        x = self.root.winfo_rootx() + max(0, (self.root.winfo_width() - width) // 2)
+        y = self.root.winfo_rooty() + max(0, (self.root.winfo_height() - height) // 3)
+        dialog.geometry(f"+{x}+{y}")
+        dialog.grab_set()
+        ok.focus_set()
+        self.root.wait_window(dialog)
 
     # -- shutdown ---------------------------------------------------------
     def _on_close(self) -> None:

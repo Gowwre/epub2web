@@ -109,6 +109,13 @@ def test_default_output_dir_falls_back_to_home(tmp_path: Path, monkeypatch):
     assert default_output_dir("My Book.epub") == (tmp_path / "epub2web" / "My Book-site")
 
 
+def test_default_output_dir_can_use_metadata_title(tmp_path: Path, monkeypatch):
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+    assert default_output_dir("book.epub", title="Vol. 1") == (
+        tmp_path / "epub2web" / "Vol. 1-site"
+    )
+
+
 def test_default_output_dir_sanitizes_unsafe_names(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
     assert default_output_dir("A<B>C.epub") == (tmp_path / "epub2web" / "A-B-C-site")

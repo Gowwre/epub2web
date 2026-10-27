@@ -66,9 +66,10 @@ def documents_dir() -> Path:
     return documents if documents.is_dir() else Path.home()
 
 
-def default_output_dir(epub: str | Path) -> Path:
+def default_output_dir(epub: str | Path, *, title: str = "") -> Path:
     """Choose a stable, user-visible destination for a book's site."""
-    name = unicodedata.normalize("NFC", Path(epub).stem).strip()
+    name = (title or Path(epub).stem).strip()
+    name = unicodedata.normalize("NFC", name)
     name = FOLDER_UNSAFE_RE.sub("-", name)
     name = re.sub(r"\s+", " ", name)
     name = re.sub(r"-{2,}", "-", name).strip(" .-")
