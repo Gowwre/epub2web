@@ -8,7 +8,11 @@ All notable, user-facing changes are documented here. The format follows
 
 ### Added
 
-- Add a public Astro landing site and download page, with a first-launch FAQ for Windows SmartScreen and macOS Gatekeeper warnings. Downloads link to the latest GitHub release. The Pages workflow publishes the landing page at the project root and moves the live demo to `/demo/`.
+- Add a public Astro landing site and download page, with a first-launch FAQ for Windows SmartScreen and macOS Gatekeeper warnings. The Pages workflow publishes the landing page at the project root and moves the live demo to `/demo/`.
+
+### Changed
+
+- Download buttons now point directly at the current release’s Windows, macOS, and Linux files instead of the GitHub release page. The Pages build resolves the latest assets, and a new release refreshes the download page automatically.
 
 ## 0.2.0 - 2026-10-28
 

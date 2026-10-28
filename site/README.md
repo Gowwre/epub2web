@@ -52,11 +52,23 @@ or file in `public/`.
 
 ## Content
 
-The download links intentionally point at
-[the latest GitHub release](https://github.com/Gowwre/epub2web/releases/latest)
-rather than hard-coding asset filenames, since release assets include the
-version number. The first-launch FAQ mirrors the instructions in the project
-README and `docs/gui.md`.
+The download page resolves the latest release at build time and links directly
+to the Windows, macOS, and Linux installer files. It never sends readers to a
+release page to find a download. The Pages workflow runs the resolver before
+each build, and the release workflow dispatches Pages after publishing a new
+release.
+
+Refresh the committed fallback data locally with:
+
+```bash
+npm run update-release
+```
+
+This writes `src/data/latest-release.json` from the latest GitHub release. The
+script fails if any expected platform asset or `SHA256SUMS.txt` is missing.
+
+The first-launch FAQ mirrors the instructions in the project README and
+`docs/gui.md`.
 
 The screenshots come from `docs/` at the repository root and are checked in here
 as optimized WebP files. The social card is `public/og.png`; rebuild it if the

@@ -61,9 +61,11 @@ npm run dev
 npm run build
 ```
 
-The site self-hosts the reader fonts and the screenshots in `docs/`. All
-download calls-to-action point at the latest GitHub release rather than
-hard-coded asset names, because release assets include the version number.
+The site self-hosts the reader fonts and the screenshots in `docs/`. Download
+buttons resolve the latest GitHub release to direct asset URLs at build time.
+The committed `site/src/data/latest-release.json` is refreshed by
+`npm run update-release` and before every Pages build. The release workflow
+dispatches Pages after publishing a release so the direct links stay current.
 Keep the first-launch FAQ in sync with the README when warning behavior
 changes.
 

@@ -1,16 +1,25 @@
 ---
 import BaseLayout from "../layouts/BaseLayout.astro";
 import Icon from "../components/Icon.astro";
+import release from "../data/latest-release.json";
 import {
   DEMO_URL,
   FIRST_LAUNCH_URL,
   GITHUB_URL,
   GUI_DOCS_URL,
-  LATEST_RELEASE_URL,
   README_URL,
   RELEASES_URL,
   withBase,
 } from "../consts";
+
+function formatSize(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+const published = new Intl.DateTimeFormat("en", {
+  dateStyle: "medium",
+  timeZone: "UTC",
+}).format(new Date(release.publishedAt));
 
 const platforms = [
   {
@@ -19,6 +28,7 @@ const platforms = [
     file: ".exe",
     hint: "Double-click to start.",
     icon: "windows",
+    download: release.downloads.windows,
   },
   {
     name: "macOS",
@@ -26,6 +36,7 @@ const platforms = [
     file: ".dmg",
     hint: "Most Macs since late 2020.",
     icon: "apple",
+    download: release.downloads.macosArm64,
   },
   {
     name: "macOS",
@@ -33,6 +44,7 @@ const platforms = [
     file: ".dmg",
     hint: "For older Macs.",
     icon: "apple",
+    download: release.downloads.macosX64,
   },
   {
     name: "Linux",
@@ -40,13 +52,14 @@ const platforms = [
     file: ".AppImage",
     hint: "Make executable, then run.",
     icon: "terminal",
+    download: release.downloads.linux,
   },
 ] as const;
 ---
 
 <BaseLayout
   title="Download epub2web — Windows, macOS, and Linux"
-  description="Download the epub2web desktop app from the official GitHub release. A self-contained EPUB-to-website converter for Windows, macOS, and Linux."
+  description="Download the epub2web desktop app directly from GitHub. A self-contained EPUB-to-website converter for Windows, macOS, and Linux."
   bodyClass="page-download"
 >
   <section class="download-hero">
@@ -63,32 +76,22 @@ const platforms = [
           EPUB into a reading website.
         </p>
         <div class="download-hero__actions">
-          <a
-            class="btn btn--primary btn--large"
-            href={LATEST_RELEASE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Icon name="github" size={18} />
-            Open the latest release
+          <a class="btn btn--primary btn--large" href={release.downloads.windows.url}>
+            <Icon name="download" size={18} />
+            Download for Windows
           </a>
-          <a
-            class="btn btn--quiet btn--large"
-            href={RELEASES_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            All releases
-            <Icon name="arrow-up-right" size={15} class="btn-arrow" />
+          <a class="btn btn--quiet btn--large" href="#platforms">
+            All platforms
+            <Icon name="arrow-down" size={15} />
           </a>
         </div>
         <p class="download-hero__meta">
-          Always points to the newest GitHub release · Windows, macOS, Linux ·
-          MIT licensed
+          Version {release.version} · Direct file downloads · Windows, macOS,
+          Linux · MIT licensed
         </p>
       </div>
 
-      <aside class="release-card" aria-label="Latest release">
+      <aside class="release-card" aria-label={`epub2web ${release.version} release information`}>
         <div class="release-card__head">
           <span class="release-card__status">
             <span class="release-card__dot" aria-hidden="true"></span>
@@ -99,50 +102,55 @@ const platforms = [
             GitHub
           </span>
         </div>
-        <p class="release-card__title">epub2web desktop app</p>
+        <p class="release-card__title">epub2web {release.version}</p>
         <p class="release-card__desc">
           A self-contained build of the converter and desktop interface.
         </p>
         <dl class="release-card__specs">
           <div>
-            <dt>Includes</dt>
-            <dd>Python · Tk · reader theme</dd>
+            <dt>Version</dt>
+            <dd>{release.version}</dd>
+          </div>
+          <div>
+            <dt>Published</dt>
+            <dd>{published}</dd>
+          </div>
+          <div>
+            <dt>Platforms</dt>
+            <dd>Windows · macOS · Linux</dd>
           </div>
           <div>
             <dt>Install</dt>
             <dd>None</dd>
           </div>
-          <div>
-            <dt>Price</dt>
-            <dd>Free</dd>
-          </div>
         </dl>
         <a
-          class="btn btn--primary release-card__button"
-          href={LATEST_RELEASE_URL}
+          class="btn btn--quiet release-card__button"
+          href={release.releaseUrl}
           target="_blank"
           rel="noopener noreferrer"
         >
-          Get it from GitHub
+          Release notes
           <Icon name="arrow-up-right" size={15} />
         </a>
         <p class="release-card__note">
-          SHA-256 checksums are published with each file on the release page.
+          Direct download links for every platform are below.{" "}
+          <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer">All releases</a>.
         </p>
       </aside>
     </div>
   </section>
 
-  <section class="section platforms" aria-labelledby="platforms-title">
+  <section class="section platforms" id="platforms" aria-labelledby="platforms-title">
     <div class="container">
       <div class="section-heading">
         <div>
           <p class="eyebrow">Choose your computer</p>
-          <h2 id="platforms-title">Four downloads, <span class="accent">one release.</span></h2>
+          <h2 id="platforms-title">Four files, <span class="accent">ready to download.</span></h2>
         </div>
         <p class="lede">
-          Every button opens the same official GitHub release. Pick the file that
-          matches your computer; version numbers are in the filenames.
+          Every button downloads the matching installer directly from GitHub. No
+          release page in between; version numbers are in the filenames.
         </p>
       </div>
 
@@ -151,22 +159,25 @@ const platforms = [
           platforms.map((platform) => (
             <a
               class="platform-card"
-              href={LATEST_RELEASE_URL}
-              target="_blank"
-              rel="noopener noreferrer"
+              href={platform.download.url}
+              title={`${platform.download.filename} (${formatSize(platform.download.size)})`}
             >
               <span class="sr-only">Download epub2web for </span>
               <span class="platform-card__top">
                 <span class="platform-card__icon">
                   <Icon name={platform.icon} size={20} />
                 </span>
-                <Icon name="arrow-up-right" size={16} class="platform-card__arrow" />
+                <Icon name="download" size={16} class="platform-card__arrow" />
               </span>
               <h3>{platform.name}</h3>
               <p class="platform-card__variant">{platform.variant}</p>
-              <p class="platform-card__file">{platform.file}</p>
+              <p class="platform-card__file">
+                {platform.file} · {formatSize(platform.download.size)}
+              </p>
               <p class="platform-card__hint">{platform.hint}</p>
-              <span class="sr-only">Download from GitHub Releases (opens in a new tab).</span>
+              <span class="sr-only">
+                File: {platform.download.filename}. Download starts immediately.
+              </span>
             </a>
           ))
         }
@@ -175,7 +186,8 @@ const platforms = [
       <p class="platforms__note">
         Linux AppImages may need to be made executable first: run{" "}
         <code>chmod +x epub2web-gui-*.AppImage</code>. If FUSE is unavailable, use{" "}
-        <code>--appimage-extract-and-run</code>.
+        <code>--appimage-extract-and-run</code>. Verify any file against{" "}
+        <a href={release.checksums.url}>SHA256SUMS.txt</a>.
       </p>
     </div>
   </section>
@@ -239,8 +251,8 @@ const platforms = [
         <Icon name="alert" size={15} />
         <span>
           Verify downloads against the{" "}
-          <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer">SHA-256 checksums</a>{" "}
-          on the release page. More detail is in the{" "}
+          <a href={release.checksums.url}>SHA256SUMS.txt</a>{" "}
+          file. More detail is in the{" "}
           <a href={FIRST_LAUNCH_URL} target="_blank" rel="noopener noreferrer">README</a>{" "}
           and the <a href={GUI_DOCS_URL} target="_blank" rel="noopener noreferrer">desktop app docs</a>.
         </span>

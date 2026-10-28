@@ -1,0 +1,34 @@
+{
+  "tagName": "v0.2.0",
+  "version": "0.2.0",
+  "name": "epub2web 0.2.0",
+  "publishedAt": "2026-10-28T05:43:16Z",
+  "releaseUrl": "https://github.com/Gowwre/epub2web/releases/tag/v0.2.0",
+  "checksums": {
+    "filename": "SHA256SUMS.txt",
+    "size": 1523,
+    "url": "https://github.com/Gowwre/epub2web/releases/download/v0.2.0/SHA256SUMS.txt"
+  },
+  "downloads": {
+    "windows": {
+      "filename": "epub2web-gui-0.2.0-windows-x64.exe",
+      "size": 24750139,
+      "url": "https://github.com/Gowwre/epub2web/releases/download/v0.2.0/epub2web-gui-0.2.0-windows-x64.exe"
+    },
+    "macosArm64": {
+      "filename": "epub2web-gui-0.2.0-macos-arm64.dmg",
+      "size": 24464639,
+      "url": "https://github.com/Gowwre/epub2web/releases/download/v0.2.0/epub2web-gui-0.2.0-macos-arm64.dmg"
+    },
+    "macosX64": {
+      "filename": "epub2web-gui-0.2.0-macos-x64.dmg",
+      "size": 26187579,
+      "url": "https://github.com/Gowwre/epub2web/releases/download/v0.2.0/epub2web-gui-0.2.0-macos-x64.dmg"
+    },
+    "linux": {
+      "filename": "epub2web-gui-0.2.0-linux-x86_64.AppImage",
+      "size": 24091128,
+      "url": "https://github.com/Gowwre/epub2web/releases/download/v0.2.0/epub2web-gui-0.2.0-linux-x86_64.AppImage"
+    }
+  }
+}
