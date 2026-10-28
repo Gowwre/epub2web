@@ -132,14 +132,26 @@ triggers it through the `release: published` event.
 
 ### Distribution caveats
 
-The portable builds are not code-signed or notarized yet:
+The portable builds are not code-signed or notarized yet, so Windows and macOS
+will warn on first launch:
 
-- Windows SmartScreen warns on first launch; users choose **More info → Run
-  anyway**.
-- macOS Gatekeeper blocks unsigned apps; users can right-click **Open**, or run
+- **Windows:** SmartScreen shows “Windows protected your PC”. Click **More
+  info**, then **Run anyway**. Managed devices may block unsigned apps by
+  policy; ask the administrator rather than disabling Smart App Control.
+- **macOS 15 (Sequoia) and later:** attempt to open the app, click **Done**,
+  then go to **System Settings → Privacy & Security → Security → Open
+  Anyway** and authenticate. The right-click bypass no longer works on these
+  versions.
+- **macOS 14 and earlier:** right-click the app, choose **Open**, then confirm.
+- **Advanced macOS workaround:** remove the quarantine flag from an app
+  downloaded from the official release:
   `xattr -dr com.apple.quarantine /Applications/epub2web-gui.app`.
-- Sign the Windows executable and notarize the macOS `.app`/`.dmg` before a
-  wide public release. Those credentials are not stored in the repository.
+
+Only bypass the warning for a build downloaded from the official GitHub
+release, and verify its SHA-256 checksum when possible. Sign the Windows
+executable and notarize the macOS `.app`/`.dmg` before a wide public release;
+those credentials are not stored in the repository. This work is tracked in
+[issue #2](https://github.com/Gowwre/epub2web/issues/2).
 
 Portable means "no installation and no Python required". Generated sites still
 go to `~/Documents/epub2web/<book>-site`, and logs still go to the platform

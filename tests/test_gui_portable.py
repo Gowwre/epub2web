@@ -93,8 +93,13 @@ def test_portable_readme_includes_platform_specific_guidance(build_gui):
     windows = build_gui._portable_readme("1.2.3", "windows", "x64")
     macos = build_gui._portable_readme("1.2.3", "macos", "arm64")
     linux = build_gui._portable_readme("1.2.3", "linux", "x86_64")
-    assert "SmartScreen" in windows
+    assert "Windows protected your PC" in windows
+    assert "More info" in windows
+    assert "Run anyway" in windows
     assert "Applications" in macos
+    assert "Open Anyway" in macos
+    assert "macOS 14" in macos
+    assert "xattr -dr com.apple.quarantine" in macos
     assert "appimage-extract-and-run" in linux
 
 

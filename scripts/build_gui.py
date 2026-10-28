@@ -428,16 +428,31 @@ def _copy_license_files(destination: Path, license_bundle: Path) -> None:
 def _portable_readme(version: str, name: str, arch: str) -> str:
     if name == "windows":
         run = (
-            "Double-click epub2web-gui-*.exe. Windows SmartScreen may warn because\n"
-            "this build is not code-signed yet: choose More info, then Run anyway.\n"
+            "Double-click epub2web-gui-*.exe.\n"
+            "If Windows protected your PC appears, click More info, then Run anyway.\n"
+            "Managed workplace or school PCs may block unsigned apps; ask your\n"
+            "administrator rather than disabling security features.\n"
         )
     elif name == "macos":
         run = (
             "Open the .dmg (or unzip the .zip) and drag epub2web-gui.app to\n"
-            "Applications. Because the build is not notarized yet, macOS may\n"
-            "block the first launch: right-click the app, choose Open, then\n"
-            "confirm. Or run:\n"
-            "  xattr -dr com.apple.quarantine /Applications/epub2web-gui.app\n"
+            "Applications. This build is not notarized by Apple, so macOS will\n"
+            "warn on first launch.\n"
+            "\n"
+            "macOS 15 (Sequoia) and later:\n"
+            "  1. Try to open the app, then click Done.\n"
+            "  2. Open System Settings > Privacy & Security.\n"
+            "  3. Scroll to Security, click Open Anyway, then authenticate.\n"
+            "  4. Open the app again.\n"
+            "The Open Anyway button is available for about an hour after the first\n"
+            "attempt. Right-clicking and choosing Open no longer bypasses this\n"
+            "warning on macOS 15 and later.\n"
+            "\n"
+            "macOS 14 and earlier:\n"
+            "  Right-click the app, choose Open, then click Open in the dialog.\n"
+            "\n"
+            "Advanced Terminal workaround for an app downloaded from the official\n"
+            "release: xattr -dr com.apple.quarantine /Applications/epub2web-gui.app\n"
         )
     else:
         run = (
@@ -470,8 +485,8 @@ the downloaded file or app folder leaves your books and logs intact.
 License notices are in LICENSE, THIRD_PARTY_NOTICES.md, and
 THIRD_PARTY_LICENSES-{name}-{arch}.txt.
 
-The command-line edition is still available separately with pip:
-  pip install epub2web
+The command-line edition is available from GitHub for now:
+  pipx install git+https://github.com/Gowwre/epub2web
   epub2web book.epub --serve
 """
 

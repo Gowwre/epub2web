@@ -47,15 +47,63 @@ have a Documents folder). The preview stays running while you read; use
 The app shows live progress while it works, down to individual pages and
 images, so a long book does not look frozen.
 
-### First launch
+### First launch: security warnings are expected
 
-The builds do not have a paid code-signing certificate yet, so your computer
-may ask for confirmation:
+The desktop builds do not have paid code-signing certificates yet. Windows and
+macOS may show a security warning the first time you open the app. This is
+expected, and it does not mean the download was tampered with — but only
+continue if you downloaded it from the
+[official releases page](https://github.com/Gowwre/epub2web/releases).
 
-- **Windows:** if SmartScreen appears, choose **More info → Run anyway**.
-- **macOS:** right-click the app, choose **Open**, then confirm.
-- **Linux:** if the AppImage does not start, make it executable first, or run
-  it with `--appimage-extract-and-run`.
+| Your computer | What you may see | What to do |
+|---|---|---|
+| Windows | “Windows protected your PC” | Click **More info**, then **Run anyway**. |
+| macOS 15 (Sequoia) and later | Apple cannot verify the app | Try to open it, click **Done**, then use **System Settings → Privacy & Security → Security → Open Anyway**. |
+| macOS 14 and earlier | Apple cannot verify the app | Right-click the app, choose **Open**, then click **Open** in the dialog. |
+| Linux | Usually no warning | If the AppImage does not start, make it executable or try `--appimage-extract-and-run`. |
+
+**Windows details**
+
+1. Double-click the `.exe`.
+2. If **Windows protected your PC** appears, click **More info**.
+3. Click **Run anyway**.
+
+If your PC is managed by a workplace or school, SmartScreen or Smart App
+Control may block unsigned apps completely. Ask your administrator rather than
+disabling security features. If Windows shows a “file came from another
+computer” message, open the file's properties, select **Unblock**, and try
+again. You can verify the download against the SHA-256 checksum on the release
+page.
+
+**macOS 15 and later details**
+
+1. Open the `.dmg` and drag the app to **Applications**.
+2. Try to open the app once. macOS blocks it.
+3. Click **Done**.
+4. Open **System Settings → Privacy & Security**.
+5. Scroll down to **Security**, click **Open Anyway**, then authenticate.
+6. Open the app again.
+
+The **Open Anyway** button is available for about an hour after you try to open
+the app. On macOS 15 and later, right-clicking the app and choosing **Open** no
+longer bypasses this warning.
+
+**macOS 14 and earlier details**
+
+1. Open the `.dmg` and drag the app to **Applications**.
+2. Right-click the app, choose **Open**, then click **Open** in the dialog.
+
+**Advanced macOS workaround**
+
+If you are comfortable with Terminal, you can remove the quarantine flag from
+an app downloaded from the official release:
+
+```bash
+xattr -dr com.apple.quarantine /Applications/epub2web-gui.app
+```
+
+Adjust the path if the app is somewhere else. If macOS says the app is damaged,
+delete it, re-download it, and try again before using this command.
 
 See [docs/gui.md](https://github.com/Gowwre/epub2web/blob/main/docs/gui.md) for
 more about portable builds and first-launch warnings.

@@ -20,6 +20,7 @@ All notable, user-facing changes are documented here. The format follows
 - Re-running a command for an existing epub2web site now refreshes it automatically instead of failing with an “output already exists” error. Unrelated folders are still refused.
 - Refresh the desktop GUI with the reader's paper palette, custom typography, source/output cards, status indicator, metadata-aware title, custom build console scrollbar, and app icon.
 - Generate GitHub release notes from the matching `CHANGELOG.md` section instead of GitHub's commit-derived notes.
+- Disclose Windows SmartScreen and macOS Gatekeeper first-launch warnings, with platform-specific workarounds, in the README and portable packages.
 
 ### Fixed
 
