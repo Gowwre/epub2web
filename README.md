@@ -444,6 +444,8 @@ make check-dist   # twine check
 make demo EPUB=book.epub
 make gui-portable # self-contained desktop GUI for this OS
 make release-notes VERSION=0.1.0
+make release-prepare VERSION=0.4.0
+make release-ship VERSION=0.4.0
 make clean
 ```
 

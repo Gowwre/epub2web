@@ -24,6 +24,31 @@ publishes the distributions; nothing else needs configuring.
 
 ## Cutting a release
 
+The release helper automates the version bump, changelog dating, test run,
+commit checks, pushes, and tag creation:
+
+```bash
+python scripts/release.py prepare 0.4.0
+# review the diff, run make test, then commit the release prep
+git add epub2web/__init__.py CHANGELOG.md
+git commit -m "Release 0.4.0"
+python scripts/release.py ship 0.4.0 --execute
+```
+
+`prepare` keeps a fresh empty `## Unreleased` section for the next release.
+`ship` is a dry run unless `--execute` is passed. It requires a clean `main`
+branch, verifies that the version and changelog match, runs the test suite,
+then pushes `main` and `vX.Y.Z`. Add `--watch` to follow the release workflow.
+
+The equivalent Make targets are:
+
+```bash
+make release-prepare VERSION=0.4.0
+make release-ship VERSION=0.4.0
+```
+
+The manual process remains:
+
 1. Update `__version__` in `epub2web/__init__.py`. Move the entries under
    `## Unreleased` in `CHANGELOG.md` into a dated section such as
    `## 0.2.0 - 2026-11-04`, keeping the `Added`/`Changed`/`Fixed`/`Security`
@@ -45,6 +70,8 @@ publishes the distributions; nothing else needs configuring.
 
 3. Commit, push, and wait for CI to pass.
 4. Tag the release and push the tag:
+   (If you used `scripts/release.py ship` or `make release-ship`, steps 3–4
+   are already handled.)
 
    ```bash
    git tag vX.Y.Z
