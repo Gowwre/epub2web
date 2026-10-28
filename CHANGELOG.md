@@ -6,6 +6,8 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+## 0.2.0 - 2026-10-28
+
 ### Added
 
 - Add a cross-platform Tkinter desktop GUI (`epub2web-gui`) with a toolkit-independent worker controller, preview lifecycle controls, and PyInstaller worker-mode support.
