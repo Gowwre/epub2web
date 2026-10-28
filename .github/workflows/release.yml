@@ -1,0 +1,116 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate version
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Check the tag matches epub2web.__version__
+        id: version
+        run: |
+          version=$(python -c "import epub2web; print(epub2web.__version__)")
+          tag_version="${GITHUB_REF_NAME#v}"
+          if [ "$tag_version" != "$version" ]; then
+            echo "::error::tag ${GITHUB_REF_NAME} does not match epub2web.__version__ ${version}"
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+  python-dist:
+    name: Build Python distributions
+    needs: validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+
+      - name: Build sdist and wheel
+        run: |
+          python -m pip install --upgrade pip build twine
+          python -m build
+          python -m twine check dist/*
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: python-dist
+          path: dist/*
+          if-no-files-found: error
+
+  portable:
+    name: Build portable GUI
+    needs: validate
+    permissions:
+      contents: write
+    uses: ./.github/workflows/portable.yml
+
+  release:
+    name: Create GitHub release
+    needs: [validate, python-dist, portable]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: epub2web-gui-*
+          path: release-assets
+          merge-multiple: true
+
+      - uses: actions/download-artifact@v8
+        with:
+          name: python-dist
+          path: release-assets/python
+
+      - name: Collect assets and write checksums
+        run: |
+          cp release-assets/python/* release-assets/
+          rm -rf release-assets/python
+          cd release-assets
+          find . -maxdepth 1 -type f ! -name '*.sha256' ! -name 'SHA256SUMS.txt' \
+            -printf '%P\n' | sort | xargs sha256sum > SHA256SUMS.txt
+
+      - name: Create or update the GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" release-assets/* \
+              --clobber --repo "$GITHUB_REPOSITORY"
+            gh release edit "$GITHUB_REF_NAME" \
+              --draft=false --repo "$GITHUB_REPOSITORY"
+          else
+            gh release create "$GITHUB_REF_NAME" release-assets/* \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "epub2web $VERSION" \
+              --generate-notes \
+              --latest \
+              --verify-tag
+          fi
+
+      - name: Trigger PyPI publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run publish.yml \
+            --ref "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY"

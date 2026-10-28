@@ -1,6 +1,7 @@
 name: Portable GUI
 
 on:
+  workflow_call:
   release:
     types: [published]
   workflow_dispatch:

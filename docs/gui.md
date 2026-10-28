@@ -119,10 +119,15 @@ target machine, an AppImage still runs with:
 
 ### CI and release assets
 
-`.github/workflows/portable.yml` builds Linux x86_64, Windows x64, macOS Intel,
-and macOS Apple Silicon in parallel. On a published GitHub release it attaches
-the four artifacts and a combined `SHA256SUMS.txt` to that release. The same
-workflow can be run manually from **Actions → Portable GUI → Run workflow**.
+`.github/workflows/release.yml` runs on a `v*` tag. It checks that the tag
+matches `epub2web.__version__`, builds the Python distributions, calls the
+portable GUI workflow for Linux x86_64, Windows x64, macOS Intel, and macOS
+Apple Silicon, creates the GitHub release with generated notes and all assets,
+and then triggers PyPI publishing.
+
+The reusable `.github/workflows/portable.yml` can also be run manually from
+**Actions → Portable GUI → Run workflow**. A manually published release still
+triggers it through the `release: published` event.
 
 ### Distribution caveats
 

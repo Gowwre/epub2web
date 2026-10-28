@@ -9,6 +9,7 @@
 - Refresh the desktop GUI with the reader's paper palette, custom typography, source/output cards, status indicator, metadata-aware title, custom build console scrollbar, and app icon.
 - Add per-image, per-page, render, verification, and link-check progress reporting, with a determinate GUI progress bar and milestone log lines.
 - Add `make gui-portable` and a release workflow that builds self-contained desktop artifacts: a single Windows `.exe`, a macOS `.dmg`, and a Linux AppImage or portable tarball, with packaged smoke tests, checksums, and third-party license notices.
+- Add a tag-driven **Release** workflow that validates `vX.Y.Z` against the package version, builds the Python and portable artifacts, creates the GitHub release, and dispatches PyPI publishing.
 
 ## 0.1.0 — 2026-10-26
 

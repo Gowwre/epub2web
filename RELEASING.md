@@ -34,10 +34,26 @@ publishes the distributions; nothing else needs configuring.
    ```
 
 3. Commit, push, and wait for CI to pass.
-4. Create a GitHub release with tag `vX.Y.Z` and publish it. The **Publish**
-   workflow builds the sdist and wheel and uploads them to PyPI. The
-   **Portable GUI** workflow builds the Windows, macOS, and Linux desktop
-   artifacts and attaches them to the same release.
+4. Tag the release and push the tag:
+
+   ```bash
+   git tag vX.Y.Z
+   git push origin vX.Y.Z
+   ```
+
+   The **Release** workflow verifies that the tag matches
+   `epub2web.__version__`, builds the sdist and wheel, builds the portable
+   Windows/macOS/Linux GUI through the reusable **Portable GUI** workflow,
+   creates the GitHub release with generated notes and all assets, and then
+   triggers the **Publish** workflow for PyPI.
+
+   Do not create the GitHub release first. If you do, the older
+   release-published triggers for **Publish** and **Portable GUI** still work,
+   but the automated path is the tag push.
+
+   PyPI publishing is dispatched asynchronously. Wait for the **Publish**
+   workflow run to succeed before checking the package index.
+
 5. Verify the release:
 
    ```bash
