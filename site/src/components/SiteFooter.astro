@@ -1,7 +1,6 @@
 ---
 import Icon from "./Icon.astro";
 import {
-  CHANGELOG_URL,
   CONTRIBUTING_URL,
   DEMO_URL,
   FIRST_LAUNCH_URL,
@@ -41,7 +40,7 @@ import {
           <li><a href={withBase("/download/")}>Download</a></li>
           <li><a href={DEMO_URL} target="_blank" rel="noopener noreferrer">Live demo</a></li>
           <li><a href={LATEST_RELEASE_URL} target="_blank" rel="noopener noreferrer">Latest release</a></li>
-          <li><a href={CHANGELOG_URL} target="_blank" rel="noopener noreferrer">Changelog</a></li>
+          <li><a href={withBase("/changelog/")}>Changelog</a></li>
         </ul>
       </nav>
 

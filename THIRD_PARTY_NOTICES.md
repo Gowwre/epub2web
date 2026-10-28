@@ -31,3 +31,14 @@ https://www.tcl.tk/software/tcltk/license.html
 
 If you distribute a PyInstaller app that bundles Tcl/Tk, include the license
 files supplied with the Tcl/Tk distribution.
+
+## Landing site build dependencies
+
+The Astro site in `site/` is built separately from the Python package. Its
+build-time dependencies include:
+
+- Astro (MIT)
+- marked (MIT)
+
+Neither is bundled into the book output or included in the runtime of the
+generated static site.

@@ -28,5 +28,6 @@ export const NAV_LINKS = [
   { label: "Fidelity", href: "/#fidelity" },
   { label: "The edition", href: "/#edition" },
   { label: "How it works", href: "/#how-it-works" },
+  { label: "Changelog", href: "/changelog/" },
   { label: "FAQ", href: "/#faq" },
 ] as const;

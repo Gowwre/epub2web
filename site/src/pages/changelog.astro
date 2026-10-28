@@ -1,0 +1,556 @@
+---
+import { readFile } from "node:fs/promises";
+import { resolve } from "node:path";
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Icon from "../components/Icon.astro";
+import latestRelease from "../data/latest-release.json";
+import { CHANGELOG_URL, GITHUB_URL, withBase } from "../consts";
+import { parseChangelog } from "../lib/changelog";
+
+// The build scripts run from site/, so the repository changelog is one level up.
+const changelogMarkdown = await readFile(
+  resolve(process.cwd(), "..", "CHANGELOG.md"),
+  "utf8",
+);
+const releases = await parseChangelog(changelogMarkdown);
+const latest = releases.find((release) => release.version === latestRelease.version) ?? releases[0];
+
+const versionsWithoutGithubRelease = new Set(["0.1.0"]);
+
+function releaseLink(release: (typeof releases)[number]) {
+  if (versionsWithoutGithubRelease.has(release.version)) {
+    return {
+      hasGithubRelease: false,
+      url: `${CHANGELOG_URL}#${release.githubAnchor}`,
+    };
+  }
+
+  return {
+    hasGithubRelease: true,
+    url:
+      release.version === latestRelease.version
+        ? latestRelease.releaseUrl
+        : `${GITHUB_URL}/releases/tag/v${release.version}`,
+  };
+}
+---
+
+<BaseLayout
+  title="Changelog — epub2web"
+  description="Every published epub2web release, with a direct link to the release notes on GitHub."
+  bodyClass="page-changelog"
+>
+  <section class="changelog-hero">
+    <div class="container changelog-hero__grid">
+      <div class="changelog-hero__copy">
+        <p class="eyebrow">Changelog</p>
+        <h1>
+          <span>What changed,</span>
+          <span class="accent">release by release.</span>
+        </h1>
+        <p class="lede">
+          Every published version of epub2web, from the first public release to
+          today. Each version links to its notes on GitHub.
+        </p>
+      </div>
+
+      <aside class="latest-release" aria-label={`Latest release: ${latest.version}`}>
+        <div class="latest-release__head">
+          <span class="latest-release__status">
+            <span class="latest-release__dot" aria-hidden="true"></span>
+            Latest release
+          </span>
+          <span class="latest-release__source">
+            <Icon name="github" size={13} />
+            GitHub
+          </span>
+        </div>
+        <p class="latest-release__version">{latest.version}</p>
+        <p class="latest-release__date">
+          <time datetime={latest.date}>{latest.dateLabel}</time>
+        </p>
+        <a
+          class="btn btn--primary latest-release__button"
+          href={releaseLink(latest).url}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Icon name="github" size={17} />
+          View release
+          <span class="sr-only">for version {latest.version} (opens in a new tab)</span>
+        </a>
+        <p class="latest-release__note">
+          <a href={withBase("/download/")}>Download {latest.version}</a> or read
+          the notes on GitHub.
+        </p>
+      </aside>
+    </div>
+  </section>
+
+  <section class="section release-section" aria-labelledby="releases-title">
+    <div class="container changelog-layout">
+      <aside class="release-index">
+        <p class="eyebrow">Releases</p>
+        <h2 class="release-index__title" id="releases-title">All versions</h2>
+        <ol>
+          {
+            releases.map((release) => (
+              <li>
+                <a href={`#v${release.version}`}>
+                  <span class="release-index__version">{release.version}</span>
+                  <span class="release-index__date">{release.dateLabel}</span>
+                </a>
+              </li>
+            ))
+          }
+        </ol>
+        <p class="release-index__note">
+          Unreleased changes are tracked in the{" "}
+          <a href={CHANGELOG_URL} target="_blank" rel="noopener noreferrer">
+            source changelog
+          </a>.
+        </p>
+      </aside>
+
+      <div class="release-list">
+        {
+          releases.map((release) => {
+            const link = releaseLink(release);
+            const isLatest = release.version === latestRelease.version;
+
+            return (
+              <article class="release" id={`v${release.version}`}>
+                <header class="release__header">
+                  <div>
+                    <div class="release__meta">
+                      {isLatest && <span class="release-badge">Latest</span>}
+                      {!link.hasGithubRelease && (
+                        <span class="release-badge release-badge--muted">Pre-GitHub Releases</span>
+                      )}
+                      <time datetime={release.date}>{release.dateLabel}</time>
+                    </div>
+                    <h2>{release.version}</h2>
+                  </div>
+                  <a
+                    class="btn btn--quiet release__github"
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    <Icon name="github" size={16} />
+                    {link.hasGithubRelease ? "View release" : "View changelog"}
+                    <Icon name="arrow-up-right" size={14} />
+                    <span class="sr-only">
+                      for version {release.version} on GitHub (opens in a new tab)
+                    </span>
+                  </a>
+                </header>
+
+                {!link.hasGithubRelease && (
+                  <p class="release__note">
+                    This version predates the project&apos;s GitHub Releases
+                    history. The button opens its section in the GitHub-hosted
+                    changelog.
+                  </p>
+                )}
+
+                <div class="release__sections">
+                  {release.sections.map((section) => (
+                    <section class="release__section">
+                      {section.title && <h3>{section.title}</h3>}
+                      <div class="release-prose" set:html={section.html} />
+                    </section>
+                  ))}
+                </div>
+              </article>
+            );
+          })
+        }
+      </div>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  /* ------------------------------------------------------------------
+     Hero
+     ------------------------------------------------------------------ */
+
+  .changelog-hero {
+    padding-block: clamp(3.5rem, 7vw, 6.5rem) clamp(3rem, 6vw, 5rem);
+  }
+
+  .changelog-hero__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+    gap: clamp(2.5rem, 6vw, 6rem);
+    align-items: center;
+  }
+
+  .changelog-hero h1 {
+    margin-top: 0.25rem;
+    font-size: clamp(3.2rem, 2.1rem + 4.2vw, 5.5rem);
+    line-height: 0.92;
+    letter-spacing: -0.055em;
+    font-variation-settings: "opsz" 100, "SOFT" 35, "WONK" 0;
+  }
+
+  .changelog-hero h1 span {
+    display: block;
+  }
+
+  .changelog-hero .accent {
+    color: var(--accent);
+  }
+
+  .changelog-hero .lede {
+    margin: 1.5rem 0 0;
+  }
+
+  .latest-release {
+    position: relative;
+    padding: 1.1rem 1.25rem 1.2rem;
+    border: 1px solid var(--rule-strong);
+    border-top: 3px solid var(--accent);
+    border-radius: 4px;
+    background: var(--paper-2);
+    box-shadow: var(--shadow-deep);
+    transform: rotate(0.5deg);
+  }
+
+  .latest-release::before {
+    content: "";
+    position: absolute;
+    inset: 8px -8px -8px 8px;
+    z-index: -1;
+    border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
+    border-radius: 4px;
+  }
+
+  .latest-release__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.8rem;
+    border-bottom: 1px solid var(--rule);
+    font-family: var(--font-ui);
+    font-size: 0.58rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .latest-release__status,
+  .latest-release__source {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .latest-release__dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-soft);
+  }
+
+  .latest-release__version {
+    margin: 1.15rem 0 0;
+    font-family: var(--font-display);
+    font-size: clamp(2.6rem, 2.1rem + 1.8vw, 3.4rem);
+    font-weight: 600;
+    line-height: 0.9;
+    letter-spacing: -0.05em;
+  }
+
+  .latest-release__date {
+    margin: 0.55rem 0 1.15rem;
+    font-family: var(--font-ui);
+    font-size: 0.7rem;
+    letter-spacing: 0.03em;
+    color: var(--muted);
+  }
+
+  .latest-release__button {
+    width: 100%;
+  }
+
+  .latest-release__note {
+    margin: 0.75rem 0 0;
+    font-family: var(--font-ui);
+    font-size: 0.65rem;
+    line-height: 1.5;
+    color: var(--muted);
+    text-align: center;
+  }
+
+  .latest-release__note a {
+    color: var(--accent);
+  }
+
+  /* ------------------------------------------------------------------
+     Release index and list
+     ------------------------------------------------------------------ */
+
+  .release-section {
+    border-top: 1px solid var(--rule);
+    background: var(--paper-2);
+  }
+
+  .changelog-layout {
+    display: grid;
+    grid-template-columns: minmax(190px, 0.28fr) minmax(0, 1fr);
+    gap: clamp(2.5rem, 7vw, 6.5rem);
+    align-items: start;
+  }
+
+  .release-index {
+    position: sticky;
+    top: calc(var(--header-h) + 2rem);
+  }
+
+  .release-index__title {
+    margin-bottom: 1rem;
+    font-size: clamp(1.5rem, 1.3rem + 0.6vw, 1.85rem);
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+  }
+
+  .release-index ol {
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--rule);
+    list-style: none;
+  }
+
+  .release-index li {
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .release-index a {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.7rem 0;
+    color: var(--ink-2);
+    text-decoration: none;
+  }
+
+  .release-index a:hover {
+    color: var(--accent);
+  }
+
+  .release-index__version {
+    font-family: var(--font-display);
+    font-size: 1.08rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .release-index__date {
+    font-family: var(--font-ui);
+    font-size: 0.6rem;
+    color: var(--muted);
+    white-space: nowrap;
+  }
+
+  .release-index__note {
+    margin: 1rem 0 0;
+    font-family: var(--font-ui);
+    font-size: 0.68rem;
+    line-height: 1.55;
+    color: var(--muted);
+  }
+
+  .release-index__note a {
+    color: var(--accent);
+  }
+
+  .release-list {
+    min-width: 0;
+  }
+
+  .release {
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--rule-strong);
+    scroll-margin-top: calc(var(--header-h) + 2rem);
+  }
+
+  .release + .release {
+    margin-top: clamp(2.8rem, 5vw, 4.5rem);
+  }
+
+  .release__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.2rem 2rem;
+    margin-bottom: 1.4rem;
+  }
+
+  .release__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin-bottom: 0.5rem;
+    font-family: var(--font-ui);
+    font-size: 0.63rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .release-badge {
+    padding: 0.18rem 0.4rem;
+    border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--rule));
+    border-radius: 2px;
+    color: var(--accent);
+    font-size: 0.52rem;
+    font-weight: 650;
+    letter-spacing: 0.12em;
+  }
+
+  .release-badge--muted {
+    border-color: var(--rule);
+    color: var(--muted);
+  }
+
+  .release h2 {
+    font-size: clamp(2.7rem, 2rem + 2.6vw, 4.2rem);
+    line-height: 0.9;
+    letter-spacing: -0.055em;
+  }
+
+  .release__github {
+    flex: 0 0 auto;
+    margin-top: 0.15rem;
+  }
+
+  .release__note {
+    max-width: 68ch;
+    margin: -0.3rem 0 1.3rem;
+    padding: 0.65rem 0.8rem;
+    border-left: 2px solid var(--accent);
+    background: var(--accent-soft);
+    font-family: var(--font-ui);
+    font-size: 0.7rem;
+    line-height: 1.55;
+    color: var(--ink-2);
+  }
+
+  .release__sections {
+    display: grid;
+    gap: 1.35rem;
+    max-width: 80ch;
+  }
+
+  .release__section h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    margin-bottom: 0.55rem;
+    font-family: var(--font-ui);
+    font-size: 0.6rem;
+    font-weight: 650;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .release__section h3::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--rule);
+  }
+
+  .release-prose {
+    font-size: 0.94rem;
+    line-height: 1.65;
+    color: var(--ink-2);
+  }
+
+  .release-prose :global(p) {
+    margin: 0 0 0.8rem;
+  }
+
+  .release-prose :global(ul),
+  .release-prose :global(ol) {
+    display: grid;
+    gap: 0.45rem;
+    margin: 0;
+    padding-left: 1.2rem;
+  }
+
+  .release-prose :global(li) {
+    margin: 0;
+  }
+
+  .release-prose :global(li::marker) {
+    color: var(--accent);
+  }
+
+  .release-prose :global(a) {
+    color: var(--accent);
+  }
+
+  .release-prose :global(code) {
+    padding: 0.08em 0.3em;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    background: var(--paper);
+    font-size: 0.84em;
+    color: var(--ink);
+  }
+
+  .release-prose :global(strong) {
+    color: var(--ink);
+  }
+
+  /* ------------------------------------------------------------------
+     Responsive
+     ------------------------------------------------------------------ */
+
+  @media (max-width: 980px) {
+    .changelog-hero__grid {
+      grid-template-columns: 1fr;
+      gap: 2.5rem;
+    }
+
+    .changelog-hero__copy {
+      max-width: 680px;
+    }
+
+    .latest-release {
+      max-width: 420px;
+      width: 100%;
+      transform: none;
+    }
+
+    .changelog-layout {
+      grid-template-columns: 1fr;
+      gap: 2.5rem;
+    }
+
+    .release-index {
+      position: static;
+      max-width: 620px;
+    }
+  }
+
+  @media (max-width: 620px) {
+    .release__header {
+      flex-direction: column;
+    }
+
+    .release__github {
+      width: 100%;
+    }
+  }
+</style>

@@ -9,6 +9,7 @@ All notable, user-facing changes are documented here. The format follows
 ### Added
 
 - Add a public Astro landing site and download page, with a first-launch FAQ for Windows SmartScreen and macOS Gatekeeper warnings. The Pages workflow publishes the landing page at the project root and moves the live demo to `/demo/`.
+- Add a dedicated changelog page with a GitHub link for every published release.
 
 ### Changed
 

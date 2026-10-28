@@ -70,6 +70,18 @@ script fails if any expected platform asset or `SHA256SUMS.txt` is missing.
 The first-launch FAQ mirrors the instructions in the project README and
 `docs/gui.md`.
 
+## Changelog page
+
+The `/changelog/` page reads the repository `CHANGELOG.md` at build time and
+renders every published release, which is why the build must run from `site/`.
+Each version gets a button to its GitHub release. Version 0.1.0 predates the
+repository's GitHub Releases history, so its button opens the 0.1.0 section in
+the GitHub-hosted changelog instead.
+
+The Pages workflow rebuilds when `CHANGELOG.md` changes. Release sections must
+use the heading format `## 0.2.0 - 2026-10-28`; the `Unreleased` section is not
+published on the site.
+
 The screenshots come from `docs/` at the repository root and are checked in here
 as optimized WebP files. The social card is `public/og.png`; rebuild it if the
 headline or palette changes.

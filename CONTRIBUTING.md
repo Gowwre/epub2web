@@ -73,6 +73,10 @@ The Pages workflow publishes the site at `/epub2web/` and the generated demo at
 `/epub2web/demo/`. Astro assets and internal links are base-path aware; use
 `withBase()` for new root-relative links or files in `public/`.
 
+The changelog page is generated from the repository `CHANGELOG.md` and rebuilds
+when that file changes. Keep released sections in the format
+`## 0.2.0 - 2026-10-28`; the `Unreleased` section is intentionally not shown.
+
 ## Pull requests
 
 - Keep changes focused and explain the book structure they address.
