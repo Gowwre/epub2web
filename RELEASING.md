@@ -35,13 +35,18 @@ publishes the distributions; nothing else needs configuring.
 
 3. Commit, push, and wait for CI to pass.
 4. Create a GitHub release with tag `vX.Y.Z` and publish it. The **Publish**
-   workflow builds the sdist and wheel and uploads them to PyPI.
+   workflow builds the sdist and wheel and uploads them to PyPI. The
+   **Portable GUI** workflow builds the Windows, macOS, and Linux desktop
+   artifacts and attaches them to the same release.
 5. Verify the release:
 
    ```bash
    uvx epub2web --version
    pip install --upgrade epub2web
    ```
+
+   Check that the release has the PyPI files, the portable GUI assets, and
+   `SHA256SUMS.txt`.
 
 You can also run **Actions → Publish → Run workflow** manually after bumping
 the version.

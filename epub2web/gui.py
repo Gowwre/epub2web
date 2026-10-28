@@ -2,7 +2,9 @@
 
 The Tkinter implementation lives in :mod:`epub2web.tk_app`. Keeping it out of
 this module means a frozen app can handle its hidden ``--worker`` mode without
-loading a GUI toolkit, and the worker can run in environments without Tk.
+loading a GUI toolkit, and the worker can run in environments without Tk. The
+hidden ``--self-test`` flag imports the view for packaging smoke tests without
+opening a window.
 """
 
 from __future__ import annotations
@@ -36,6 +38,17 @@ def main(argv: list[str] | None = None) -> int:
         from .worker import main as worker_main
 
         return worker_main(args[1:])
+
+    # Packaging smoke tests use this to confirm that Tk and the view modules
+    # were bundled. Import only; creating a root window needs a display.
+    if args and args[0] == "--self-test":
+        try:
+            from . import tk_app  # noqa: F401
+        except ImportError as exc:
+            _print_error(TK_HELP)
+            _print_error(f"Details: {exc}")
+            return 2
+        return 0
 
     try:
         from .tk_app import run

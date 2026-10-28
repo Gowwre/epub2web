@@ -75,8 +75,27 @@ On Linux, install Tk first if your distribution does not include it:
 sudo apt install python3-tk
 ```
 
-See [docs/gui.md](https://github.com/Gowwre/epub2web/blob/main/docs/gui.md) for the
-architecture and PyInstaller packaging instructions.
+### Portable builds
+
+[Tagged releases](https://github.com/Gowwre/epub2web/releases) include
+self-contained desktop bundles for people who do not have Python installed:
+
+| Platform | File | Start |
+|---|---|---|
+| Windows | `epub2web-gui-<version>-windows-x64.exe` | double-click |
+| macOS (Intel and Apple Silicon) | `.dmg` | open, drag the app to Applications |
+| Linux | `.AppImage` (or `.tar.gz` fallback) | run the AppImage, or extract the tarball |
+
+Build one locally with:
+
+```bash
+pip install -e ".[gui-build]"
+make gui-portable
+```
+
+PyInstaller cannot cross-compile, so build on the operating system you want to
+target. See [docs/gui.md](https://github.com/Gowwre/epub2web/blob/main/docs/gui.md)
+for packaging details, CI, and the unsigned-build caveats.
 
 ## What you get
 
@@ -255,6 +274,7 @@ make lint
 make format
 make build        # sdist + wheel
 make check-dist   # twine check
+make gui-portable # self-contained desktop GUI for this OS
 make clean
 ```
 

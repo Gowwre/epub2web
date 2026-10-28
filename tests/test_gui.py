@@ -26,6 +26,14 @@ def test_tk_app_imports_when_tk_is_available():
     import epub2web.tk_app  # noqa: F401
 
 
+def test_gui_self_test_checks_tk():
+    try:
+        import tkinter  # noqa: F401
+    except ImportError as exc:
+        pytest.skip(f"Tkinter is not available: {exc}")
+    assert gui_main(["--self-test"]) == 0
+
+
 def test_gui_worker_flag_routes_to_cli(tiny_epub, tmp_path: Path):
     site = tmp_path / "site"
     code = gui_main(

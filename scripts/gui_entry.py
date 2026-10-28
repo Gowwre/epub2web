@@ -1,11 +1,12 @@
 """PyInstaller entry point for the epub2web desktop GUI.
 
-Build from the repository root after installing the package:
+Build portable bundles from the repository root:
 
     pip install -e ".[gui-build]"
-    pyinstaller --noconfirm --clean --windowed --name epub2web-gui \
-      --paths . --collect-data epub2web --collect-submodules epub2web \
-      scripts/gui_entry.py
+    python scripts/build_gui.py
+
+The builder supplies the data files, hidden modules, icon, and platform
+packaging flags; this file only routes into :mod:`epub2web.gui`.
 """
 
 from epub2web.gui import main
