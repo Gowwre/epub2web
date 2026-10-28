@@ -58,6 +58,12 @@ release page to find a download. The Pages workflow runs the resolver before
 each build, and the release workflow dispatches Pages after publishing a new
 release.
 
+The page also detects the visitor’s platform in the browser. It recommends and
+highlights the matching direct download, including Intel versus Apple Silicon
+macOS when client hints expose the architecture. Phones, ChromeOS, ARM Linux,
+and unknown agents get a neutral “choose your platform” state. Without
+JavaScript, the page falls back to the same platform picker.
+
 Refresh the committed fallback data locally with:
 
 ```bash

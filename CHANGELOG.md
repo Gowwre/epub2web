@@ -14,6 +14,7 @@ All notable, user-facing changes are documented here. The format follows
 ### Changed
 
 - Download buttons now point directly at the current release’s Windows, macOS, and Linux files instead of the GitHub release page. The Pages build resolves the latest assets, and a new release refreshes the download page automatically.
+- Detect the visitor’s platform on the download page, recommend and highlight the matching installer, and fall back to a neutral platform picker on phones, ChromeOS, ARM Linux, unknown agents, or without JavaScript.
 
 ### Fixed
 

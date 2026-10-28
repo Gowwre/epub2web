@@ -23,7 +23,9 @@ const published = new Intl.DateTimeFormat("en", {
 
 const platforms = [
   {
+    key: "windows",
     name: "Windows",
+    label: "Windows x64",
     variant: "x64 installer",
     file: ".exe",
     hint: "Double-click to start.",
@@ -31,7 +33,9 @@ const platforms = [
     download: release.downloads.windows,
   },
   {
+    key: "macosArm64",
     name: "macOS",
+    label: "macOS Apple Silicon",
     variant: "Apple Silicon",
     file: ".dmg",
     hint: "Most Macs since late 2020.",
@@ -39,7 +43,9 @@ const platforms = [
     download: release.downloads.macosArm64,
   },
   {
+    key: "macosX64",
     name: "macOS",
+    label: "macOS Intel",
     variant: "Intel",
     file: ".dmg",
     hint: "For older Macs.",
@@ -47,7 +53,9 @@ const platforms = [
     download: release.downloads.macosX64,
   },
   {
+    key: "linux",
     name: "Linux",
+    label: "Linux x86_64",
     variant: "x86_64",
     file: ".AppImage",
     hint: "Make executable, then run.",
@@ -76,11 +84,20 @@ const platforms = [
           EPUB into a reading website.
         </p>
         <div class="download-hero__actions">
-          <a class="btn btn--primary btn--large" href={release.downloads.windows.url}>
-            <Icon name="download" size={18} />
-            Download for Windows
+          <a
+            class="btn btn--primary btn--large"
+            href="#platforms"
+            data-download-primary
+          >
+            <span data-download-icon="direct" hidden>
+              <Icon name="download" size={18} />
+            </span>
+            <span data-download-icon="choose">
+              <Icon name="arrow-down" size={15} />
+            </span>
+            <span data-download-label>Choose your platform</span>
           </a>
-          <a class="btn btn--quiet btn--large" href="#platforms">
+          <a class="btn btn--quiet btn--large" href="#platforms" data-all-platforms hidden>
             All platforms
             <Icon name="arrow-down" size={15} />
           </a>
@@ -89,6 +106,12 @@ const platforms = [
           Version {release.version} · Direct file downloads · Windows, macOS,
           Linux · MIT licensed
         </p>
+        <p
+          class="download-hero__recommendation"
+          data-download-recommendation
+          aria-live="polite"
+          hidden
+        ></p>
       </div>
 
       <aside class="release-card" aria-label={`epub2web ${release.version} release information`}>
@@ -160,6 +183,8 @@ const platforms = [
             <a
               class="platform-card"
               href={platform.download.url}
+              data-platform={platform.key}
+              data-platform-label={platform.label}
               title={`${platform.download.filename} (${formatSize(platform.download.size)})`}
             >
               <span class="sr-only">Download epub2web for </span>
@@ -168,6 +193,9 @@ const platforms = [
                   <Icon name={platform.icon} size={20} />
                 </span>
                 <Icon name="download" size={16} class="platform-card__arrow" />
+              </span>
+              <span class="platform-card__badge" data-platform-badge hidden>
+                Recommended
               </span>
               <h3>{platform.name}</h3>
               <p class="platform-card__variant">{platform.variant}</p>
@@ -315,6 +343,119 @@ epub2web book.epub --serve</code></pre>
       </p>
     </div>
   </section>
+
+  <script>
+    (async () => {
+      interface UserAgentData {
+        platform?: string;
+        mobile?: boolean;
+        getHighEntropyValues?: (hints: string[]) => Promise<{ architecture?: string }>;
+      }
+
+      const primary = document.querySelector<HTMLAnchorElement>("[data-download-primary]");
+      const primaryLabel = document.querySelector<HTMLElement>("[data-download-label]");
+      const directIcon = document.querySelector<HTMLElement>('[data-download-icon="direct"]');
+      const chooseIcon = document.querySelector<HTMLElement>('[data-download-icon="choose"]');
+      const recommendation = document.querySelector<HTMLElement>(
+        "[data-download-recommendation]",
+      );
+      const allPlatforms = document.querySelector<HTMLElement>("[data-all-platforms]");
+      const cards = Array.from(document.querySelectorAll<HTMLAnchorElement>("[data-platform]"));
+
+      const announce = (message: string) => {
+        if (!recommendation) return;
+        recommendation.textContent = message;
+        recommendation.hidden = false;
+      };
+
+      const clearRecommendedCard = () => {
+        for (const card of cards) {
+          card.classList.remove("platform-card--recommended");
+          card
+            .querySelector<HTMLElement>("[data-platform-badge]")
+            ?.setAttribute("hidden", "");
+        }
+      };
+
+      const choosePlatform = (message: string) => {
+        clearRecommendedCard();
+        if (!primary || !primaryLabel) return;
+        primary.href = "#platforms";
+        primaryLabel.textContent = "Choose your platform";
+        directIcon?.setAttribute("hidden", "");
+        chooseIcon?.removeAttribute("hidden");
+        allPlatforms?.setAttribute("hidden", "");
+        announce(message);
+      };
+
+      const recommend = (key: string, message: string) => {
+        const card = cards.find((candidate) => candidate.dataset.platform === key);
+        if (!card || !primary || !primaryLabel) {
+          choosePlatform("Choose the file that matches the computer you’ll use.");
+          return;
+        }
+
+        clearRecommendedCard();
+        card.classList.add("platform-card--recommended");
+        card.querySelector<HTMLElement>("[data-platform-badge]")?.removeAttribute("hidden");
+        primary.href = card.href;
+        primaryLabel.textContent = `Download for ${card.dataset.platformLabel}`;
+        directIcon?.removeAttribute("hidden");
+        chooseIcon?.setAttribute("hidden", "");
+        allPlatforms?.removeAttribute("hidden");
+        announce(message);
+      };
+
+      const ua = navigator.userAgent;
+      const uaData = (navigator as Navigator & { userAgentData?: UserAgentData }).userAgentData;
+      const touchMac =
+        navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1;
+      const isMobile =
+        uaData?.mobile === true || /iPhone|iPad|iPod|Android/i.test(ua) || touchMac;
+      const isChromeOS = /CrOS/i.test(ua);
+      const isWindows = /Windows NT/i.test(ua);
+      const isMac = /Macintosh|Mac OS X/i.test(ua);
+      const isLinux = !isChromeOS && /Linux/i.test(ua);
+      const uaLooksArm = /aarch64|arm64|armv\d|armhf/i.test(ua);
+
+      let architecture = "";
+      try {
+        architecture =
+          (
+            await uaData?.getHighEntropyValues?.(["architecture"])
+          )?.architecture?.toLowerCase() ?? "";
+      } catch {
+        // High-entropy client hints are optional; fall back to the UA string.
+      }
+
+      if (isMobile) {
+        choosePlatform("You’re on a phone or tablet. Choose the computer you’ll use.");
+      } else if (isWindows) {
+        recommend("windows", "Detected Windows. The x64 installer is selected.");
+      } else if (isMac) {
+        if (/x86|intel/i.test(architecture)) {
+          recommend("macosX64", "Detected an Intel Mac. The Intel build is selected.");
+        } else if (/arm/i.test(architecture)) {
+          recommend("macosArm64", "Detected Apple Silicon. The arm64 build is selected.");
+        } else {
+          recommend(
+            "macosArm64",
+            "Most Macs use Apple Silicon. Choose Intel below if yours is older.",
+          );
+        }
+      } else if (isChromeOS) {
+        choosePlatform("ChromeOS detected. Choose the computer you’ll use.");
+      } else if (isLinux) {
+        if (/arm/i.test(architecture) || uaLooksArm) {
+          choosePlatform("This release is for x86_64 Linux; ARM Linux isn’t available yet.");
+        } else {
+          recommend("linux", "Detected Linux. The x86_64 AppImage is selected.");
+        }
+      } else {
+        choosePlatform("Choose the file that matches the computer you’ll use.");
+      }
+    })();
+  </script>
 </BaseLayout>
 
 <style>
@@ -357,6 +498,27 @@ epub2web book.epub --serve</code></pre>
     font-size: 0.67rem;
     letter-spacing: 0.03em;
     color: var(--muted);
+  }
+
+  .download-hero__recommendation {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    margin: 0.75rem 0 0;
+    font-family: var(--font-ui);
+    font-size: 0.69rem;
+    line-height: 1.55;
+    color: var(--accent);
+  }
+
+  .download-hero__recommendation::before {
+    content: "";
+    flex: 0 0 auto;
+    width: 5px;
+    height: 5px;
+    margin-top: 0.45em;
+    border-radius: 50%;
+    background: var(--accent);
   }
 
   .release-card {
@@ -513,6 +675,27 @@ epub2web book.epub --serve</code></pre>
     color: var(--ink);
     transform: translateY(-3px);
     box-shadow: var(--shadow-soft);
+  }
+
+  .platform-card--recommended {
+    border-color: color-mix(in srgb, var(--accent) 60%, var(--rule));
+    box-shadow:
+      0 0 0 1px color-mix(in srgb, var(--accent) 18%, transparent),
+      var(--shadow-soft);
+  }
+
+  .platform-card__badge {
+    align-self: flex-start;
+    margin-bottom: 0.5rem;
+    padding: 0.18rem 0.4rem;
+    border: 1px solid color-mix(in srgb, var(--accent) 40%, var(--rule));
+    border-radius: 2px;
+    font-family: var(--font-ui);
+    font-size: 0.52rem;
+    font-weight: 650;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
   }
 
   .platform-card__top {
