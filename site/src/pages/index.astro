@@ -712,9 +712,14 @@ epub2web book.epub --serve</code></pre>
     color: var(--muted);
   }
 
+  .hero__copy {
+    min-width: 0;
+  }
+
   .hero__visual {
     position: relative;
     z-index: 0;
+    min-width: 0;
     padding-bottom: 2.1rem;
   }
 
@@ -953,6 +958,7 @@ epub2web book.epub --serve</code></pre>
   }
 
   .build-report {
+    min-width: 0;
     overflow: hidden;
     margin: 0;
     border: 1px solid rgba(255, 255, 255, 0.08);
@@ -1321,6 +1327,7 @@ epub2web book.epub --serve</code></pre>
   }
 
   .output-card {
+    min-width: 0;
     margin: 0;
     border: 1px solid var(--rule);
     border-radius: 5px;
@@ -1378,6 +1385,7 @@ epub2web book.epub --serve</code></pre>
   }
 
   .process__copy {
+    min-width: 0;
     padding-top: 0.2rem;
   }
 
@@ -1875,6 +1883,13 @@ epub2web book.epub --serve</code></pre>
   @media (max-width: 620px) {
     .hero {
       padding-top: 2.7rem;
+    }
+
+    .build-report pre,
+    .output-card pre,
+    .cli-code {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
     }
 
     .hero__actions {

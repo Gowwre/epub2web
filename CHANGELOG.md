@@ -15,6 +15,10 @@ All notable, user-facing changes are documented here. The format follows
 
 - Download buttons now point directly at the current release’s Windows, macOS, and Linux files instead of the GitHub release page. The Pages build resolves the latest assets, and a new release refreshes the download page automatically.
 
+### Fixed
+
+- Prevent narrow mobile layouts from clipping the homepage hero, header, release output, and long code snippets.
+
 ## 0.2.0 - 2026-10-28
 
 ### Added

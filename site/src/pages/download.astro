@@ -703,6 +703,7 @@ epub2web book.epub --serve</code></pre>
   }
 
   .other-card {
+    min-width: 0;
     padding: clamp(1.3rem, 2.5vw, 2rem);
     border: 1px solid var(--rule);
     border-radius: 4px;
@@ -788,6 +789,11 @@ epub2web book.epub --serve</code></pre>
     .warning-grid,
     .other-ways__grid {
       grid-template-columns: 1fr;
+    }
+
+    .install-code {
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
     }
 
     .download-hero__actions {
