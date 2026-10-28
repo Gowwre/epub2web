@@ -24,8 +24,18 @@ publishes the distributions; nothing else needs configuring.
 
 ## Cutting a release
 
-1. Update `__version__` in `epub2web/__init__.py` and add an entry to
-   `CHANGELOG.md`.
+1. Update `__version__` in `epub2web/__init__.py`. Move the entries under
+   `## Unreleased` in `CHANGELOG.md` into a dated section such as
+   `## 0.2.0 - 2026-11-04`, keeping the `Added`/`Changed`/`Fixed`/`Security`
+   groups. The release workflow extracts that exact section; a missing or empty
+   section fails before any artifacts are built.
+
+   Preview the release body with:
+
+   ```bash
+   make release-notes VERSION=0.2.0
+   ```
+
 2. Run the full checks locally:
 
    ```bash
@@ -42,10 +52,11 @@ publishes the distributions; nothing else needs configuring.
    ```
 
    The **Release** workflow verifies that the tag matches
-   `epub2web.__version__`, builds the sdist and wheel, builds the portable
-   Windows/macOS/Linux GUI through the reusable **Portable GUI** workflow,
-   creates the GitHub release with generated notes and all assets, and then
-   triggers the **Publish** workflow for PyPI.
+   `epub2web.__version__`, extracts the matching `CHANGELOG.md` section, builds
+   the sdist and wheel, builds the portable Windows/macOS/Linux GUI through the
+   reusable **Portable GUI** workflow, creates the GitHub release with those
+   curated notes and all assets, and then triggers the **Publish** workflow for
+   PyPI.
 
    Do not create the GitHub release first. If you do, the older
    release-published triggers for **Publish** and **Portable GUI** still work,

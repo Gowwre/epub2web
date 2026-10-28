@@ -1,7 +1,7 @@
 PY ?= python3
 RUFF ?= $(shell command -v ruff >/dev/null 2>&1 && echo ruff || echo uvx ruff)
 
-.PHONY: test lint format build check-dist demo gui gui-portable clean
+.PHONY: test lint format build check-dist demo gui gui-portable release-notes clean
 
 test: lint
 	$(PY) -m pytest
@@ -28,6 +28,10 @@ gui:
 
 gui-portable:
 	$(PY) scripts/build_gui.py
+
+release-notes:
+	@test -n "$(VERSION)" || (echo "usage: make release-notes VERSION=0.1.0"; exit 1)
+	$(PY) scripts/release_notes.py --version "$(VERSION)"
 
 clean:
 	rm -rf build dist *.egg-info .pytest_cache .ruff_cache

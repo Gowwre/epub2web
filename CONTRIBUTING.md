@@ -37,6 +37,17 @@ make build         # sdist + wheel
 make check-dist    # twine check
 ```
 
+## Changelog
+
+Add user-facing changes under `## Unreleased` in `CHANGELOG.md`, grouped under
+`Added`, `Changed`, `Fixed`, `Security`, or `Upgrade notes`. Write the entry
+for users, not for other developers; internal refactors and test-only changes
+do not need one. Preview a release section with:
+
+```bash
+make release-notes VERSION=0.2.0
+```
+
 ## Pull requests
 
 - Keep changes focused and explain the book structure they address.

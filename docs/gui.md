@@ -120,10 +120,11 @@ target machine, an AppImage still runs with:
 ### CI and release assets
 
 `.github/workflows/release.yml` runs on a `v*` tag. It checks that the tag
-matches `epub2web.__version__`, builds the Python distributions, calls the
-portable GUI workflow for Linux x86_64, Windows x64, macOS Intel, and macOS
-Apple Silicon, creates the GitHub release with generated notes and all assets,
-and then triggers PyPI publishing.
+matches `epub2web.__version__`, extracts the matching `CHANGELOG.md` section,
+builds the Python distributions, calls the portable GUI workflow for Linux
+x86_64, Windows x64, macOS Intel, and macOS Apple Silicon, creates the GitHub
+release with those curated notes and all assets, and then triggers PyPI
+publishing.
 
 The reusable `.github/workflows/portable.yml` can also be run manually from
 **Actions → Portable GUI → Run workflow**. A manually published release still

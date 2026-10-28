@@ -275,6 +275,7 @@ make format
 make build        # sdist + wheel
 make check-dist   # twine check
 make gui-portable # self-contained desktop GUI for this OS
+make release-notes VERSION=0.1.0
 make clean
 ```
 

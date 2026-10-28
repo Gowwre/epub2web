@@ -32,6 +32,19 @@ jobs:
           fi
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
+      - name: Extract release notes
+        run: |
+          python scripts/release_notes.py \
+            --version "${{ steps.version.outputs.version }}" \
+            --changelog CHANGELOG.md \
+            --output release-notes.md
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: release-notes
+          path: release-notes.md
+          if-no-files-found: error
+
   python-dist:
     name: Build Python distributions
     needs: validate
@@ -81,6 +94,11 @@ jobs:
           name: python-dist
           path: release-assets/python
 
+      - uses: actions/download-artifact@v8
+        with:
+          name: release-notes
+          path: release-notes
+
       - name: Collect assets and write checksums
         run: |
           cp release-assets/python/* release-assets/
@@ -88,6 +106,21 @@ jobs:
           cd release-assets
           find . -maxdepth 1 -type f ! -name '*.sha256' ! -name 'SHA256SUMS.txt' \
             -printf '%P\n' | sort | xargs sha256sum > SHA256SUMS.txt
+
+      - name: Add install and changelog links
+        env:
+          VERSION: ${{ needs.validate.outputs.version }}
+        run: |
+          {
+            echo
+            echo "---"
+            echo
+            echo "**Install:** \`pip install epub2web==$VERSION\`"
+            echo
+            echo "Portable desktop builds for Windows, macOS, and Linux are attached below."
+            echo
+            echo "**Full changelog:** https://github.com/$GITHUB_REPOSITORY/blob/$GITHUB_REF_NAME/CHANGELOG.md"
+          } >> release-notes/release-notes.md
 
       - name: Create or update the GitHub release
         env:
@@ -98,12 +131,14 @@ jobs:
             gh release upload "$GITHUB_REF_NAME" release-assets/* \
               --clobber --repo "$GITHUB_REPOSITORY"
             gh release edit "$GITHUB_REF_NAME" \
+              --title "epub2web $VERSION" \
+              --notes-file release-notes/release-notes.md \
               --draft=false --repo "$GITHUB_REPOSITORY"
           else
             gh release create "$GITHUB_REF_NAME" release-assets/* \
               --repo "$GITHUB_REPOSITORY" \
               --title "epub2web $VERSION" \
-              --generate-notes \
+              --notes-file release-notes/release-notes.md \
               --latest \
               --verify-tag
           fi

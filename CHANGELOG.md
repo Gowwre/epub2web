@@ -1,15 +1,28 @@
 # Changelog
 
+All notable, user-facing changes are documented here. The format follows
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
+[Semantic Versioning](https://semver.org/).
+
 ## Unreleased
 
-- Re-running a command for an existing epub2web site now refreshes it automatically instead of failing with an “output already exists” error. Unrelated folders are still refused.
+### Added
+
 - Add a cross-platform Tkinter desktop GUI (`epub2web-gui`) with a toolkit-independent worker controller, preview lifecycle controls, and PyInstaller worker-mode support.
-- Preserve escaped source text that resembles markup, repair missing `#fnN`/`#ffnN` footnote anchors, and normalize malformed external links produced by print conversions.
-- Report both fidelity and internal-link gate failures in the desktop GUI.
-- Refresh the desktop GUI with the reader's paper palette, custom typography, source/output cards, status indicator, metadata-aware title, custom build console scrollbar, and app icon.
 - Add per-image, per-page, render, verification, and link-check progress reporting, with a determinate GUI progress bar and milestone log lines.
 - Add `make gui-portable` and a release workflow that builds self-contained desktop artifacts: a single Windows `.exe`, a macOS `.dmg`, and a Linux AppImage or portable tarball, with packaged smoke tests, checksums, and third-party license notices.
 - Add a tag-driven **Release** workflow that validates `vX.Y.Z` against the package version, builds the Python and portable artifacts, creates the GitHub release, and dispatches PyPI publishing.
+
+### Changed
+
+- Re-running a command for an existing epub2web site now refreshes it automatically instead of failing with an “output already exists” error. Unrelated folders are still refused.
+- Refresh the desktop GUI with the reader's paper palette, custom typography, source/output cards, status indicator, metadata-aware title, custom build console scrollbar, and app icon.
+- Generate GitHub release notes from the matching `CHANGELOG.md` section instead of GitHub's commit-derived notes.
+
+### Fixed
+
+- Preserve escaped source text that resembles markup, repair missing `#fnN`/`#ffnN` footnote anchors, and normalize malformed external links produced by print conversions.
+- Report both fidelity and internal-link gate failures in the desktop GUI.
 
 ## 0.1.0 — 2026-10-26
 
