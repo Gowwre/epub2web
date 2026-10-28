@@ -98,6 +98,8 @@ class Epub2WebApp:
         self._building = False
         self._preview_running = False
         self._auto_open_preview = False
+        self._progress_determinate = False
+        self._last_progress_key: tuple[str, int] | None = None
         self._poll_id: str | None = None
         self._last_dir = self._default_open_dir()
         self._log_scroll_first = 0.0
@@ -672,6 +674,9 @@ class Epub2WebApp:
         self._building = True
         self._preview_running = False
         self._auto_open_preview = False
+        self._progress_determinate = False
+        self._last_progress_key = None
+        self.progress.configure(mode="indeterminate", value=0)
         self._refresh_controls()
         self._set_status("Converting…", "accent")
         self._set_log_hint("Running fidelity and link checks…")
@@ -753,6 +758,10 @@ class Epub2WebApp:
             self._append_log(event.message, tag=self._log_tag(event.message))
             return
 
+        if event.kind == "progress":
+            self._handle_progress(event.data)
+            return
+
         if event.kind == "site":
             self._set_status("Site built. Starting preview…", "accent")
             self._set_log_hint("Starting the local preview server…")
@@ -822,6 +831,61 @@ class Epub2WebApp:
             self._set_status("Stopped.", "muted")
             self._set_log_hint("Fidelity and link checks appear here.")
 
+    def _handle_progress(self, data: dict) -> None:
+        if not self._building:
+            return
+        try:
+            percent = float(data.get("percent") or 0.0)
+            current = int(data.get("current") or 0)
+            total = int(data.get("total") or 0)
+        except (TypeError, ValueError):
+            return
+        if not 0.0 <= percent <= 1.0:
+            percent = max(0.0, min(1.0, percent))
+        label = str(data.get("label") or "Working")
+        phase = str(data.get("phase") or "")
+
+        if not self._progress_determinate:
+            self.progress.stop()
+            self.progress.configure(mode="determinate", maximum=100, value=0)
+            self._progress_determinate = True
+            self.progress.grid()
+        self.progress["value"] = percent * 100
+
+        if total > 1:
+            self._set_status(
+                f"{label} — {current:,} of {total:,} · {percent * 100:.0f}%",
+                "accent",
+            )
+        else:
+            self._set_status(f"{label}… {percent * 100:.0f}%", "accent")
+        self._set_log_hint(f"{label} · {percent * 100:.0f}% complete")
+        self._log_progress_milestone(phase, label, current, total)
+
+    def _log_progress_milestone(
+        self,
+        phase: str,
+        label: str,
+        current: int,
+        total: int,
+    ) -> None:
+        if total <= 0:
+            return
+        if total == 1 and current < 1:
+            return
+        bucket = min(10, int(current * 10 / total))
+        key = (phase, bucket)
+        if key == self._last_progress_key:
+            return
+        self._last_progress_key = key
+        if total > 1 and current == 0:
+            line = f"{label}…"
+        elif total > 1:
+            line = f"{label}: {current:,} of {total:,}"
+        else:
+            line = f"{label}: done"
+        self._append_log(line, tag="muted")
+
     def _log_tag(self, message: str) -> str | None:
         if message.startswith(("Report:", "Log:")):
             return "muted"
@@ -845,7 +909,11 @@ class Epub2WebApp:
         )
         if self._building:
             self.progress.grid()
-            self.progress.start(12)
+            if self._progress_determinate:
+                self.progress.stop()
+            else:
+                self.progress.configure(mode="indeterminate")
+                self.progress.start(12)
         else:
             self.progress.stop()
             self.progress.grid_remove()

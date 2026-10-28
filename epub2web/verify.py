@@ -18,6 +18,8 @@ from pathlib import Path
 
 from bs4 import BeautifulSoup
 
+from .progress import ProgressCallback
+from .progress import report as report_progress
 from .text import normalize_text, text_of
 
 logger = logging.getLogger(__name__)
@@ -58,6 +60,7 @@ def verify_site(
     content_dir: str | Path,
     dist_dir: str | Path,
     verbose: bool = True,
+    progress: ProgressCallback | None = None,
 ) -> dict:
     content_dir = Path(content_dir)
     dist = Path(dist_dir)
@@ -66,9 +69,13 @@ def verify_site(
 
     rows: list[dict] = []
     failures = 0
+    pages = book.get("pages", [])
+    total_pages = len(pages)
+    report_progress(progress, "verify", "Checking every word", 0, total_pages)
 
-    for page in book.get("pages", []):
+    for page_index, page in enumerate(pages, 1):
         if page.get("type") == "home" or not page.get("source_files"):
+            report_progress(progress, "verify", "Checking every word", page_index, total_pages)
             continue
         path = route_file(dist, page["route"])
         source = normalize_text(" ".join(source_text.get(f, "") for f in page["source_files"]))
@@ -116,6 +123,7 @@ def verify_site(
                 "detail": detail.strip(),
             }
         )
+        report_progress(progress, "verify", "Checking every word", page_index, total_pages)
 
     checks = _structural_checks(book, dist)
     for result in checks.values():

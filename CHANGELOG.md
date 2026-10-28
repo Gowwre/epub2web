@@ -7,6 +7,7 @@
 - Preserve escaped source text that resembles markup, repair missing `#fnN`/`#ffnN` footnote anchors, and normalize malformed external links produced by print conversions.
 - Report both fidelity and internal-link gate failures in the desktop GUI.
 - Refresh the desktop GUI with the reader's paper palette, custom typography, source/output cards, status indicator, metadata-aware title, custom build console scrollbar, and app icon.
+- Add per-image, per-page, render, verification, and link-check progress reporting, with a determinate GUI progress bar and milestone log lines.
 
 ## 0.1.0 — 2026-10-26
 

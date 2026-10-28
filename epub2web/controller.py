@@ -14,6 +14,7 @@ the app's hidden ``--worker`` mode when ``sys.frozen`` is set.
 from __future__ import annotations
 
 import contextlib
+import json
 import logging
 import os
 import re
@@ -27,6 +28,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 from typing import Any
+
+from .progress import PROGRESS_PREFIX
 
 logger = logging.getLogger(__name__)
 
@@ -109,6 +112,7 @@ def worker_command(
     open_browser: bool = True,
     log_dir: str | Path | None = None,
     report_dir: str | Path | None = None,
+    progress: bool = True,
 ) -> list[str]:
     """Build the command that converts a book in a separate process."""
     python = sys.executable or ("python.exe" if os.name == "nt" else "python3")
@@ -122,6 +126,8 @@ def worker_command(
         command.extend(["--log-dir", str(Path(log_dir).expanduser())])
     if report_dir is not None:
         command.extend(["--report-dir", str(Path(report_dir).expanduser())])
+    if progress:
+        command.append("--progress")
     if serve:
         command.extend(["--serve", "--port", str(port)])
         if not open_browser:
@@ -352,6 +358,15 @@ class BuildController:
     def _handle_line(self, raw: str) -> None:
         text = raw.rstrip("\r\n").strip()
         if not text:
+            return
+        if text.startswith(PROGRESS_PREFIX):
+            try:
+                payload = json.loads(text[len(PROGRESS_PREFIX) :])
+            except (TypeError, ValueError):
+                self._emit(BuildEvent("log", text))
+                return
+            if isinstance(payload, dict):
+                self._emit(BuildEvent("progress", data=payload))
             return
         self._emit(BuildEvent("log", text))
 

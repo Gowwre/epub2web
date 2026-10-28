@@ -14,6 +14,7 @@ from urllib.parse import urlsplit
 from bs4 import BeautifulSoup, Comment, Tag
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from .progress import ProgressCallback, report
 from .text import normalize_text, text_of
 
 logger = logging.getLogger(__name__)
@@ -94,6 +95,7 @@ class SiteRenderer:
         static_dir: str | Path | None = None,
         site_url: str = "http://localhost:4321",
         base_path: str = "",
+        progress: ProgressCallback | None = None,
     ):
         self.content_dir = Path(content_dir)
         self.dist = Path(dist_dir)
@@ -101,6 +103,7 @@ class SiteRenderer:
         self.static_dir = Path(static_dir or DEFAULT_STATIC)
         self.base_path = normalize_base_path(base_path)
         self.site_url = site_url.rstrip("/")
+        self.progress = progress
         if self.base_path:
             site_path = urlsplit(self.site_url).path.rstrip("/")
             if not (site_path == self.base_path or site_path.endswith(self.base_path)):
@@ -119,6 +122,9 @@ class SiteRenderer:
         self.env.filters["comma"] = comma
         self.env.globals["base_path"] = self.base_path
 
+    def _report(self, phase: str, label: str, current: int, total: int) -> None:
+        report(self.progress, phase, label, current, total)
+
     def run(self) -> dict:
         self._prepare()
         logger.info(
@@ -129,11 +135,15 @@ class SiteRenderer:
                 "base_path": self.base_path,
             },
         )
+        self._report("render-pages", "Building pages", 0, len(self.pages))
         self._render()
+        self._report("render-pages", "Building pages", len(self.pages), len(self.pages))
+        self._report("render-assets", "Finishing site", 0, 1)
         self._apply_base_path()
         self._write_search_index()
         self._assets()
         self._sitemap()
+        self._report("render-assets", "Finishing site", 1, 1)
         logger.info(
             "site rendered",
             extra={
@@ -497,9 +507,11 @@ class SiteRenderer:
         )
 
         # Reading pages
-        for page in self.pages:
+        total_pages = len(self.pages)
+        for page_index, page in enumerate(self.pages, 1):
             fragment_path = self.content_dir / "pages" / f"{page['id']}.html"
             if not fragment_path.exists():
+                self._report("render-pages", "Building pages", page_index, total_pages)
                 continue
             fragment = fragment_path.read_text(encoding="utf-8")
             fragment = fragment.replace(
@@ -548,6 +560,7 @@ class SiteRenderer:
                 cover_height=meta.get("cover_height", 662),
             )
             write_route(self.dist, page["route"], self.env.get_template("page.html").render(**ctx))
+            self._report("render-pages", "Building pages", page_index, total_pages)
 
         # 404
         p404 = {
@@ -714,6 +727,7 @@ def render_site(
     static_dir=None,
     site_url=None,
     base_path="",
+    progress: ProgressCallback | None = None,
 ) -> dict:
     renderer = SiteRenderer(
         content_dir=content_dir,
@@ -722,5 +736,6 @@ def render_site(
         static_dir=static_dir,
         site_url=site_url or os.environ.get("SITE_URL", "http://localhost:4321"),
         base_path=base_path,
+        progress=progress,
     )
     return renderer.run()

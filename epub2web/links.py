@@ -12,6 +12,9 @@ from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
 
+from .progress import ProgressCallback
+from .progress import report as report_progress
+
 logger = logging.getLogger(__name__)
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -33,7 +36,11 @@ def _target_path(dist: Path, base: Path, path: str) -> Path | None:
     return candidate
 
 
-def check_site_links(dist_dir: str | Path, base_path: str = "") -> dict:
+def check_site_links(
+    dist_dir: str | Path,
+    base_path: str = "",
+    progress: ProgressCallback | None = None,
+) -> dict:
     dist = Path(dist_dir).resolve()
     base_path = "" if not base_path or base_path.strip("/") == "" else "/" + base_path.strip("/")
 
@@ -63,8 +70,10 @@ def check_site_links(dist_dir: str | Path, base_path: str = "") -> dict:
 
     broken: list[dict] = []
     checked = 0
+    total_pages = len(soups)
+    report_progress(progress, "links", "Checking links", 0, total_pages)
 
-    for path, soup in soups.items():
+    for page_index, (path, soup) in enumerate(soups.items(), 1):
         for a in soup.find_all("a", href=True):
             href = a["href"].strip()
             if not href or href == "#" or _is_external(href):
@@ -150,6 +159,7 @@ def check_site_links(dist_dir: str | Path, base_path: str = "") -> dict:
                                 "reason": f"missing {attribute} target",
                             }
                         )
+        report_progress(progress, "links", "Checking links", page_index, total_pages)
 
     for stylesheet in sorted(dist.rglob("*.css")):
         text = stylesheet.read_text(encoding="utf-8")

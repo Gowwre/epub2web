@@ -74,6 +74,7 @@ def test_worker_command_uses_module_when_not_frozen(monkeypatch, tmp_path: Path)
     assert command[0] == sys.executable
     assert command[1:3] == ["-m", "epub2web.worker"]
     assert "--serve" not in command
+    assert "--progress" in command
     assert "--log-dir" in command
     assert "--report-dir" in command
 
@@ -136,6 +137,13 @@ def test_controller_builds_and_reports_success(tiny_epub, tmp_path: Path):
     assert controller.wait(60) == 0
     assert controller.state is BuildState.SUCCEEDED
     assert (site / "index.html").exists()
+
+    progress = [event for event in events if event.kind == "progress"]
+    assert progress
+    assert progress[0].data["phase"] == "read"
+    assert progress[-1].data["percent"] == 1.0
+    percents = [event.data["percent"] for event in progress]
+    assert percents == sorted(percents)
 
     success = [event for event in events if event.kind == "success"]
     assert success

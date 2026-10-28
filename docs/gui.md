@@ -41,12 +41,19 @@ continues to work normally.
 - `epub2web/controller.py` — toolkit-independent process controller. It streams
   events from the worker and never imports Tk.
 - `epub2web/worker.py` — worker process that calls the existing CLI.
+- `epub2web/progress.py` — phase progress definitions and the machine-readable
+  `--progress` stream used by the worker.
 - `scripts/gui_entry.py` — PyInstaller entry point.
 
 The view sends user actions to `BuildController`; the controller spawns a
 worker and emits `BuildEvent` objects. The Tk app puts those events on a queue
 and applies them on the Tk main thread. Replacing Tkinter with Qt or a local web
 view should not require changes to the controller or worker.
+
+Progress is reported for reading, per-image optimization, page conversion,
+rendering, fidelity verification, link checking, and publishing. The GUI turns
+those events into a determinate progress bar, a live stage counter, and
+milestone log lines.
 
 ## Building a standalone app
 

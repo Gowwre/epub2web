@@ -17,6 +17,7 @@ from .epub import Epub
 from .generic import GenericExtractor
 from .links import check_site_links
 from .logging import LogSession, log_environment, log_path_for_user, setup_logging
+from .progress import ProgressCallback, ProgressPrinter
 from .render import normalize_base_path, render_site
 from .server import serve_directory
 from .text import slugify
@@ -44,8 +45,9 @@ def build(
     title: str = "",
     author: str = "",
     base_path: str = "",
+    progress: ProgressCallback | None = None,
 ) -> dict:
-    book = GenericExtractor(epub, content, images).run()
+    book = GenericExtractor(epub, content, images, progress=progress).run()
     if title:
         book["meta"]["title"] = title
         short_title, separator, subtitle = title.partition(":")
@@ -66,6 +68,7 @@ def build(
         static_dir=THEME,
         site_url=site_url,
         base_path=base_path,
+        progress=progress,
     )
     return book
 
@@ -204,6 +207,11 @@ def main(argv: list[str] | None = None) -> int:
         help="directory for the failure support ZIP (default: ./epub2web-reports)",
     )
     parser.add_argument("--version", action="version", version=f"epub2web {__version__}")
+    parser.add_argument(
+        "--progress",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
     args = parser.parse_args(argv)
 
     session = setup_logging(log_dir=args.log_dir, log_file=args.log_file)
@@ -220,8 +228,9 @@ def main(argv: list[str] | None = None) -> int:
 
     status = "error"
     exit_code = 2
+    progress = ProgressPrinter() if args.progress else None
     try:
-        exit_code = _run(args, parser, session)
+        exit_code = _run(args, parser, session, progress)
         status = "ok" if exit_code == 0 else "failed"
         return exit_code
     except KeyboardInterrupt:
@@ -271,7 +280,12 @@ def main(argv: list[str] | None = None) -> int:
         session.close()
 
 
-def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: LogSession) -> int:
+def _run(
+    args: argparse.Namespace,
+    parser: argparse.ArgumentParser,
+    session: LogSession,
+    progress: ProgressPrinter | None = None,
+) -> int:
     started = time.perf_counter()
     try:
         base_path = normalize_base_path(args.base_path)
@@ -395,6 +409,7 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: Log
             args.title,
             args.author,
             base_path,
+            progress=progress,
         )
         book = json.loads((content / "book.json").read_text(encoding="utf-8"))
         stats = book.get("stats", {})
@@ -412,7 +427,7 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: Log
 
         verified = True
         if not args.no_verify:
-            result = verify_site(content, staging, verbose=False)
+            result = verify_site(content, staging, verbose=False, progress=progress)
             verified = result["pass"]
             exact = sum(1 for row in result["pages"] if row["status"] == "ok")
             session.info(
@@ -444,7 +459,7 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: Log
 
         links_ok = True
         if not args.no_links:
-            link_result = check_site_links(staging, base_path=base_path)
+            link_result = check_site_links(staging, base_path=base_path, progress=progress)
             links_ok = link_result["ok"]
             session.info(
                 "link gate",
@@ -510,14 +525,20 @@ def _run(args: argparse.Namespace, parser: argparse.ArgumentParser, session: Log
             print(f"Time:    {elapsed:.2f}s")
             return 1
 
+        if progress is not None:
+            progress("publish", "Publishing site", 0, 1)
         publish_site(staging, output)
         published = True
+        if progress is not None:
+            progress("publish", "Publishing site", 1, 1)
         session.write_artifact("summary", summary)
         session.info("site published", output=str(output), package=base_path or "/")
         print(f"Site:    {output / 'index.html'}")
         print(f"Time:    {elapsed:.2f}s")
 
         if args.serve:
+            if progress is not None:
+                progress("preview", "Starting preview", 1, 1)
             serve_directory(
                 output,
                 port=args.port,

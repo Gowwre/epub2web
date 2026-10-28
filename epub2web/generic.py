@@ -26,6 +26,7 @@ from bs4 import BeautifulSoup, NavigableString, Tag, XMLParsedAsHTMLWarning
 from PIL import Image, ImageOps
 
 from .epub import Epub
+from .progress import ProgressCallback, report
 from .text import inner, match_key, normalize_text, slugify, strip_leading, text_of
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
@@ -575,11 +576,21 @@ def image_info(epub: Epub, images: dict, doc_path: str, src: str) -> dict | None
 
 
 class GenericExtractor:
-    def __init__(self, epub_path: str | Path, content_dir: str | Path, images_dir: str | Path):
+    def __init__(
+        self,
+        epub_path: str | Path,
+        content_dir: str | Path,
+        images_dir: str | Path,
+        progress: ProgressCallback | None = None,
+    ):
         self.epub_path = Path(epub_path)
         self.content_dir = Path(content_dir)
         self.pages_dir = self.content_dir / "pages"
         self.images_dir = Path(images_dir)
+        self.progress = progress
+
+    def _report(self, phase: str, label: str, current: int, total: int) -> None:
+        report(self.progress, phase, label, current, total)
 
     # -- page planning ----------------------------------------------------
     def run(self) -> dict:
@@ -600,12 +611,15 @@ class GenericExtractor:
                 raise ValueError("EPUB spine contains no readable HTML documents")
             logger.debug("spine documents", extra={"count": len(self.items)})
             self.cleaned: dict[str, BeautifulSoup] = {}
-            for item in self.items:
+            total_docs = len(self.items)
+            self._report("read", "Opening book", 0, total_docs)
+            for index, item in enumerate(self.items, 1):
                 try:
                     soup = BeautifulSoup(book.read(item.path), "lxml")
                 except Exception as exc:
                     raise ValueError(f"could not parse {item.path}: {exc}") from exc
                 self.cleaned[item.path] = clean_doc(soup)
+                self._report("read", "Opening book", index, total_docs)
 
             self.cover_info = self._process_cover()
             self.images = self._process_images()
@@ -627,7 +641,9 @@ class GenericExtractor:
 
             fragments = {}
             source_text = {}
-            for page in self.pages:
+            total_pages = len(self.pages)
+            self._report("extract-pages", "Laying out pages", 0, total_pages)
+            for index, page in enumerate(self.pages, 1):
                 path = page["source_files"][0]
                 soup = self.cleaned[path]
                 page["images"] = len(soup.body.find_all("img")) if soup.body else 0
@@ -639,6 +655,7 @@ class GenericExtractor:
                 page["note_count"] = fragment.count("noteref") + fragment.count("footnote")
                 page["words"] = len(source_text[path].split())
                 fragments[page["id"]] = fragment
+                self._report("extract-pages", "Laying out pages", index, total_pages)
 
             self.pages = [p for p in self.pages if p["id"] in fragments]
             if not self.pages:
@@ -646,9 +663,11 @@ class GenericExtractor:
             self.page_by_path = {p["source_files"][0]: p for p in self.pages}
             self.route_by_path = {p["source_files"][0]: p["route"] for p in self.pages}
 
+            self._report("extract-write", "Saving book data", 0, 1)
             self._write_toc()
             self._write_pages(fragments)
             self._write_book(source_text)
+            self._report("extract-write", "Saving book data", 1, 1)
             stats = self.book_data.get("stats", {})
             logger.info(
                 "book extracted",
@@ -789,8 +808,19 @@ class GenericExtractor:
             if self.cover_info.get("webp"):
                 used.add(self.cover_info["webp"])
         result: dict[str, dict] = {}
-        for doc_path, soup in self.cleaned.items():
-            for img in soup.find_all("img"):
+        image_tags = [
+            (doc_path, img)
+            for doc_path, soup in self.cleaned.items()
+            for img in soup.find_all("img")
+        ]
+        total = len(image_tags)
+        if total:
+            self._report("extract-images", "Preparing images", 0, total)
+        else:
+            self._report("extract-images", "No images to prepare", 1, 1)
+
+        for index, (doc_path, img) in enumerate(image_tags, 1):
+            try:
                 src = (img.get("src") or "").strip()
                 if not src:
                     self.image_errors.append(f"{doc_path}: image has no src")
@@ -830,6 +860,9 @@ class GenericExtractor:
                 )
                 if info:
                     result[path] = info
+            finally:
+                if total:
+                    self._report("extract-images", "Preparing images", index, total)
         return result
 
     # -- planning ---------------------------------------------------------

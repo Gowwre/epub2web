@@ -66,6 +66,9 @@ browser. The site is built under `~/Documents/epub2web/<book>-site` (or
 stays running while you read; use **Stop** to shut it down. Closing the window
 also stops it.
 
+The build log and progress bar update continuously — down to individual images
+and pages — so a long book does not look stalled.
+
 On Linux, install Tk first if your distribution does not include it:
 
 ```bash
