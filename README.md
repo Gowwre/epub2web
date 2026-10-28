@@ -311,6 +311,7 @@ The output is a plain folder:
 
 ```text
 book-site/
+  .epub2web            identifies the folder as an epub2web site
   index.html
   contents/index.html
   read/1/index.html
@@ -345,7 +346,8 @@ serve the folder rather than opening `index.html` directly from the filesystem.
   place. If extraction or a gate fails, an existing site is left untouched.
 - Re-running a command for a site that `epub2web` created refreshes it
   automatically. A non-empty folder that does not look like an epub2web site is
-  refused instead of being overwritten.
+  refused instead of being overwritten. Sites built by earlier versions need
+  `--force` once so the marker file can be added.
 - `--force` refuses to replace the current directory, the home directory, any
   directory containing the input EPUB, or a non-empty directory that does not
   look like an epub2web site.

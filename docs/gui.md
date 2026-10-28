@@ -54,7 +54,8 @@ view should not require changes to the controller or worker.
 Progress is reported for reading, per-image optimization, page conversion,
 rendering, fidelity verification, link checking, and publishing. The GUI turns
 those events into a determinate progress bar, a live stage counter, and
-milestone log lines.
+milestone log lines. Site paths, gate results, counts, and timings are also
+sent as structured events so the controller does not depend on CLI wording.
 
 ## Portable builds
 

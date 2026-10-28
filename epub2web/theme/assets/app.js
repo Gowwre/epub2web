@@ -40,9 +40,9 @@
   /* ------------------------------------------------------------------
      Dialogs
      ------------------------------------------------------------------ */
-  const menuDialog = document.getElementById("menu-dialog");
-  const searchDialog = document.getElementById("search-dialog");
-  const lightbox = document.getElementById("lightbox");
+  const menuDialog = document.getElementById("epub2web-menu-dialog");
+  const searchDialog = document.getElementById("epub2web-search-dialog");
+  const lightbox = document.getElementById("epub2web-lightbox");
   let lastFocus = null;
 
   function openDialog(dialog) {
@@ -83,9 +83,9 @@
   /* ------------------------------------------------------------------
      Search (built-in index, loaded on first use)
      ------------------------------------------------------------------ */
-  const searchInput = document.getElementById("book-search");
-  const searchResults = document.getElementById("search-results");
-  const searchStatus = document.getElementById("search-status");
+  const searchInput = document.getElementById("epub2web-book-search");
+  const searchResults = document.getElementById("epub2web-search-results");
+  const searchStatus = document.getElementById("epub2web-search-status");
   let searchIndex = null;
   let searchPromise = null;
   let searchTimer = null;
@@ -266,109 +266,6 @@
   }
 
   /* ------------------------------------------------------------------
-     Note previews
-     ------------------------------------------------------------------ */
-  const popover = document.getElementById("note-popover");
-  const popoverPage = popover ? popover.querySelector(".note-popover-page") : null;
-  const popoverText = popover ? popover.querySelector(".note-popover-text") : null;
-  const popoverLink = popover ? popover.querySelector(".note-popover-link") : null;
-  let notesData = null;
-  let notesPromise = null;
-  let hideTimer = null;
-  let activeRef = null;
-
-  function loadNotes() {
-    if (notesData) return Promise.resolve(notesData);
-    if (notesPromise) return notesPromise;
-    notesPromise = fetch(withBase("/notes.json"), { credentials: "same-origin" })
-      .then(function (response) {
-        if (!response.ok) throw new Error("notes fetch failed");
-        return response.json();
-      })
-      .then(function (data) { notesData = data; return data; })
-      .catch(function () { notesData = null; return null; });
-    return notesPromise;
-  }
-
-  function positionPopover() {
-    if (!popover || !activeRef) return;
-    const rect = activeRef.getBoundingClientRect();
-    if (rect.bottom < 0 || rect.top > window.innerHeight) {
-      popover.hidden = true;
-      activeRef = null;
-      return;
-    }
-    popover.style.visibility = "hidden";
-    popover.hidden = false;
-    const box = popover.getBoundingClientRect();
-    const margin = 12;
-    let left = rect.left + rect.width / 2 - box.width / 2;
-    left = Math.max(margin, Math.min(left, window.innerWidth - box.width - margin));
-    let top = rect.bottom + 10;
-    if (top + box.height > window.innerHeight - margin) {
-      top = Math.max(margin, rect.top - box.height - 10);
-    }
-    popover.style.left = left + "px";
-    popover.style.top = top + "px";
-    popover.style.visibility = "visible";
-  }
-
-  function showNote(ref) {
-    if (!popover || !popoverPage || !popoverText || !popoverLink) return;
-    const key = ref.getAttribute("data-note");
-    const link = ref.querySelector("a");
-    if (!key) return;
-    window.clearTimeout(hideTimer);
-    activeRef = ref;
-    loadNotes().then(function (data) {
-      const note = data ? data[key] : null;
-      if (!note) return;
-      popoverPage.textContent = note.page || "";
-      popoverText.textContent = note.text || "";
-      popoverLink.href = note.href ? withBase(note.href) : link ? link.href : withBase("/notes/");
-      positionPopover();
-    });
-  }
-
-  function hideNote(delay) {
-    if (!popover) return;
-    window.clearTimeout(hideTimer);
-    hideTimer = window.setTimeout(function () {
-      popover.hidden = true;
-      activeRef = null;
-    }, delay == null ? 180 : delay);
-  }
-
-  document.querySelectorAll("sup.note-ref").forEach(function (ref) {
-    ref.addEventListener("mouseenter", function () { showNote(ref); });
-    ref.addEventListener("focusin", function () { showNote(ref); });
-    ref.addEventListener("mouseleave", function () { hideNote(); });
-    ref.addEventListener("focusout", function (event) {
-      if (popover && popover.contains(event.relatedTarget)) return;
-      hideNote();
-    });
-  });
-
-  if (popover) {
-    popover.addEventListener("mouseenter", function () { window.clearTimeout(hideTimer); });
-    popover.addEventListener("mouseleave", function () { hideNote(80); });
-    popover.addEventListener("focusin", function () { window.clearTimeout(hideTimer); });
-    popover.addEventListener("focusout", function (event) {
-      if (activeRef && activeRef.contains(event.relatedTarget)) return;
-      hideNote();
-    });
-    document.addEventListener("keydown", function (event) {
-      if (event.key === "Escape" && !popover.hidden) hideNote(0);
-    });
-    window.addEventListener("scroll", function () {
-      if (activeRef && popover && !popover.hidden) positionPopover();
-    }, { passive: true });
-    window.addEventListener("resize", function () {
-      if (activeRef && popover && !popover.hidden) positionPopover();
-    });
-  }
-
-  /* ------------------------------------------------------------------
      Reading progress
      ------------------------------------------------------------------ */
   const progressBar = document.querySelector(".progress span");
@@ -429,61 +326,6 @@
     window.addEventListener("resize", updateActiveSection);
     updateActiveSection();
     if (location.hash) setActive(location.hash.slice(1));
-  }
-
-  /* ------------------------------------------------------------------
-     Index filter
-     ------------------------------------------------------------------ */
-  const indexFilter = document.getElementById("index-filter");
-  if (indexFilter) {
-    const entries = Array.from(document.querySelectorAll("[data-index-text]"));
-    const groups = Array.from(document.querySelectorAll(".index-list"));
-    const count = document.querySelector(".index-count");
-    const total = entries.length;
-    let noResults = null;
-
-    function applyFilter() {
-      const query = indexFilter.value.trim().toLowerCase();
-      let visible = 0;
-      entries.forEach(function (entry) {
-        const match = !query || (entry.getAttribute("data-index-text") || "").toLowerCase().includes(query);
-        entry.hidden = !match;
-        if (match) visible += 1;
-      });
-      groups.forEach(function (group) {
-        const hasVisible = Array.from(group.children).some(function (child) { return !child.hidden; });
-        group.hidden = !hasVisible;
-        const heading = group.previousElementSibling;
-        if (heading && heading.classList.contains("index-letter")) heading.hidden = !hasVisible;
-      });
-      document.querySelectorAll(".index-letters a").forEach(function (link) {
-        const id = (link.getAttribute("href") || "").slice(1);
-        const heading = document.getElementById(id);
-        link.hidden = !heading || heading.hidden;
-      });
-      if (count) {
-        count.textContent = query
-          ? visible + " of " + total + " entries match “" + indexFilter.value.trim() + "”"
-          : total + " entries";
-      }
-      if (!noResults) {
-        noResults = document.createElement("p");
-        noResults.className = "index-empty";
-        noResults.textContent = "No entries match. Try a shorter or different spelling.";
-        const list = document.querySelector(".index-list");
-        if (list) list.parentNode.insertBefore(noResults, list);
-      }
-      noResults.hidden = !query || visible > 0;
-    }
-
-    indexFilter.addEventListener("input", applyFilter);
-    applyFilter();
-    indexFilter.addEventListener("keydown", function (event) {
-      if (event.key === "Escape") {
-        indexFilter.value = "";
-        applyFilter();
-      }
-    });
   }
 
   /* ------------------------------------------------------------------

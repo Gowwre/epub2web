@@ -11,15 +11,31 @@ All notable, user-facing changes are documented here. The format follows
 - Add a public Astro landing site and download page, with a first-launch FAQ for Windows SmartScreen and macOS Gatekeeper warnings. The Pages workflow publishes the landing page at the project root and moves the live demo to `/demo/`.
 - Add a dedicated changelog page with a GitHub link for every published release.
 - Add a “Run the site” guide to the README and landing page covering the desktop preview, reopening a site, local static-server commands, and why `index.html` cannot be opened directly.
+- Mark generated sites with an `.epub2web` file and a generator meta tag so refreshes cannot replace unrelated folders by accident.
 
 ### Changed
 
 - Download buttons now point directly at the current release’s Windows, macOS, and Linux files instead of the GitHub release page. The Pages build resolves the latest assets, and a new release refreshes the download page automatically.
 - Detect the visitor’s platform on the download page, recommend and highlight the matching installer, and fall back to a neutral platform picker on phones, ChromeOS, ARM Linux, unknown agents, or without JavaScript.
+- Remove the non-functional note-preview and index-filter UI assets from the reading theme.
 
 ### Fixed
 
 - Prevent narrow mobile layouts from clipping the homepage hero, header, release output, and long code snippets.
+- Show each reading page’s estimated reading time instead of an empty chapter-meta line.
+- Reject internal links whose `..` segments escape the generated site, and require root-relative links to include the configured base path.
+- Preserve valid EPUB source IDs that previously collided with template IDs such as `main` or `top`.
+- Split title overrides containing colons or dashes consistently, and read years from non-ISO publication dates instead of showing a truncated month.
+- Keep the support ZIP when one JSONL event line is malformed.
+- Resolve relative GUI log and report paths against the worker’s working directory.
+
+### Security
+
+- Harden external SVG sanitization by removing SMIL animation elements and `javascript:`, `file:`, and `data:` attribute values.
+
+### Upgrade notes
+
+- Sites built before this release do not have the `.epub2web` marker. Refreshing one without `--force` is refused; pass `--force` once to migrate it and add the marker.
 
 ## 0.2.0 - 2026-10-28
 

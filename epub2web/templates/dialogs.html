@@ -1,9 +1,9 @@
 {% from "macros.html" import icon %}
-<dialog id="menu-dialog" class="sheet menu-sheet" aria-labelledby="menu-title">
+<dialog id="epub2web-menu-dialog" class="sheet menu-sheet" aria-labelledby="epub2web-menu-title">
   <div class="sheet-head">
     <div>
       <p class="sheet-eyebrow">{{ book.meta.short_title }}</p>
-      <h2 class="sheet-title" id="menu-title">Contents</h2>
+      <h2 class="sheet-title" id="epub2web-menu-title">Contents</h2>
     </div>
     <button class="icon-btn" type="button" data-close aria-label="Close contents">{{ icon("close") }}</button>
   </div>
@@ -38,35 +38,29 @@
   </div>
 </dialog>
 
-<dialog id="search-dialog" class="sheet search-sheet" aria-labelledby="search-title">
+<dialog id="epub2web-search-dialog" class="sheet search-sheet" aria-labelledby="epub2web-search-title">
   <div class="sheet-head">
     <div>
       <p class="sheet-eyebrow">Full text</p>
-      <h2 class="sheet-title" id="search-title">Search the book</h2>
+      <h2 class="sheet-title" id="epub2web-search-title">Search the book</h2>
     </div>
     <button class="icon-btn" type="button" data-close aria-label="Close search">{{ icon("close") }}</button>
   </div>
   <div class="sheet-body search-body">
     <label class="book-search">
       <span class="sr-only">Search the book</span>
-      <input id="book-search" type="search" placeholder="Search the book…" autocomplete="off">
+      <input id="epub2web-book-search" type="search" placeholder="Search the book…" autocomplete="off">
     </label>
-    <p class="search-status" id="search-status">Type a word or phrase.</p>
-    <div id="search-results" class="search-results" aria-live="polite"></div>
+    <p class="search-status" id="epub2web-search-status">Type a word or phrase.</p>
+    <div id="epub2web-search-results" class="search-results" aria-live="polite"></div>
     <p class="search-hint">Press <kbd>/</kbd> anywhere to open search, <kbd>Esc</kbd> to close.</p>
   </div>
 </dialog>
 
-<dialog id="lightbox" class="lightbox" aria-label="Figure viewer">
+<dialog id="epub2web-lightbox" class="lightbox" aria-label="Figure viewer">
   <button class="lightbox-close" type="button" data-lightbox-close aria-label="Close figure">{{ icon("close", 24) }}</button>
   <figure>
     <img alt="">
     <figcaption></figcaption>
   </figure>
 </dialog>
-
-<div id="note-popover" class="note-popover" role="dialog" aria-label="Note preview" hidden>
-  <p class="note-popover-head"><span class="note-popover-page"></span><span class="note-popover-label">Note</span></p>
-  <p class="note-popover-text"></p>
-  <a class="note-popover-link" href="#">Open the note <span aria-hidden="true">→</span></a>
-</div>

@@ -21,15 +21,12 @@ import uuid
 import zipfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from logging.handlers import RotatingFileHandler
 from pathlib import Path
 from typing import Any
 
 LOGGER_NAME = "epub2web"
 _RESERVED = set(logging.makeLogRecord({}).__dict__) | {"message", "asctime"}
 DEFAULT_KEEP_RUNS = 20
-MAX_LOG_BYTES = 5 * 1024 * 1024
-MAX_LOG_BACKUPS = 5
 
 
 def default_log_dir() -> Path:
@@ -143,20 +140,10 @@ class LogSession:
     def exception(self, message: str, **fields: Any) -> None:
         self.logger.exception(message, extra=fields)
 
-    def write_artifact(
-        self,
-        name: str,
-        data: Any,
-        *,
-        filename: str | None = None,
-    ) -> Path | None:
+    def write_artifact(self, name: str, data: Any) -> Path | None:
         if self.path is None:
             return None
-        target = (
-            self.path.parent / filename
-            if filename
-            else self.path.parent / f"{self.path.stem}-{_safe_name(name)}.json"
-        )
+        target = self.path.parent / f"{self.path.stem}-{_safe_name(name)}.json"
         try:
             target.write_text(
                 json.dumps(data, ensure_ascii=False, indent=2, default=str) + "\n",
@@ -196,7 +183,6 @@ class LogSession:
         exit_code: int,
         error: str = "",
         report_dir: str | Path | None = None,
-        filename: str | None = None,
     ) -> Path | None:
         """Create one ZIP that an end user can attach to a bug report."""
         self.flush()
@@ -215,9 +201,7 @@ class LogSession:
         if not directory.is_absolute():
             directory = Path.cwd() / directory
         directory = directory.resolve()
-        target = directory / (
-            filename or f"epub2web-report-{time.strftime('%Y%m%d-%H%M%S')}-{self.run_id}.zip"
-        )
+        target = directory / (f"epub2web-report-{time.strftime('%Y%m%d-%H%M%S')}-{self.run_id}.zip")
 
         environment = self.context.get("environment", {})
         command = environment.get("argv") if isinstance(environment, dict) else None
@@ -275,11 +259,15 @@ Recent log
                         ).splitlines()
                     except OSError:
                         events = []
-                    current = (
-                        [line for line in events if json.loads(line).get("run_id") == self.run_id]
-                        if events
-                        else []
-                    )
+                    current = []
+                    for line in events:
+                        try:
+                            if json.loads(line).get("run_id") == self.run_id:
+                                current.append(line)
+                        except (TypeError, ValueError):
+                            # Keep the raw line; one corrupt event must not
+                            # discard the whole support report.
+                            current.append(line)
                     if current or events:
                         archive.writestr("events.jsonl", "\n".join(current or events[-120:]) + "\n")
                 for artifact_name, artifact_path in self.artifacts.items():
@@ -316,14 +304,7 @@ Recent log
         self._closed = True
 
 
-def _file_handler(path: Path, *, rotate: bool) -> logging.Handler:
-    if rotate:
-        return RotatingFileHandler(
-            path,
-            maxBytes=MAX_LOG_BYTES,
-            backupCount=MAX_LOG_BACKUPS,
-            encoding="utf-8",
-        )
+def _file_handler(path: Path) -> logging.Handler:
     return logging.FileHandler(path, encoding="utf-8")
 
 
@@ -351,11 +332,6 @@ def _prune_runs(directory: Path, keep: int) -> None:
 def setup_logging(
     log_dir: str | Path | None = None,
     log_file: str | Path | None = None,
-    *,
-    filename: str | None = None,
-    rotate: bool = False,
-    keep: int | None = None,
-    console_level: int = logging.CRITICAL,
 ) -> LogSession:
     """Configure the package logger and return this run's session."""
     run_id = uuid.uuid4().hex[:10]
@@ -370,7 +346,7 @@ def setup_logging(
         handler.close()
 
     console = logging.StreamHandler(sys.stderr)
-    console.setLevel(console_level)
+    console.setLevel(logging.CRITICAL)
     console.setFormatter(_HumanFormatter(timestamps=False, show_logger=False))
     logger.addHandler(console)
     session._handlers.append(console)
@@ -382,11 +358,11 @@ def setup_logging(
             path = Path.cwd() / path
     else:
         stamp = time.strftime("%Y%m%d-%H%M%S")
-        path = directory / (filename or f"epub2web-{stamp}-{run_id}.log")
+        path = directory / f"epub2web-{stamp}-{run_id}.log"
 
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        human = _file_handler(path, rotate=rotate)
+        human = _file_handler(path)
         human.setLevel(logging.DEBUG)
         human.setFormatter(_HumanFormatter())
         logger.addHandler(human)
@@ -396,7 +372,7 @@ def setup_logging(
         jsonl_path = path.with_suffix(".jsonl")
         if jsonl_path == path:
             jsonl_path = path.with_name(path.name + ".jsonl")
-        structured = _file_handler(jsonl_path, rotate=rotate)
+        structured = _file_handler(jsonl_path)
         structured.setLevel(logging.DEBUG)
         structured.setFormatter(_JsonFormatter(run_id))
         logger.addHandler(structured)
@@ -407,12 +383,12 @@ def setup_logging(
         session.jsonl_path = None
         print(f"warning: file logging disabled: {exc}", file=sys.stderr)
 
-    if session.path is not None and not rotate and log_file is None:
+    if session.path is not None and log_file is None:
         env_keep = os.environ.get("EPUB2WEB_LOG_KEEP")
         try:
-            limit = int(env_keep) if env_keep else (keep or DEFAULT_KEEP_RUNS)
+            limit = int(env_keep) if env_keep else DEFAULT_KEEP_RUNS
         except ValueError:
-            limit = keep or DEFAULT_KEEP_RUNS
+            limit = DEFAULT_KEEP_RUNS
         _prune_runs(session.path.parent, limit)
 
     session.context.update({"run_id": run_id, "status": "running"})

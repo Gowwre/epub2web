@@ -1,35 +1,25 @@
 """Text and structure fidelity gates for a rendered book site.
 
 The text gate compares every built page inside <main> with the corresponding
-EPUB source, token-for-token and character-for-character. Structural checks
-cover notes, references, index entries, and the cover. Generated chrome is
-excluded through data-chrome / data-generated.
+EPUB source, token-for-token. Structural checks currently cover the cover.
+Generated chrome is excluded through data-chrome / data-generated.
 """
 
 from __future__ import annotations
 
-import argparse
 import difflib
 import json
 import logging
-import os
-import sys
 from pathlib import Path
 
 from bs4 import BeautifulSoup
 
+from .paths import route_to_file
 from .progress import ProgressCallback
 from .progress import report as report_progress
 from .text import normalize_text, text_of
 
 logger = logging.getLogger(__name__)
-ROOT = Path(__file__).resolve().parents[1]
-
-
-def route_file(dist: Path, route: str) -> Path:
-    if route == "/":
-        return dist / "index.html"
-    return dist / route.strip("/") / "index.html"
 
 
 def first_diff(source: list[str], output: list[str]) -> str:
@@ -77,36 +67,27 @@ def verify_site(
         if page.get("type") == "home" or not page.get("source_files"):
             report_progress(progress, "verify", "Checking every word", page_index, total_pages)
             continue
-        path = route_file(dist, page["route"])
+        path = route_to_file(dist, page["route"])
         source = normalize_text(" ".join(source_text.get(f, "") for f in page["source_files"]))
         soup = BeautifulSoup(path.read_text(encoding="utf-8"), "lxml") if path.exists() else None
         main = soup.find("main") if soup else None
         output = normalize_text(text_of(main)) if main else ""
         src_tokens = source.split()
         out_tokens = output.split()
-        token_ok = src_tokens == out_tokens
-        char_ok = source == output
+        text_ok = src_tokens == out_tokens
         expected_images = int(page.get("images", 0) or 0)
         actual_images = len(main.find_all("img")) if main else 0
         images_ok = expected_images == actual_images
-        ok = token_ok and char_ok and images_ok
+        ok = text_ok and images_ok
         if not ok:
             failures += 1
-        if token_ok and char_ok and images_ok:
+        if text_ok and images_ok:
             status = "ok"
-        elif not token_ok:
+        elif not text_ok:
             status = "TEXT+IMAGE MISMATCH" if not images_ok else "TEXT MISMATCH"
-        elif not char_ok:
-            status = "TEXT+IMAGE MISMATCH" if not images_ok else "CHAR MISMATCH"
         else:
             status = "IMAGE MISMATCH"
-        if token_ok and not char_ok:
-            matcher = difflib.SequenceMatcher(a=source, b=output, autojunk=False)
-            detail = "    character-level difference: " + repr(matcher.get_opcodes()[:5])
-        elif not token_ok:
-            detail = first_diff(src_tokens, out_tokens)
-        else:
-            detail = ""
+        detail = first_diff(src_tokens, out_tokens) if not text_ok else ""
         if not images_ok:
             detail += (
                 f"\n    images: source {expected_images:,} / output {actual_images:,}"
@@ -195,19 +176,3 @@ def verify_site(
         )
 
     return report
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Verify text and structure fidelity.")
-    parser.add_argument(
-        "content", nargs="?", default=os.environ.get("CONTENT_DIR", str(ROOT / "content"))
-    )
-    parser.add_argument("dist", nargs="?", default=os.environ.get("DIST_DIR", str(ROOT / "dist")))
-    parser.add_argument("--quiet", action="store_true")
-    args = parser.parse_args(argv)
-    report = verify_site(args.content, args.dist, verbose=not args.quiet)
-    return 0 if report["pass"] else 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())

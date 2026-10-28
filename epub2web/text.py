@@ -115,6 +115,24 @@ def tokens(text: str) -> list[str]:
     return normalize_text(text).split()
 
 
+TITLE_SEPARATOR_RE = re.compile(r"\s*[:\u2013\u2014]\s*")
+YEAR_RE = re.compile(r"(?<!\d)(\d{4})(?!\d)")
+
+
+def split_title(title: str) -> tuple[str, str]:
+    """Split a display title into (short title, subtitle)."""
+    title = (title or "").strip()
+    parts = TITLE_SEPARATOR_RE.split(title, maxsplit=1)
+    short = parts[0].strip() or title
+    subtitle = parts[1].strip() if len(parts) > 1 else ""
+    return short, subtitle
+
+
+def year_from_date(value: str) -> str:
+    match = YEAR_RE.search(value or "")
+    return match.group(1) if match else ""
+
+
 def slugify(text: str, fallback: str = "section") -> str:
     text = re.sub(r"<[^>]+>", "", text)
     text = unicodedata.normalize("NFKD", text)

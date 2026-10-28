@@ -124,6 +124,30 @@ def test_report_is_still_created_when_logging_fails(epub_factory, tmp_path: Path
         assert "missing from the EPUB" in readme
 
 
+def test_support_bundle_survives_a_malformed_jsonl_line(tmp_path: Path):
+    from epub2web.logging import setup_logging
+
+    session = setup_logging(log_dir=tmp_path / "logs")
+    try:
+        assert session.jsonl_path is not None
+        with session.jsonl_path.open("a", encoding="utf-8") as stream:
+            stream.write("{not valid json}\n")
+        report = session.write_support_bundle(
+            status="error",
+            exit_code=2,
+            error="boom",
+            report_dir=tmp_path / "reports",
+        )
+    finally:
+        session.close()
+
+    assert report is not None
+    assert report.exists()
+    with zipfile.ZipFile(report) as archive:
+        assert "events.jsonl" in archive.namelist()
+        assert "{not valid json}" in archive.read("events.jsonl").decode("utf-8")
+
+
 def test_unwritable_log_does_not_stop_the_build(tiny_epub, tmp_path: Path, capsys):
     blocker = tmp_path / "blocker"
     blocker.write_text("not a directory", encoding="utf-8")

@@ -17,14 +17,12 @@ from .epub import Epub
 from .generic import GenericExtractor
 from .links import check_site_links
 from .logging import LogSession, log_environment, log_path_for_user, setup_logging
-from .progress import ProgressCallback, ProgressPrinter
-from .render import normalize_base_path, render_site
+from .paths import normalize_base_path
+from .progress import ProgressCallback, ProgressPrinter, emit_event
+from .render import SITE_MARKER, render_site
 from .server import serve_directory
-from .text import slugify
+from .text import slugify, split_title
 from .verify import verify_site
-
-TEMPLATES = Path(__file__).resolve().parent / "templates"
-THEME = Path(__file__).resolve().parent / "theme"
 
 
 def detect(path: Path) -> dict:
@@ -47,12 +45,10 @@ def build(
     base_path: str = "",
     progress: ProgressCallback | None = None,
 ) -> dict:
-    book = GenericExtractor(epub, content, images, progress=progress).run()
+    book = GenericExtractor(epub, content, images, progress=progress, clean_images=True).run()
     if title:
         book["meta"]["title"] = title
-        short_title, separator, subtitle = title.partition(":")
-        book["meta"]["short_title"] = short_title.strip() or title
-        book["meta"]["subtitle"] = subtitle.strip() if separator else ""
+        book["meta"]["short_title"], book["meta"]["subtitle"] = split_title(title)
         book["meta"]["title_lines"] = []
     if author:
         book["meta"]["author"] = author
@@ -64,8 +60,6 @@ def build(
     render_site(
         content,
         output,
-        templates_dir=TEMPLATES,
-        static_dir=THEME,
         site_url=site_url,
         base_path=base_path,
         progress=progress,
@@ -119,6 +113,7 @@ def check_output(output: Path, epub: Path) -> None:
 
 
 def output_looks_like_site(output: Path) -> bool:
+    """Return True for an absent/empty output or a marked epub2web site."""
     if not output.exists():
         return True
     try:
@@ -126,7 +121,12 @@ def output_looks_like_site(output: Path) -> bool:
             return True
     except OSError:
         return False
-    return (output / "index.html").exists() and (output / "search-index.json").exists()
+    return (output / SITE_MARKER).is_file()
+
+
+def legacy_output_looks_like_site(output: Path) -> bool:
+    """Recognize pre-marker sites so ``--force`` can migrate them once."""
+    return (output / "index.html").is_file() and (output / "search-index.json").is_file()
 
 
 def publish_site(staging: Path, output: Path) -> None:
@@ -273,6 +273,8 @@ def main(argv: list[str] | None = None) -> int:
             if args.log_dir or args.log_file:
                 _print_log_path(session)
         elif report is not None:
+            if progress is not None:
+                emit_event("report", report=str(report))
             print(f"Report:  {report}", file=sys.stderr)
             print("         attach this file when reporting the problem", file=sys.stderr)
         else:
@@ -362,12 +364,13 @@ def _run(
     if existing and not args.force and nonempty and not refresh:
         parser.error(
             f"output already exists and was not created by epub2web: {output}\n"
-            "Choose a different folder with -o, or pass --force to replace it."
+            "Choose a different folder with -o, or pass --force to replace it. "
+            "Sites built by earlier epub2web versions need --force once to add the site marker."
         )
-    if args.force and not output_looks_like_site(output):
+    if args.force and not (output_looks_like_site(output) or legacy_output_looks_like_site(output)):
         parser.error(
             f"refusing to replace {output}: it does not look like an epub2web site "
-            "(missing index.html or search-index.json)"
+            f"(missing {SITE_MARKER}, index.html, or search-index.json)"
         )
 
     work: Path | None = None
@@ -424,6 +427,13 @@ def _run(
         print(f"Words:   {stats.get('words', 0):,}")
         if stats.get("figures"):
             print(f"Figures: {stats['figures']}")
+        if progress is not None:
+            emit_event(
+                "stats",
+                pages=len(book.get("pages", [])),
+                words=stats.get("words", 0),
+                figures=stats.get("figures", 0),
+            )
 
         verified = True
         if not args.no_verify:
@@ -441,6 +451,14 @@ def _run(
             print(
                 f"Verify:  {'PASS' if verified else 'FAIL'} ({exact}/{len(result['pages'])} pages exact)"
             )
+            if progress is not None:
+                emit_event(
+                    "verify",
+                    {"pass": verified},
+                    exact=exact,
+                    pages=len(result["pages"]),
+                    failures=result["failures"],
+                )
             if not verified:
                 for row in result["pages"]:
                     if row["status"] != "ok":
@@ -474,6 +492,14 @@ def _run(
                 f"({link_result['checked']:,} checked, {len(link_result['broken'])} broken, "
                 f"{len(link_result['duplicates'])} duplicate ids)"
             )
+            if progress is not None:
+                emit_event(
+                    "links",
+                    {"pass": links_ok},
+                    checked=link_result["checked"],
+                    broken=len(link_result["broken"]),
+                    duplicates=len(link_result["duplicates"]),
+                )
             if not links_ok:
                 for item in link_result["broken"][:10]:
                     print(f"  ✗ {item['file']} -> {item['href']} ({item['reason']})")
@@ -488,6 +514,8 @@ def _run(
             search_count = len(json.loads(search_index.read_text(encoding="utf-8")))
         session.info("search index", entries=search_count)
         print(f"Search:  {search_count:,} sections indexed")
+        if progress is not None:
+            emit_event("search", sections=search_count)
 
         elapsed = time.perf_counter() - started
         summary = {
@@ -523,6 +551,8 @@ def _run(
                 output=str(output),
             )
             print(f"Time:    {elapsed:.2f}s")
+            if progress is not None:
+                emit_event("time", seconds=round(elapsed, 3))
             return 1
 
         if progress is not None:
@@ -535,6 +565,9 @@ def _run(
         session.info("site published", output=str(output), package=base_path or "/")
         print(f"Site:    {output / 'index.html'}")
         print(f"Time:    {elapsed:.2f}s")
+        if progress is not None:
+            emit_event("site", site=str(output / "index.html"))
+            emit_event("time", seconds=round(elapsed, 3))
 
         if args.serve:
             if progress is not None:

@@ -8,9 +8,16 @@ import pytest
 from bs4 import BeautifulSoup
 from epub2web.cli import main
 from epub2web.epub import Epub
-from epub2web.generic import BACK_LABELS, FRONT_LABELS, GenericExtractor, label_matches, marker_kind
+from epub2web.generic import (
+    BACK_LABELS,
+    FRONT_LABELS,
+    GenericExtractor,
+    label_matches,
+    marker_kind,
+    sanitize_svg,
+)
 from epub2web.links import check_site_links
-from epub2web.render import render_site
+from epub2web.render import SITE_MARKER, render_site
 from epub2web.text import match_key
 from epub2web.verify import verify_site
 from PIL import Image
@@ -379,3 +386,150 @@ def test_verify_detects_a_dropped_image(tiny_epub, tmp_path: Path):
     report = verify_site(content, site, verbose=False)
     assert not report["pass"]
     assert any(row["status"] == "IMAGE MISMATCH" for row in report["pages"])
+
+
+def test_link_gate_rejects_paths_outside_the_site(tiny_epub, tmp_path: Path):
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    site = tmp_path / "site"
+    GenericExtractor(tiny_epub, content, images).run()
+    render_site(content, site, site_url="http://localhost:8000")
+
+    (tmp_path / "secret.html").write_text("outside", encoding="utf-8")
+    page_path = site / "read" / "1" / "index.html"
+    page_html = page_path.read_text(encoding="utf-8")
+    page_path.write_text(
+        page_html.replace("</main>", '<a href="/../secret.html">escape</a></main>'),
+        encoding="utf-8",
+    )
+
+    result = check_site_links(site)
+    assert not result["ok"]
+    assert any(item["href"] == "/../secret.html" for item in result["broken"])
+
+
+def test_link_gate_requires_base_path_on_root_relative_links(tiny_epub, tmp_path: Path):
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    site = tmp_path / "site"
+    GenericExtractor(tiny_epub, content, images).run()
+    render_site(content, site, site_url="https://example.com", base_path="shelf")
+
+    page_path = site / "read" / "1" / "index.html"
+    page_html = page_path.read_text(encoding="utf-8")
+    page_path.write_text(
+        page_html.replace("</main>", '<a href="/assets/styles.css">unprefixed</a></main>'),
+        encoding="utf-8",
+    )
+
+    result = check_site_links(site, base_path="/shelf")
+    assert not result["ok"]
+    assert any(item["reason"] == "missing base path" for item in result["broken"])
+
+
+def test_source_id_that_matches_template_id_builds(tiny_epub, tmp_path: Path):
+    import zipfile
+
+    target = tmp_path / "collision.epub"
+    with zipfile.ZipFile(tiny_epub) as source, zipfile.ZipFile(target, "w") as dest:
+        for item in source.infolist():
+            data = source.read(item.filename)
+            if item.filename == CH1:
+                data = data.replace(
+                    b'<h1 id="ch1">', b'<p id="main">collision text</p><h1 id="ch1">'
+                )
+            dest.writestr(item, data)
+
+    site = tmp_path / "site"
+    assert _build(target, site) == 0
+    assert (site / "read" / "1" / "index.html").exists()
+
+
+def test_legacy_top_link_still_resolves(epub_factory, tmp_path: Path):
+    variant = epub_factory(
+        "legacy-top.epub",
+        replacements={CH1: [(b"</body>", b'<p><a href="#top">back to top</a></p></body>')]},
+    )
+    site = tmp_path / "site"
+    assert _build(variant, site) == 0
+    page = (site / "read" / "1" / "index.html").read_text(encoding="utf-8")
+    assert 'id="top"' in page
+
+
+def test_source_top_id_is_not_duplicated(epub_factory, tmp_path: Path):
+    variant = epub_factory(
+        "source-top.epub",
+        replacements={
+            CH1: [
+                (
+                    b"</body>",
+                    b'<p id="top">source target</p><p><a href="#top">back</a></p></body>',
+                )
+            ]
+        },
+    )
+    site = tmp_path / "site"
+    assert _build(variant, site) == 0
+    page = (site / "read" / "1" / "index.html").read_text(encoding="utf-8")
+    assert page.count('id="top"') == 1
+
+
+def test_readtime_placeholder_is_replaced(tiny_epub, tmp_path: Path):
+    site = tmp_path / "site"
+    assert _build(tiny_epub, site) == 0
+    page = (site / "read" / "1" / "index.html").read_text(encoding="utf-8")
+    assert "<!--READTIME-->" not in page
+    assert "min read" in page
+
+
+def test_generated_site_has_marker_without_note_assets(tiny_epub, tmp_path: Path):
+    site = tmp_path / "site"
+    assert _build(tiny_epub, site) == 0
+    assert (site / SITE_MARKER).is_file()
+    assert not (site / "notes.json").exists()
+    assert 'name="generator" content="epub2web"' in (site / "index.html").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_render_refuses_to_clear_an_unrelated_directory(tiny_epub, tmp_path: Path):
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    site = tmp_path / "site"
+    GenericExtractor(tiny_epub, content, images).run()
+    site.mkdir()
+    keep = site / "keep.txt"
+    keep.write_text("user data", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="refusing to replace"):
+        render_site(content, site)
+
+    assert keep.read_text(encoding="utf-8") == "user data"
+    render_site(content, site, overwrite=True)
+    assert not keep.exists()
+
+
+def test_extractor_does_not_delete_unrelated_images(tiny_epub, tmp_path: Path):
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    images.mkdir()
+    keep = images / "keep.txt"
+    keep.write_text("user data", encoding="utf-8")
+
+    GenericExtractor(tiny_epub, content, images).run()
+    assert keep.read_text(encoding="utf-8") == "user data"
+
+
+def test_svg_sanitizer_removes_smil_and_unsafe_urls():
+    payload = b"""<svg xmlns="http://www.w3.org/2000/svg">
+      <defs><linearGradient id="g"/></defs>
+      <a><animate attributeName="href" values="javascript:alert(1)"/><text>x</text></a>
+      <set attributeName="href" to="javascript:alert(1)"/>
+      <rect fill="url(#g)" filter="url(javascript:alert(1))" width="10" height="10"/>
+    </svg>"""
+    output = sanitize_svg(payload).decode("utf-8")
+
+    assert "javascript:" not in output.lower()
+    assert "<animate" not in output.lower()
+    assert "<set" not in output.lower()
+    assert 'fill="url(#g)"' in output

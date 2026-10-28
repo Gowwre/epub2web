@@ -29,7 +29,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from .progress import PROGRESS_PREFIX
+from .progress import EVENT_PREFIX, PROGRESS_PREFIX
 
 logger = logging.getLogger(__name__)
 
@@ -210,31 +210,19 @@ class BuildController:
         self._words: int | None = None
         self._elapsed: float | None = None
         self._success_emitted = False
-        self._command: list[str] = []
+        self._worker_cwd: Path | None = None
 
     @property
     def state(self) -> BuildState:
         return self._state
 
     @property
-    def command(self) -> list[str]:
-        return list(self._command)
-
-    @property
     def preview_url(self) -> str | None:
         return self._preview_url
 
     @property
-    def site_path(self) -> Path | None:
-        return self._site_path
-
-    @property
     def report_path(self) -> Path | None:
         return self._report_path
-
-    @property
-    def log_path(self) -> Path | None:
-        return self._log_path
 
     @property
     def is_running(self) -> bool:
@@ -255,6 +243,7 @@ class BuildController:
             self.log_dir.mkdir(parents=True, exist_ok=True)
             self.report_dir.mkdir(parents=True, exist_ok=True)
             self._reset()
+            self._worker_cwd = output_path.parent
 
             command = worker_command(
                 epub_path,
@@ -265,7 +254,6 @@ class BuildController:
                 log_dir=self.log_dir,
                 report_dir=self.report_dir,
             )
-            self._command = command
             try:
                 proc = subprocess.Popen(
                     command,
@@ -368,6 +356,15 @@ class BuildController:
             if isinstance(payload, dict):
                 self._emit(BuildEvent("progress", data=payload))
             return
+        if text.startswith(EVENT_PREFIX):
+            try:
+                payload = json.loads(text[len(EVENT_PREFIX) :])
+            except (TypeError, ValueError):
+                self._emit(BuildEvent("log", text))
+                return
+            if isinstance(payload, dict):
+                self._handle_status_event(payload)
+            return
         self._emit(BuildEvent("log", text))
 
         match = REPORT_RE.match(text)
@@ -429,6 +426,34 @@ class BuildController:
             self._emit(BuildEvent("preview", text, data))
             self._emit(BuildEvent("success", "Preview running.", data))
 
+    def _handle_status_event(self, payload: dict) -> None:
+        kind = str(payload.get("kind") or "")
+        if kind == "site":
+            value = str(payload.get("site") or "")
+            if value:
+                self._site_path = self._path_from_output(value)
+                self._emit(BuildEvent("site", data={"site": str(self._site_path)}))
+        elif kind == "report":
+            value = str(payload.get("report") or "")
+            if value:
+                self._report_path = self._path_from_output(value)
+                self._emit(BuildEvent("report", data={"report": str(self._report_path)}))
+        elif kind == "verify":
+            self._verify_ok = bool(payload.get("pass"))
+            if not self._verify_ok and not self._error:
+                self._error = "Build rejected by the fidelity gate."
+        elif kind == "links":
+            self._links_ok = bool(payload.get("pass"))
+            if not self._links_ok and not self._error:
+                self._error = "Build rejected by the internal-link gate."
+        elif kind == "stats":
+            with contextlib.suppress(TypeError, ValueError):
+                self._pages = int(payload["pages"])
+                self._words = int(payload["words"])
+        elif kind == "time":
+            with contextlib.suppress(TypeError, ValueError):
+                self._elapsed = float(payload["seconds"])
+
     def _finish(self, code: int) -> None:
         with self._lock:
             stop_requested = self._stop_requested
@@ -478,12 +503,11 @@ class BuildController:
             "links": self._links_ok,
         }
 
-    @staticmethod
-    def _path_from_output(value: str) -> Path:
+    def _path_from_output(self, value: str) -> Path:
         path = Path(value.strip())
         if not path.is_absolute():
-            path = Path.home() / path
-        return path
+            path = (self._worker_cwd or Path.cwd()) / path
+        return path.resolve()
 
     def _reset(self) -> None:
         self._proc = None
@@ -501,7 +525,7 @@ class BuildController:
         self._words = None
         self._elapsed = None
         self._success_emitted = False
-        self._command = []
+        self._worker_cwd = None
 
     def _emit(self, event: BuildEvent) -> None:
         callback = self.on_event

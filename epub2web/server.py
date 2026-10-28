@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import ClassVar
 from urllib.parse import quote
 
+from .paths import normalize_base_path
+
 logger = logging.getLogger(__name__)
 
 
@@ -35,7 +37,7 @@ def serve_directory(
     directory = Path(directory).resolve()
     if not (directory / "index.html").exists():
         raise FileNotFoundError(f"no index.html in {directory}")
-    base_path = "" if not base_path or base_path.strip("/") == "" else "/" + base_path.strip("/")
+    base_path = normalize_base_path(base_path)
     base_url = quote(base_path, safe="/%")
 
     class Handler(http.server.SimpleHTTPRequestHandler):

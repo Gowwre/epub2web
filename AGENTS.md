@@ -65,6 +65,7 @@ renderer change.
 - `epub2web/text.py` — normalization, text extraction, tokenization, slugs.
   Changes here affect the fidelity gate; test them carefully.
 - `epub2web/render.py` — Jinja rendering, static assets, search index, sitemap.
+- `epub2web/paths.py` — shared route and base-path helpers.
 - `epub2web/verify.py` — text/image/structural fidelity gate.
 - `epub2web/links.py` — internal link, anchor, image, and duplicate-ID gate.
 - `epub2web/cli.py` — CLI orchestration, safety checks, staging/publishing.

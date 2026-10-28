@@ -106,8 +106,8 @@ class Epub:
         if not path:
             return base_path, parts.fragment
         joined = posixpath.normpath(posixpath.join(posixpath.dirname(base_path), path))
-        if joined.startswith("../"):
-            joined = joined.lstrip("./")
+        if joined == ".." or joined.startswith("../"):
+            return "", parts.fragment
         return joined, parts.fragment
 
     @staticmethod
@@ -346,9 +346,7 @@ class Epub:
                             children=[],
                         )
                     )
-                nested = point.find("navPoint")
-                if nested is not None:
-                    walk(point, depth + 1)
+                walk(point, depth + 1)
 
         walk(nav_map, 0)
         return entries
@@ -386,9 +384,7 @@ class Epub:
         return self.zf.read(path)
 
     def html_spine(self) -> list[ManifestItem]:
-        return [
-            item for item in self.spine if item.media_type in ("application/xhtml+xml", "text/html")
-        ]
+        return list(self.spine)
 
     def toc_flat(self) -> list[TocEntry]:
         flat = []

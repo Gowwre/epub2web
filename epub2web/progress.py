@@ -14,6 +14,7 @@ from collections.abc import Callable
 from typing import TextIO
 
 PROGRESS_PREFIX = "@@epub2web:progress "
+EVENT_PREFIX = "@@epub2web:event "
 
 # phase -> (start, end) as a fraction of the overall build. The image stage is
 # deliberately given the largest share because decoding/re-encoding dominates
@@ -65,6 +66,15 @@ class ProgressPrinter:
             file=self.stream,
             flush=True,
         )
+
+
+def emit_event(kind: str, data: dict | None = None, **fields) -> None:
+    """Print one machine-readable status event on stdout."""
+    payload = {"kind": kind, **(data or {}), **fields}
+    print(
+        EVENT_PREFIX + json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        flush=True,
+    )
 
 
 def report(

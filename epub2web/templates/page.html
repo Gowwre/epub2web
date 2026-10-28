@@ -4,7 +4,7 @@
 {% block layout %}
 <div class="reading-shell{% if wide %} reading-shell-wide{% endif %}">
   {% if show_sidebar %}{% include "sidebar.html" %}{% endif %}
-  <main id="main" class="page-main{% if wide %} page-main-wide{% endif %}">
+  <main id="epub2web-main" class="page-main{% if wide %} page-main-wide{% endif %}">
     <article class="book-page page-type-{{ page.type }}">
       {{ fragment|safe }}
     </article>
@@ -33,7 +33,7 @@
       <span aria-hidden="true">·</span>
       <a href="/#colophon">About this edition</a>
       <span aria-hidden="true">·</span>
-      <a href="#top" data-top>Back to top</a>
+      <a href="#epub2web-top" data-top>Back to top</a>
     </div>
   </main>
 </div>

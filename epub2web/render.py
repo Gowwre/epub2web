@@ -5,7 +5,7 @@ from __future__ import annotations
 import html
 import json
 import logging
-import os
+import re
 import shutil
 from datetime import date
 from pathlib import Path
@@ -14,14 +14,16 @@ from urllib.parse import urlsplit
 from bs4 import BeautifulSoup, Comment, Tag
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
+from . import __version__
+from .paths import normalize_base_path, route_to_file
 from .progress import ProgressCallback, report
-from .text import normalize_text, text_of
+from .text import normalize_text, split_title, text_of, year_from_date
 
 logger = logging.getLogger(__name__)
 
 DEFAULT_TEMPLATES = Path(__file__).resolve().parent / "templates"
 DEFAULT_STATIC = Path(__file__).resolve().parent / "theme"
-TODAY = date.today().isoformat()
+SITE_MARKER = ".epub2web"
 
 
 def comma(value) -> str:
@@ -52,34 +54,6 @@ def short_label(title: str) -> str:
     return title
 
 
-def normalize_base_path(value: str) -> str:
-    """Return a canonical subpath such as ``/epub2web`` (or ``""`` for root)."""
-    value = (value or "").strip()
-    if not value or value == "/":
-        return ""
-    if (
-        "://" in value
-        or "?" in value
-        or "#" in value
-        or "\\" in value
-        or value.startswith("//")
-        or any(c.isspace() for c in value)
-        or any(c in "<>\"'`" for c in value)
-        or any(ord(c) < 32 or ord(c) == 127 for c in value)
-    ):
-        raise ValueError(f"invalid base path: {value!r}")
-    segments = [segment for segment in value.strip("/").split("/") if segment]
-    if not segments or any(segment in (".", "..") for segment in segments):
-        raise ValueError(f"invalid base path: {value!r}")
-    return "/" + "/".join(segments)
-
-
-def route_to_file(dist: Path, route: str) -> Path:
-    if route == "/":
-        return dist / "index.html"
-    return dist / route.strip("/") / "index.html"
-
-
 def write_route(dist: Path, route: str, content: str) -> None:
     path = route_to_file(dist, route)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -96,9 +70,11 @@ class SiteRenderer:
         site_url: str = "http://localhost:4321",
         base_path: str = "",
         progress: ProgressCallback | None = None,
+        overwrite: bool = False,
     ):
         self.content_dir = Path(content_dir)
         self.dist = Path(dist_dir)
+        self.overwrite = overwrite
         self.templates_dir = Path(templates_dir or DEFAULT_TEMPLATES)
         self.static_dir = Path(static_dir or DEFAULT_STATIC)
         self.base_path = normalize_base_path(base_path)
@@ -108,10 +84,28 @@ class SiteRenderer:
             site_path = urlsplit(self.site_url).path.rstrip("/")
             if not (site_path == self.base_path or site_path.endswith(self.base_path)):
                 self.site_url += self.base_path
-        if self.content_dir.resolve() == self.dist.resolve() or (
-            self.content_dir.resolve().is_relative_to(self.dist.resolve())
+        resolved_dist = self.dist.resolve()
+        if self.content_dir.resolve() == resolved_dist or (
+            self.content_dir.resolve().is_relative_to(resolved_dist)
         ):
             raise ValueError("the output directory must not contain the content directory")
+        if resolved_dist in (
+            Path.home().resolve(),
+            Path.cwd().resolve(),
+            Path(resolved_dist.anchor),
+        ):
+            raise ValueError(f"refusing to render into protected directory: {resolved_dist}")
+        if resolved_dist.exists() and not resolved_dist.is_dir():
+            raise ValueError(f"output path exists and is not a directory: {resolved_dist}")
+        if (
+            resolved_dist.exists()
+            and any(resolved_dist.iterdir())
+            and not (self.overwrite or (resolved_dist / SITE_MARKER).is_file())
+        ):
+            raise ValueError(
+                f"refusing to replace non-epub2web directory: {resolved_dist} "
+                "(pass overwrite=True to allow it)"
+            )
         self.book = json.loads((self.content_dir / "book.json").read_text(encoding="utf-8"))
         self.env = Environment(
             loader=FileSystemLoader(self.templates_dir),
@@ -157,11 +151,11 @@ class SiteRenderer:
     def _prepare(self) -> None:
         meta = self.book.setdefault("meta", {})
         title = meta.get("title") or "Untitled"
-        meta.setdefault("short_title", title.split(":")[0].strip() or title)
+        meta.setdefault("short_title", split_title(title)[0])
         meta.setdefault("subtitle", "")
         meta.setdefault("author", "")
         meta.setdefault("publisher", "")
-        meta.setdefault("year", (meta.get("date") or "")[:4])
+        meta.setdefault("year", year_from_date(meta.get("date") or ""))
         meta.setdefault("date", "")
         meta.setdefault("isbn", "")
         meta.setdefault("language", "en")
@@ -281,24 +275,23 @@ class SiteRenderer:
                 current = None
         self.toc_blocks = blocks
 
-        self.footer_links = [{"label": "Contents", "href": "/contents/"}]
-        for redir in self.pages:
-            if redir.get("type") == "frontmatter":
-                self.footer_links.append({"label": "Front matter", "href": redir["route"]})
+        links = [{"label": "Contents", "href": "/contents/"}]
+        for page in self.pages:
+            if page.get("type") == "frontmatter":
+                links.append({"label": "Front matter", "href": page["route"]})
                 break
         for wanted in ("notes", "references", "index"):
             for page in self.pages:
                 if wanted in page.get("title", "").lower():
-                    self.footer_links.append(
-                        {"label": short_label(page["title"]), "href": page["route"]}
-                    )
+                    links.append({"label": short_label(page["title"]), "href": page["route"]})
                     break
-        seen = set()
-        self.footer_links = [
-            link
-            for link in self.footer_links
-            if not (link["href"] in seen or seen.add(link["href"]))
-        ]
+        seen: set[str] = set()
+        self.footer_links = []
+        for link in links:
+            if link["href"] in seen:
+                continue
+            seen.add(link["href"])
+            self.footer_links.append(link)
 
     def _build_home(self) -> None:
         chapters = [p for p in self.pages if p.get("type") == "chapter"]
@@ -341,7 +334,6 @@ class SiteRenderer:
 
         stats = self.stats
         figure_count = stats.get("figures", 0)
-        note_count = stats.get("notes", 0)
         chapter_words = stats.get("words") or stats.get("chapter_words", 0)
         chapter_count = stats.get("chapters") or len(self.home_chapters)
         parts = []
@@ -349,8 +341,6 @@ class SiteRenderer:
             parts.append(f"{chapter_count} chapters")
         if figure_count:
             parts.append(f"{figure_count} figures")
-        if note_count:
-            parts.append(f"{note_count} notes")
         if chapter_words:
             parts.append(f"{comma(chapter_words)} words")
         if parts:
@@ -366,7 +356,6 @@ class SiteRenderer:
             ("Chapters", chapter_count),
             ("Words", chapter_words),
             ("Figures", figure_count),
-            ("Notes", note_count),
         ):
             if value:
                 self.stats_items.append({"label": label, "value": comma(value)})
@@ -382,10 +371,38 @@ class SiteRenderer:
                 )
 
     # -- rendering --------------------------------------------------------
+    def _base_context(
+        self,
+        page: dict,
+        meta_description: str,
+        *,
+        is_reading: bool = False,
+        show_sidebar: bool = False,
+        wide: bool = False,
+        prev: dict | None = None,
+        next: dict | None = None,
+        legacy_anchors: set[str] | None = None,
+    ) -> dict:
+        return {
+            "page": page,
+            "book": self.book,
+            "site_url": self.site_url,
+            "meta_description": meta_description,
+            "sidebar": self.sidebar,
+            "footer_links": self.footer_links,
+            "prev": prev,
+            "next": next,
+            "is_reading": is_reading,
+            "show_sidebar": show_sidebar,
+            "wide": wide,
+            "legacy_anchors": legacy_anchors if legacy_anchors is not None else {"top", "main"},
+        }
+
     def _render(self) -> None:
         if self.dist.exists():
             shutil.rmtree(self.dist)
         self.dist.mkdir(parents=True)
+        (self.dist / SITE_MARKER).write_text(f"epub2web {__version__}\n", encoding="utf-8")
 
         meta = self.book["meta"]
         book_title = meta["short_title"]
@@ -427,17 +444,11 @@ class SiteRenderer:
             "short_title": book_title,
             "reading_minutes": 0,
         }
-        home_ctx = dict(
-            page=home_page,
-            book=self.book,
-            site_url=self.site_url,
-            meta_description=meta.get("description")
-            or (
-                f"{meta['title']} by {meta['author']}."
-                if meta.get("author")
-                else f"{meta['title']}."
-            ),
-            stats=self.stats,
+        home_description = meta.get("description") or (
+            f"{meta['title']} by {meta['author']}." if meta.get("author") else f"{meta['title']}."
+        )
+        home_ctx = self._base_context(home_page, home_description)
+        home_ctx.update(
             home_chapters=self.home_chapters,
             home_extras=self.home_extras,
             hero_intro=self.hero_intro,
@@ -445,20 +456,9 @@ class SiteRenderer:
             start_href=self.start_href,
             home_heading=self.home_heading,
             book_json_ld=book_json_ld,
-            sidebar=self.sidebar,
-            footer_links=self.footer_links,
-            prev=None,
-            next=None,
-            fragment="",
-            toc_blocks=[],
-            is_reading=False,
-            show_sidebar=False,
-            wide=False,
             cover_width=meta.get("cover_width", 438),
             cover_height=meta.get("cover_height", 662),
             search_label="Built-in full-text index",
-            contents_intro=self.contents_intro,
-            contents_quick=self.contents_quick,
         )
         write_route(self.dist, "/", self.env.get_template("home.html").render(**home_ctx))
 
@@ -472,35 +472,16 @@ class SiteRenderer:
             "short_title": "Contents",
             "reading_minutes": 0,
         }
-        contents_ctx = dict(
-            page=contents_page,
-            book=self.book,
-            site_url=self.site_url,
-            meta_description=(
-                f"Contents of {meta['title']} by {meta['author']}."
-                if meta.get("author")
-                else f"Contents of {meta['title']}."
-            ),
-            stats=self.stats,
-            home_chapters=self.home_chapters,
-            home_extras=self.home_extras,
-            hero_intro=self.hero_intro,
-            stats_items=self.stats_items,
-            start_href=self.start_href,
-            home_heading=self.home_heading,
-            book_json_ld=book_json_ld,
-            sidebar=self.sidebar,
-            footer_links=self.footer_links,
-            prev=None,
-            next=None,
-            fragment="",
+        contents_description = (
+            f"Contents of {meta['title']} by {meta['author']}."
+            if meta.get("author")
+            else f"Contents of {meta['title']}."
+        )
+        contents_ctx = self._base_context(contents_page, contents_description, wide=True)
+        contents_ctx.update(
             toc_blocks=self.toc_blocks,
-            is_reading=False,
-            show_sidebar=False,
-            wide=True,
             contents_intro=self.contents_intro,
             contents_quick=self.contents_quick,
-            search_label="Built-in full-text index",
         )
         write_route(
             self.dist, "/contents/", self.env.get_template("contents.html").render(**contents_ctx)
@@ -514,9 +495,7 @@ class SiteRenderer:
                 self._report("render-pages", "Building pages", page_index, total_pages)
                 continue
             fragment = fragment_path.read_text(encoding="utf-8")
-            fragment = fragment.replace(
-                '<span class="readtime">Calculating…</span>', f"{page['reading_minutes']} min read"
-            )
+            fragment = fragment.replace("<!--READTIME-->", f"{page['reading_minutes']} min read")
             pos = self.reading_order.index(page["id"]) if page["id"] in self.reading_order else -1
             prev_page = self.page_by_id.get(self.reading_order[pos - 1]) if pos > 0 else None
             next_page = (
@@ -531,34 +510,21 @@ class SiteRenderer:
                 + (f" by {meta['author']}" if meta.get("author") else "")
                 + "."
             )
-            ctx = dict(
-                page=page,
-                book=self.book,
-                site_url=self.site_url,
-                meta_description=desc,
-                stats=self.stats,
-                home_chapters=self.home_chapters,
-                home_extras=self.home_extras,
-                hero_intro=self.hero_intro,
-                stats_items=self.stats_items,
-                start_href=self.start_href,
-                home_heading=self.home_heading,
-                book_json_ld=book_json_ld,
-                sidebar=self.sidebar,
-                footer_links=self.footer_links,
-                prev=prev_page,
-                next=next_page,
-                fragment=fragment,
-                toc_blocks=self.toc_blocks,
+            ctx = self._base_context(
+                page,
+                desc,
                 is_reading=True,
                 show_sidebar=show_sidebar,
                 wide=wide,
-                contents_intro=self.contents_intro,
-                contents_quick=self.contents_quick,
-                search_label="Built-in full-text index",
-                cover_width=meta.get("cover_width", 438),
-                cover_height=meta.get("cover_height", 662),
+                prev=prev_page,
+                next=next_page,
             )
+            ctx["fragment"] = fragment
+            ctx["legacy_anchors"] = {
+                name
+                for name in ("top", "main")
+                if re.search(rf'\bid=["\']{re.escape(name)}["\']', fragment) is None
+            }
             write_route(self.dist, page["route"], self.env.get_template("page.html").render(**ctx))
             self._report("render-pages", "Building pages", page_index, total_pages)
 
@@ -572,34 +538,7 @@ class SiteRenderer:
             "short_title": "Page not found",
             "reading_minutes": 0,
         }
-        ctx = dict(
-            page=p404,
-            book=self.book,
-            site_url=self.site_url,
-            meta_description="Page not found.",
-            stats=self.stats,
-            home_chapters=self.home_chapters,
-            home_extras=self.home_extras,
-            hero_intro=self.hero_intro,
-            stats_items=self.stats_items,
-            start_href=self.start_href,
-            home_heading=self.home_heading,
-            book_json_ld=book_json_ld,
-            sidebar=self.sidebar,
-            footer_links=self.footer_links,
-            prev=None,
-            next=None,
-            fragment="",
-            toc_blocks=[],
-            is_reading=False,
-            show_sidebar=False,
-            wide=False,
-            contents_intro=self.contents_intro,
-            contents_quick=self.contents_quick,
-            search_label="Built-in full-text index",
-            cover_width=meta.get("cover_width", 438),
-            cover_height=meta.get("cover_height", 662),
-        )
+        ctx = self._base_context(p404, "Page not found.")
         (self.dist / "404.html").write_text(
             self.env.get_template("404.html").render(**ctx), encoding="utf-8"
         )
@@ -697,14 +636,12 @@ class SiteRenderer:
         images = self.content_dir.parent / "images"
         if images.exists():
             shutil.copytree(images, self.dist / "images", dirs_exist_ok=True)
-        notes = self.content_dir / "notes-popover.json"
-        if notes.exists():
-            shutil.copyfile(notes, self.dist / "notes.json")
 
     def _sitemap(self) -> None:
         routes = ["/", "/contents/"] + [p["route"] for p in self.pages]
+        today = date.today().isoformat()
         urls = "\n".join(
-            f"  <url><loc>{html.escape(self.site_url + r)}</loc><lastmod>{TODAY}</lastmod></url>"
+            f"  <url><loc>{html.escape(self.site_url + r)}</loc><lastmod>{today}</lastmod></url>"
             for r in routes
         )
         (self.dist / "sitemap.xml").write_text(
@@ -728,14 +665,16 @@ def render_site(
     site_url=None,
     base_path="",
     progress: ProgressCallback | None = None,
+    overwrite: bool = False,
 ) -> dict:
     renderer = SiteRenderer(
         content_dir=content_dir,
         dist_dir=dist_dir,
         templates_dir=templates_dir,
         static_dir=static_dir,
-        site_url=site_url or os.environ.get("SITE_URL", "http://localhost:4321"),
+        site_url=site_url or "http://localhost:4321",
         base_path=base_path,
         progress=progress,
+        overwrite=overwrite,
     )
     return renderer.run()

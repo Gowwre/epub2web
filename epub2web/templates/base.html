@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="generator" content="epub2web">
   <title>{% block title %}{{ page.display_title }} — {{ book.meta.short_title }}{% endblock %}</title>
   <meta name="description" content="{% block description %}{{ meta_description }}{% endblock %}">
   <meta name="color-scheme" content="light dark">
@@ -38,13 +39,14 @@
   {% block head %}{% endblock %}
 </head>
 <body
-  id="top"
+  id="epub2web-top"
   class="page-{{ page.id }}"
   {% if is_reading %}data-reading="true"{% endif %}
   {% if prev %}data-prev="{{ prev.route }}"{% endif %}
   {% if next %}data-next="{{ next.route }}"{% endif %}
 >
-  <a class="skip-link" href="#main">Skip to content</a>
+  {% if "top" in legacy_anchors %}<span id="top" aria-hidden="true"></span>{% endif %}
+  <a class="skip-link" href="#epub2web-main">Skip to content</a>
   {% if is_reading %}<div class="progress" aria-hidden="true"><span></span></div>{% endif %}
 
   <header class="site-header" data-chrome>
@@ -69,6 +71,7 @@
     </div>
   </header>
 
+  {% if "main" in legacy_anchors %}<span id="main" aria-hidden="true"></span>{% endif %}
   {% block layout %}{% endblock %}
 
   <footer class="site-footer" data-chrome>

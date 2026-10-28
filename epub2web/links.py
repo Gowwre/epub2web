@@ -2,21 +2,18 @@
 
 from __future__ import annotations
 
-import argparse
 import logging
-import os
 import re
-import sys
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from bs4 import BeautifulSoup
 
+from .paths import normalize_base_path, strip_base_path
 from .progress import ProgressCallback
 from .progress import report as report_progress
 
 logger = logging.getLogger(__name__)
-ROOT = Path(__file__).resolve().parents[1]
 
 
 def _is_external(href: str) -> bool:
@@ -26,7 +23,10 @@ def _is_external(href: str) -> bool:
 def _target_path(dist: Path, base: Path, path: str) -> Path | None:
     if not path:
         return base
-    candidate = dist / path.lstrip("/") if path.startswith("/") else (base.parent / path).resolve()
+    if path.startswith("/"):
+        candidate = (dist / path.lstrip("/")).resolve()
+    else:
+        candidate = (base.parent / path).resolve()
     try:
         candidate.relative_to(dist.resolve())
     except ValueError:
@@ -42,12 +42,18 @@ def check_site_links(
     progress: ProgressCallback | None = None,
 ) -> dict:
     dist = Path(dist_dir).resolve()
-    base_path = "" if not base_path or base_path.strip("/") == "" else "/" + base_path.strip("/")
+    base_path = normalize_base_path(base_path)
 
-    def site_path(value: str) -> str:
-        if base_path and (value == base_path or value.startswith(base_path + "/")):
-            return value[len(base_path) :] or "/"
-        return value
+    def local_path(value: str) -> str | None:
+        """Return a site-relative path, or None when a subpath is missing."""
+        path = urlsplit(value).path
+        if (
+            path.startswith("/")
+            and base_path
+            and not (path == base_path or path.startswith(base_path + "/"))
+        ):
+            return None
+        return strip_base_path(path, base_path)
 
     html_files = sorted(dist.rglob("*.html"))
     soups: dict[Path, BeautifulSoup] = {}
@@ -80,7 +86,17 @@ def check_site_links(
                 continue
             checked += 1
             parts = urlsplit(href)
-            target = _target_path(dist, path, site_path(parts.path)) if parts.path else path
+            local = local_path(href)
+            if local is None:
+                broken.append(
+                    {
+                        "file": str(path.relative_to(dist)),
+                        "href": href,
+                        "reason": "missing base path",
+                    }
+                )
+                continue
+            target = _target_path(dist, path, local) if parts.path else path
             if target is None or not target.exists():
                 broken.append(
                     {"file": str(path.relative_to(dist)), "href": href, "reason": "missing file"}
@@ -103,7 +119,17 @@ def check_site_links(
             if _is_external(src):
                 continue
             checked += 1
-            target = _target_path(dist, path, site_path(urlsplit(src).path))
+            local = local_path(src)
+            if local is None:
+                broken.append(
+                    {
+                        "file": str(path.relative_to(dist)),
+                        "href": src,
+                        "reason": "missing base path",
+                    }
+                )
+                continue
+            target = _target_path(dist, path, local)
             if target is None or not target.exists():
                 broken.append(
                     {"file": str(path.relative_to(dist)), "href": src, "reason": "missing image"}
@@ -118,7 +144,17 @@ def check_site_links(
                 if not value or _is_external(value) or value.startswith("#"):
                     continue
                 checked += 1
-                target = _target_path(dist, path, site_path(urlsplit(value).path))
+                local = local_path(value)
+                if local is None:
+                    broken.append(
+                        {
+                            "file": str(path.relative_to(dist)),
+                            "href": value,
+                            "reason": "missing base path",
+                        }
+                    )
+                    continue
+                target = _target_path(dist, path, local)
                 if target is None or not target.exists():
                     broken.append(
                         {
@@ -138,7 +174,17 @@ def check_site_links(
                 if not src or _is_external(src):
                     continue
                 checked += 1
-                target = _target_path(dist, path, site_path(urlsplit(src).path))
+                local = local_path(src)
+                if local is None:
+                    broken.append(
+                        {
+                            "file": str(path.relative_to(dist)),
+                            "href": src,
+                            "reason": "missing base path",
+                        }
+                    )
+                    continue
+                target = _target_path(dist, path, local)
                 if target is None or not target.exists():
                     broken.append(
                         {
@@ -168,7 +214,17 @@ def check_site_links(
             if not value or _is_external(value) or value.startswith(("#", "data:")):
                 continue
             checked += 1
-            target = _target_path(dist, stylesheet, site_path(urlsplit(value).path))
+            local = local_path(value)
+            if local is None:
+                broken.append(
+                    {
+                        "file": str(stylesheet.relative_to(dist)),
+                        "href": value,
+                        "reason": "missing base path",
+                    }
+                )
+                continue
+            target = _target_path(dist, stylesheet, local)
             if target is None or not target.exists():
                 broken.append(
                     {
@@ -199,30 +255,3 @@ def check_site_links(
         "duplicates": duplicates,
         "broken": broken,
     }
-
-
-def main(argv: list[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description="Check links, anchors, images, and duplicate ids.")
-    parser.add_argument("dist", nargs="?", default=os.environ.get("DIST_DIR", str(ROOT / "dist")))
-    parser.add_argument("--base-path", default="", help="subpath used at build time")
-    args = parser.parse_args(argv)
-    result = check_site_links(args.dist, base_path=args.base_path)
-
-    print("Internal link check")
-    print("=" * 78)
-    print(f"  pages checked: {result['pages']}")
-    print(f"  links/assets checked: {result['checked']:,}")
-    print(f"  duplicate ids: {len(result['duplicates'])}")
-    for item in result["duplicates"][:20]:
-        print(f"    {item['file']}  duplicate id #{item['id']}")
-    print(f"  broken references: {len(result['broken'])}")
-    for item in result["broken"][:60]:
-        print(f"    {item['file']}  ->  {item['href']}  ({item['reason']})")
-    if len(result["broken"]) > 60:
-        print(f"    … and {len(result['broken']) - 60} more")
-    print(f"Result: {'PASS' if result['ok'] else 'FAIL'}")
-    return 0 if result["ok"] else 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())

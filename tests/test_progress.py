@@ -4,7 +4,7 @@ from pathlib import Path
 
 from epub2web.generic import GenericExtractor
 from epub2web.links import check_site_links
-from epub2web.progress import PROGRESS_PREFIX, ProgressPrinter
+from epub2web.progress import EVENT_PREFIX, PROGRESS_PREFIX, ProgressPrinter, emit_event
 from epub2web.render import render_site
 from epub2web.verify import verify_site
 
@@ -34,6 +34,14 @@ def test_progress_printer_is_monotonic_and_complete():
     assert percents == sorted(percents)
     assert events[-1]["percent"] == 1.0
     assert all(event["current"] <= event["total"] for event in events)
+
+
+def test_emit_event_is_one_json_line(capsys):
+    emit_event("verify", {"pass": True}, exact=3)
+    line = capsys.readouterr().out.strip()
+    assert line.startswith(EVENT_PREFIX)
+    payload = json.loads(line.removeprefix(EVENT_PREFIX))
+    assert payload == {"kind": "verify", "pass": True, "exact": 3}
 
 
 def test_core_reports_all_working_phases(tiny_epub, tmp_path: Path):

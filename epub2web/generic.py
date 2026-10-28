@@ -27,7 +27,16 @@ from PIL import Image, ImageOps
 
 from .epub import Epub
 from .progress import ProgressCallback, report
-from .text import inner, match_key, normalize_text, slugify, strip_leading, text_of
+from .text import (
+    inner,
+    match_key,
+    normalize_text,
+    slugify,
+    split_title,
+    strip_leading,
+    text_of,
+    year_from_date,
+)
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 logger = logging.getLogger(__name__)
@@ -183,27 +192,64 @@ def safe_url(value: str, tag_name: str = "", attribute: str = "") -> bool:
     )
 
 
+SVG_DANGEROUS_TAGS = {
+    "script",
+    "style",
+    "foreignobject",
+    "iframe",
+    "object",
+    "embed",
+    "audio",
+    "video",
+    "animate",
+    "animatemotion",
+    "animatetransform",
+    "set",
+    "discard",
+    "handler",
+}
+SVG_DANGEROUS_ATTRS = {
+    "action",
+    "attributename",
+    "formaction",
+    "srcdoc",
+    "src",
+    "style",
+    "xml:base",
+}
+SVG_UNSAFE_VALUE_RE = re.compile(r"(?:javascript|vbscript|file|data)\s*:", re.IGNORECASE)
+SVG_URL_RE = re.compile(r"url\(\s*['\"]?([^)'\"]+)['\"]?\s*\)", re.IGNORECASE)
+
+
 def sanitize_svg(data: bytes) -> bytes:
     soup = BeautifulSoup(data, "xml")
     if soup.find() is None:
         raise ValueError("empty SVG")
-    for el in soup.find_all(
-        ["script", "style", "foreignObject", "iframe", "object", "embed", "audio", "video"]
-    ):
-        el.decompose()
+    for el in soup.find_all(True):
+        if el.name.lower() in SVG_DANGEROUS_TAGS:
+            el.decompose()
     for tag in soup.find_all(True):
         for attr in list(tag.attrs):
             name = attr.lower()
             value = str(tag.attrs[attr])
-            if name.startswith("on") or name in ("style", "src", "srcdoc", "formaction", "action"):
+            compact = re.sub(r"[\x00-\x20]+", "", value).lower()
+            if name.startswith("on") or name in SVG_DANGEROUS_ATTRS:
                 del tag.attrs[attr]
                 continue
             if name in ("href", "xlink:href"):
-                compact = re.sub(r"[\x00-\x20]+", "", value).lower()
                 if not compact.startswith("#"):
                     del tag.attrs[attr]
-            elif re.search(r"url\(\s*['\"]?(?:https?:|//|data:)", value, re.IGNORECASE):
+                continue
+            if SVG_UNSAFE_VALUE_RE.search(compact):
                 del tag.attrs[attr]
+                continue
+            if "url(" in compact:
+                targets = [
+                    re.sub(r"[\x00-\x20]+", "", match).lower()
+                    for match in SVG_URL_RE.findall(value)
+                ]
+                if not targets or any(not target.startswith("#") for target in targets):
+                    del tag.attrs[attr]
     return str(soup).encode("utf-8")
 
 
@@ -536,6 +582,10 @@ def number_short(number_label: str) -> str:
     return m.group(1) if m else ""
 
 
+def class_names(el: Tag) -> str:
+    return " ".join(el.get("class", [])).lower()
+
+
 def heading_text(el: Tag) -> str:
     return re.sub(r"\s+", " ", el.get_text(" ", strip=True)).strip()
 
@@ -546,7 +596,7 @@ def first_heading(soup: BeautifulSoup) -> Tag | None:
         return None
     # Chapter markers from print conversions take priority.
     for p in body.find_all("p"):
-        cls = " ".join(p.get("class", [])).lower()
+        cls = class_names(p)
         if "chaptertitle" in cls:
             return p
     for tag in ("h1", "h2", "h3", "h4"):
@@ -554,7 +604,7 @@ def first_heading(soup: BeautifulSoup) -> Tag | None:
         if el is not None and el.get_text(strip=True):
             return el
     for p in body.find_all("p"):
-        cls = " ".join(p.get("class", [])).lower()
+        cls = class_names(p)
         if (
             any(k in cls for k in ("title", "heading", "subhead"))
             and len(p.get_text(" ", strip=True)) < 140
@@ -582,12 +632,28 @@ class GenericExtractor:
         content_dir: str | Path,
         images_dir: str | Path,
         progress: ProgressCallback | None = None,
+        clean_images: bool = False,
     ):
         self.epub_path = Path(epub_path)
         self.content_dir = Path(content_dir)
         self.pages_dir = self.content_dir / "pages"
         self.images_dir = Path(images_dir)
         self.progress = progress
+        self.clean_images = clean_images
+        self.book: Epub | None = None
+        self.items: list = []
+        self.cleaned: dict[str, BeautifulSoup] = {}
+        self.cover_info: dict | None = None
+        self.cover_source = ""
+        self.images: dict[str, dict] = {}
+        self.image_errors: list[str] = []
+        self.pages: list[dict] = []
+        self.page_by_path: dict[str, dict] = {}
+        self.route_by_path: dict[str, str] = {}
+        self.nav_labels: dict[str, str] = {}
+        self.toc: list[dict] = []
+        self.chapter_count = 0
+        self.book_data: dict = {}
 
     def _report(self, phase: str, label: str, current: int, total: int) -> None:
         report(self.progress, phase, label, current, total)
@@ -598,9 +664,10 @@ class GenericExtractor:
         self.content_dir.mkdir(parents=True, exist_ok=True)
         self.pages_dir.mkdir(parents=True, exist_ok=True)
         self.images_dir.mkdir(parents=True, exist_ok=True)
-        for p in self.images_dir.glob("*"):
-            if p.is_file():
-                p.unlink()
+        if self.clean_images:
+            for path in self.images_dir.glob("*"):
+                if path.is_file():
+                    path.unlink()
 
         self.image_errors: list[str] = []
         self.cover_source = ""
@@ -609,6 +676,10 @@ class GenericExtractor:
             self.items = list(book.html_spine())
             if not self.items:
                 raise ValueError("EPUB spine contains no readable HTML documents")
+            self.nav_labels = {}
+            for entry in book.toc_flat():
+                if entry.path and entry.label:
+                    self.nav_labels.setdefault(entry.path, entry.label)
             logger.debug("spine documents", extra={"count": len(self.items)})
             self.cleaned: dict[str, BeautifulSoup] = {}
             total_docs = len(self.items)
@@ -636,7 +707,6 @@ class GenericExtractor:
             logger.debug("pages planned", extra={"count": len(self.pages)})
             if not self.pages:
                 raise ValueError("no readable pages found in the EPUB spine")
-            self.page_by_path = {p["source_files"][0]: p for p in self.pages}
             self.route_by_path = {p["source_files"][0]: p["route"] for p in self.pages}
 
             fragments = {}
@@ -648,11 +718,9 @@ class GenericExtractor:
                 soup = self.cleaned[path]
                 page["images"] = len(soup.body.find_all("img")) if soup.body else 0
                 source_text[path] = normalize_text(text_of(soup.body))
-                fragment, sections, warnings = self._convert_page(page, soup)
+                fragment, sections = self._convert_page(page, soup)
                 page["sections"] = sections
-                page["warnings"] = warnings
                 page["figure_count"] = fragment.count("<figure")
-                page["note_count"] = fragment.count("noteref") + fragment.count("footnote")
                 page["words"] = len(source_text[path].split())
                 fragments[page["id"]] = fragment
                 self._report("extract-pages", "Laying out pages", index, total_pages)
@@ -867,10 +935,7 @@ class GenericExtractor:
 
     # -- planning ---------------------------------------------------------
     def _nav_label(self, path: str) -> str:
-        for entry in self.book.toc_flat():
-            if entry.path == path and entry.label:
-                return entry.label
-        return ""
+        return self.nav_labels.get(path, "")
 
     def _plan_pages(self) -> list[dict]:
         pages = []
@@ -892,15 +957,9 @@ class GenericExtractor:
             heading = first_heading(soup)
             htext = heading_text(heading) if heading else ""
             if not label:
-                label = (
-                    htext
-                    or self.book._text(
-                        BeautifulSoup(self.book.read(item.path), "lxml").find("title")
-                    )
-                    or Path(item.path).stem
-                )
+                label = htext or self.book._text(soup.find("title")) or Path(item.path).stem
             display, number_label, title = parse_label(label)
-            heading_class = " ".join(heading.get("class", [])).lower() if heading else ""
+            heading_class = class_names(heading) if heading else ""
             kind = marker_kind(label, htext, heading_class)
             pages.append(
                 {
@@ -991,7 +1050,7 @@ class GenericExtractor:
             parts.append(str(node))
         return "".join(parts)
 
-    def _inline(self, el: Tag, doc_path: str) -> str:
+    def _prepare_html(self, el: Tag, doc_path: str) -> None:
         for a in el.find_all("a", href=True):
             a["href"] = self._href(doc_path, a["href"])
         for img in el.find_all("img"):
@@ -1002,19 +1061,13 @@ class GenericExtractor:
         for tag in el.find_all(True):
             tag.attrs.pop("class", None)
             tag.attrs.pop("style", None)
+
+    def _inline(self, el: Tag, doc_path: str) -> str:
+        self._prepare_html(el, doc_path)
         return inner(el)
 
     def _clean_tree(self, el: Tag, doc_path: str) -> str:
-        for a in el.find_all("a", href=True):
-            a["href"] = self._href(doc_path, a["href"])
-        for img in el.find_all("img"):
-            info = image_info(self.book, self.images, doc_path, img.get("src") or "")
-            if info:
-                img["src"] = f"/images/{info['name']}"
-            img.attrs.pop("srcset", None)
-        for tag in el.find_all(True):
-            tag.attrs.pop("class", None)
-            tag.attrs.pop("style", None)
+        self._prepare_html(el, doc_path)
         return str(el)
 
     def _image_html(self, img: Tag, doc_path: str, has_caption: bool, caption_id: str) -> str:
@@ -1050,7 +1103,7 @@ class GenericExtractor:
         figcap = f'<figcaption id="{caption_id}">{caption_html}</figcaption>' if has_caption else ""
         return f'<figure class="{cls}" data-count="{len(imgs)}">{body}{figcap}</figure>'
 
-    def _convert_page(self, page: dict, soup: BeautifulSoup) -> tuple[str, list[dict], list[str]]:
+    def _convert_page(self, page: dict, soup: BeautifulSoup) -> tuple[str, list[dict]]:
         body = soup.body
         source_path = page["source_files"][0]
         blocks = [
@@ -1083,7 +1136,6 @@ class GenericExtractor:
         # divs have been flattened in clean_doc; this is defensive.
         out: list[str] = []
         sections: list[dict] = []
-        warnings: list[str] = []
         source_ids = {tag["id"] for tag in body.find_all(id=True) if tag.get("id")}
         used_ids: set[str] = set()
         fig_index = [0]
@@ -1139,8 +1191,6 @@ class GenericExtractor:
             hid = next((e["id"] for e in elements if e.get("id")), "")
             if not hid:
                 hid = f"ch-{slugify(page['title'])}"
-            for e in elements:
-                hid = hid or e.get("id", "")
             used_ids.add(hid)
             num = f'<p class="chapter-number">{number_html}</p>' if number_html else ""
             return (
@@ -1153,20 +1203,17 @@ class GenericExtractor:
         # The first heading becomes the page header, preserving its text.
         if blocks:
             first = blocks[0]
-            if (
-                first.name in ("h1", "h2", "h3")
-                or "chaptertitle" in " ".join(first.get("class", [])).lower()
-            ):
+            if first.name in ("h1", "h2", "h3") or "chaptertitle" in class_names(first):
                 consumed = [first]
                 i = 1
                 # "CHAPTER ONE" + title as two adjacent paragraphs/headings.
                 if (
                     first.name == "p"
-                    and "chaptertitle" in " ".join(first.get("class", [])).lower()
+                    and "chaptertitle" in class_names(first)
                     and i < len(blocks)
                     and (
                         blocks[i].name in ("h1", "h2", "h3")
-                        or "chaptertitle" in " ".join(blocks[i].get("class", [])).lower()
+                        or "chaptertitle" in class_names(blocks[i])
                     )
                 ):
                     consumed.append(blocks[i])
@@ -1188,7 +1235,7 @@ class GenericExtractor:
         while i < len(blocks):
             el = blocks[i]
             name = el.name
-            cls = " ".join(el.get("class", [])).lower()
+            cls = class_names(el)
 
             if name in ("h1", "h2", "h3", "h4", "h5", "h6"):
                 level = {"h1": 2, "h2": 2, "h3": 3, "h4": 4, "h5": 5, "h6": 6}[name]
@@ -1211,7 +1258,7 @@ class GenericExtractor:
                     imgs.append(blocks[j])
                     j += 1
                 caps = []
-                while j < len(blocks) and "caption" in " ".join(blocks[j].get("class", [])).lower():
+                while j < len(blocks) and "caption" in class_names(blocks[j]):
                     caps.append(blocks[j])
                     j += 1
                 fig_index[0] += 1
@@ -1237,7 +1284,7 @@ class GenericExtractor:
                 j = i + 1
                 while j < len(blocks):
                     nxt = blocks[j]
-                    nxt_cls = " ".join(nxt.get("class", [])).lower()
+                    nxt_cls = class_names(nxt)
                     image_only = (
                         nxt.name == "p" and nxt.find("img") and not nxt.get_text(strip=True)
                     )
@@ -1248,8 +1295,7 @@ class GenericExtractor:
                     j += 1
                 caps = []
                 while j < len(blocks) and (
-                    "caption" in " ".join(blocks[j].get("class", [])).lower()
-                    or blocks[j].name == "figcaption"
+                    "caption" in class_names(blocks[j]) or blocks[j].name == "figcaption"
                 ):
                     caps.append(blocks[j])
                     j += 1
@@ -1310,7 +1356,7 @@ class GenericExtractor:
                     caps = [
                         candidate
                         for candidate in el.find_all(["p", "span"])
-                        if "caption" in " ".join(candidate.get("class", [])).lower()
+                        if "caption" in class_names(candidate)
                     ]
                 if not caps:
                     caps = [
@@ -1327,8 +1373,7 @@ class GenericExtractor:
                 items = []
                 j = i
                 while j < len(blocks) and (
-                    "quote" in " ".join(blocks[j].get("class", [])).lower()
-                    or "epigraph" in " ".join(blocks[j].get("class", [])).lower()
+                    "quote" in class_names(blocks[j]) or "epigraph" in class_names(blocks[j])
                 ):
                     items.append(f"<p>{self._inline(blocks[j], source_path).strip()}</p>")
                     j += 1
@@ -1345,8 +1390,7 @@ class GenericExtractor:
                 j = i
                 start = 1
                 while j < len(blocks) and (
-                    "list" in " ".join(blocks[j].get("class", [])).lower()
-                    or "bullet" in " ".join(blocks[j].get("class", [])).lower()
+                    "list" in class_names(blocks[j]) or "bullet" in class_names(blocks[j])
                 ):
                     item = blocks[j]
                     m = strip_leading(item, r"^\s*(?:[•·]|\d+\.)\s*")
@@ -1402,7 +1446,7 @@ class GenericExtractor:
             out.append(f"<p{pid}{pcls}>{self._inline(el, source_path).strip()}</p>")
             i += 1
 
-        return dedupe_fragment_ids("".join(out)), sections, warnings
+        return dedupe_fragment_ids("".join(out)), sections
 
     # -- output -----------------------------------------------------------
     def _write_pages(self, fragments: dict[str, str]) -> None:
@@ -1457,12 +1501,8 @@ class GenericExtractor:
     def _write_book(self, source_text: dict[str, str]) -> None:
         md = self.book.metadata
         title = md.get("title") or self.epub_path.stem
-        short = re.split(r"\s*[:\u2014]\s*", title, maxsplit=1)[0].strip() or title
-        subtitle = ""
-        m = re.split(r"\s*[:\u2014]\s*", title, maxsplit=1)
-        if len(m) == 2:
-            subtitle = m[1].strip()
-        year = (md.get("date") or "")[:4]
+        short, subtitle = split_title(title)
+        year = year_from_date(md.get("date") or "")
         cover = self.cover_info["name"] if self.cover_info else ""
         cover_webp = self.cover_info.get("webp", "") if self.cover_info else ""
 
@@ -1481,9 +1521,7 @@ class GenericExtractor:
                     "sections": page["sections"],
                     "words": page["words"],
                     "figure_count": page.get("figure_count", 0),
-                    "note_count": page.get("note_count", 0),
                     "images": page.get("images", 0),
-                    "warnings": page.get("warnings", []),
                 }
             )
 
@@ -1492,7 +1530,6 @@ class GenericExtractor:
             "chapter_words": sum(p["words"] for p in pages if p["type"] == "chapter"),
             "chapters": self.chapter_count,
             "figures": sum(p.get("figure_count", 0) for p in pages),
-            "notes": sum(p.get("note_count", 0) for p in pages),
             "images": len(self.images),
         }
 
@@ -1527,4 +1564,3 @@ class GenericExtractor:
         (self.content_dir / "source-text.json").write_text(
             json.dumps(source_text, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
         )
-        (self.content_dir / "notes-popover.json").write_text("{}\n", encoding="utf-8")
