@@ -52,6 +52,8 @@ make demo EPUB=book.epub
 make gui
 make gui-portable
 make release-notes VERSION=0.2.0
+make release-prepare VERSION=0.3.0   # version/changelog only
+make release-ship VERSION=0.3.0      # pushes main + tag; explicit release
 ```
 
 The test suite generates a tiny EPUB fixture in `tests/conftest.py`; no
@@ -119,14 +121,24 @@ pip install -e ".[gui-build]"
 - Write for users, not developers. Internal refactors and test-only changes do
   not need entries.
 - Before a release, move `Unreleased` entries into a dated section such as
-  `## 0.2.0 - 2026-11-04` and bump `epub2web.__version__`.
+  `## 0.3.0 - 2026-10-28` and bump `epub2web.__version__`.
+  `make release-prepare VERSION=X.Y.Z` does both and leaves a fresh empty
+  `Unreleased` section. It refuses an empty `Unreleased` section or a version
+  that is not greater than the current one.
+- `make release-ship VERSION=X.Y.Z` checks a clean `main` branch, verifies the
+  version and changelog section, runs the tests, pushes `main`, and pushes
+  `vX.Y.Z`. `scripts/release.py ship` is a dry run unless `--execute` is passed;
+  the Make target passes it. Use `--watch` on the script to follow the release
+  workflow.
 - The release workflow extracts the exact version section and fails before
   building if it is missing or empty. Preview it with
   `make release-notes VERSION=X.Y.Z`.
 - Do not create or push tags, create GitHub releases, or publish to PyPI unless
   explicitly asked.
 - `publish.yml` and its `pypi` environment are tied to PyPI trusted publishing.
-  Do not rename or move that workflow without updating the PyPI publisher.
+  Do not rename or move that workflow without updating the PyPI publisher. A
+  failed publish with `invalid-publisher` means the matching pending publisher
+  has not been configured on PyPI.
 - Update `THIRD_PARTY_NOTICES.md` when adding dependencies or bundled assets.
 
 ## Style
