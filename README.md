@@ -43,7 +43,8 @@ Then:
 The finished website opens in your browser. It is saved under
 `Documents/epub2web/<book>-site` (or `~/epub2web/<book>-site` if you do not
 have a Documents folder). The preview stays running while you read; use
-**Stop** to shut it down. Closing the window also stops it.
+**Stop** to shut it down. Closing the window also stops it. To read the site
+again later, see [Run the site](#run-the-site).
 
 The app shows live progress while it works, down to individual pages and
 images, so a long book does not look frozen.
@@ -164,6 +165,49 @@ These paths apply to the desktop app:
   same application-data directory.
 
 Removing the app does not remove your books, generated sites, or logs.
+
+## Run the site
+
+The desktop app starts a small local web server and opens the finished site in
+your browser. That preview lasts only while the app is open. **Stop** shuts the
+server down, and closing the window does too.
+
+To read the site later, either reopen the app and convert the same EPUB again
+(the existing site is refreshed and the preview starts again), or serve the
+folder yourself.
+
+**Do not double-click `index.html`.** The generated site uses absolute links,
+and its search index is loaded over HTTP. Browsers block those requests when a
+page is opened directly from the filesystem.
+
+From the site folder, run a static file server. Replace `my-book-site` with
+the folder name shown by the app, and adjust the path if the site is somewhere
+else. For example:
+
+macOS or Linux:
+
+```bash
+cd ~/Documents/epub2web/my-book-site
+python3 -m http.server 8000
+```
+
+Windows PowerShell:
+
+```powershell
+cd ~\Documents\epub2web\my-book-site
+py -m http.server 8000
+```
+
+Then open <http://localhost:8000/> in your browser. Any static file server
+works; Python is only one option. If you use the command line, the equivalent
+build-and-serve command is:
+
+```bash
+epub2web book.epub --serve
+```
+
+To share the site, upload the same folder to a static host. See
+[Hosting and subpaths](#hosting-and-subpaths).
 
 ## If a book does not convert
 

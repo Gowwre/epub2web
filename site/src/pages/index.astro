@@ -85,6 +85,11 @@ const faqs = [
       "A static website folder: a cover, contents, every chapter as a reading page, optimized images, self-hosted fonts, a search index, a sitemap, and a small accessibility-minded theme. No Node build step, database, or server-side runtime.",
   },
   {
+    question: "How do I open the site after I close the app?",
+    answer:
+      "The preview stops when the app closes. Reopen the app, choose the same EPUB, and click Convert to refresh and preview the existing site. You can also serve the site folder with any local static server. See “Run the site” above for commands.",
+  },
+  {
     question: "Which EPUBs work best?",
     answer:
       "Normal, reflowable EPUB 2 and EPUB 3 books work best. DRM-protected, fixed-layout, and image-only books may not work. Books that load images from the internet are refused so the finished site remains self-contained.",
@@ -430,8 +435,8 @@ const faqs = [
           <span class="step__num">03</span>
           <h3>Read, or publish</h3>
           <p>
-            Read locally in your browser, or upload the plain folder to any
-            static host. The site works without a server-side runtime.
+            Read through the app&apos;s preview, or upload the plain folder to
+            any static host. The site works without a server-side runtime.
           </p>
         </li>
       </ol>
@@ -485,10 +490,104 @@ epub2web book.epub --serve</code></pre>
     </div>
   </section>
 
+  <section class="section run-site" id="run-site">
+    <div class="container">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">V · Run it</p>
+          <h2>Serve the folder. <span class="accent">Don&apos;t double-click.</span></h2>
+        </div>
+        <div class="section-heading__side">
+          <p class="lede">
+            The finished edition uses absolute links and loads its search index
+            over HTTP. The app previews it while open; later, use any local
+            static server or publish the folder.
+          </p>
+          <p class="run-site__docs">
+            <a
+              class="text-link"
+              href={`${README_URL}#run-the-site`}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Full run and hosting guide
+              <Icon name="arrow-up-right" size={14} class="icon--external" />
+            </a>
+          </p>
+        </div>
+      </div>
+
+      <div class="run-site__grid">
+        <div class="run-site__steps">
+          <article class="run-step">
+            <span class="run-step__num">01</span>
+            <div>
+              <h3>Keep the app open</h3>
+              <p>
+                The desktop app starts a local server and opens your book.{" "}
+                <strong>Stop</strong> shuts it down; closing the window does too.
+              </p>
+            </div>
+          </article>
+          <article class="run-step">
+            <span class="run-step__num">02</span>
+            <div>
+              <h3>Or open it again</h3>
+              <p>
+                Reopen the app, choose the same EPUB, and press{" "}
+                <strong>Convert</strong>. It refreshes the existing site and
+                starts the preview again.
+              </p>
+            </div>
+          </article>
+          <article class="run-step">
+            <span class="run-step__num">03</span>
+            <div>
+              <h3>Or serve it yourself</h3>
+              <p>
+                Start any static file server from the site folder. Python is one
+                option; the commands are on the right.
+              </p>
+            </div>
+          </article>
+        </div>
+
+        <figure class="run-code">
+          <div class="run-code__head">
+            <span>Terminal</span>
+            <span>local preview</span>
+          </div>
+          <div class="run-code__block">
+            <span>macOS / Linux</span>
+            <pre><code>cd ~/Documents/epub2web/my-book-site
+python3 -m http.server 8000</code></pre>
+          </div>
+          <div class="run-code__block">
+            <span>Windows PowerShell</span>
+            <pre><code>cd ~\Documents\epub2web\my-book-site
+py -m http.server 8000</code></pre>
+          </div>
+          <figcaption>
+            Replace <code>my-book-site</code> with your folder name, then open{" "}
+            <code>http://localhost:8000/</code>. Any static file server works.
+          </figcaption>
+        </figure>
+      </div>
+
+      <p class="run-site__note">
+        <Icon name="alert" size={15} />
+        <span>
+          Opening <code>index.html</code> from your filesystem is not enough:
+          absolute links and the search index need <code>http://</code>.
+        </span>
+      </p>
+    </div>
+  </section>
+
   <section class="section faq" id="faq">
     <div class="container faq__layout">
       <aside class="faq__aside">
-        <p class="eyebrow">V · Questions</p>
+        <p class="eyebrow">VI · Questions</p>
         <h2>Before you download.</h2>
         <p class="faq__intro">
           Straight answers, including the warning your computer will probably
@@ -593,7 +692,7 @@ epub2web book.epub --serve</code></pre>
       <span class="closing__watermark" aria-hidden="true">
         <Icon name="book" size={420} strokeWidth={0.8} />
       </span>
-      <p class="eyebrow">VI · Your move</p>
+      <p class="eyebrow">VII · Your move</p>
       <h2>
         Give your book a<br />
         <span class="accent">home on the web.</span>
@@ -1466,6 +1565,145 @@ epub2web book.epub --serve</code></pre>
   }
 
   /* ------------------------------------------------------------------
+     Run the site
+     ------------------------------------------------------------------ */
+
+  .run-site__docs {
+    margin: 0.9rem 0 0;
+  }
+
+  .run-site__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
+    gap: clamp(2rem, 5vw, 4.5rem);
+    align-items: start;
+  }
+
+  .run-site__steps {
+    border-top: 1px solid var(--rule-strong);
+  }
+
+  .run-step {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: 0.85rem;
+    padding-block: 1.15rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .run-step__num {
+    padding-top: 0.2rem;
+    font-family: var(--font-ui);
+    font-size: 0.59rem;
+    font-weight: 650;
+    letter-spacing: 0.13em;
+    color: var(--accent);
+  }
+
+  .run-step h3 {
+    margin-bottom: 0.25rem;
+    font-size: 1.08rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+
+  .run-step p {
+    margin: 0;
+    font-size: 0.88rem;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  .run-code {
+    overflow: hidden;
+    border: 1px solid var(--rule-strong);
+    border-radius: 5px;
+    background: var(--paper-2);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .run-code__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.72rem 1rem;
+    border-bottom: 1px solid var(--rule);
+    background: var(--paper-3);
+    font-family: var(--font-ui);
+    font-size: 0.57rem;
+    font-weight: 650;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .run-code__block {
+    padding: 0.95rem 1rem 1rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .run-code__block > span {
+    font-family: var(--font-ui);
+    font-size: 0.55rem;
+    font-weight: 650;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .run-code__block pre {
+    margin: 0.4rem 0 0;
+    overflow-x: auto;
+    font-size: clamp(0.64rem, 0.6rem + 0.16vw, 0.73rem);
+    line-height: 1.75;
+    color: var(--ink);
+  }
+
+  .run-code figcaption {
+    padding: 0.75rem 1rem 0.85rem;
+    font-family: var(--font-ui);
+    font-size: 0.67rem;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  .run-code code,
+  .run-site__note code {
+    padding: 0.08em 0.3em;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    background: var(--paper);
+    font-size: 0.86em;
+    color: var(--ink);
+  }
+
+  .run-code__block code {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    font-size: inherit;
+  }
+
+  .run-site__note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    margin: 1.5rem 0 0;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+    font-family: var(--font-ui);
+    font-size: 0.71rem;
+    line-height: 1.6;
+    color: var(--muted);
+  }
+
+  .run-site__note .icon {
+    margin-top: 0.13rem;
+    color: var(--accent);
+  }
+
+  /* ------------------------------------------------------------------
      FAQ
      ------------------------------------------------------------------ */
 
@@ -1823,6 +2061,11 @@ epub2web book.epub --serve</code></pre>
       gap: 2.5rem;
     }
 
+    .run-site__grid {
+      grid-template-columns: 1fr;
+      gap: 2.5rem;
+    }
+
     .faq__layout {
       grid-template-columns: 1fr;
       gap: 2.5rem;
@@ -1887,7 +2130,8 @@ epub2web book.epub --serve</code></pre>
 
     .build-report pre,
     .output-card pre,
-    .cli-code {
+    .cli-code,
+    .run-code__block pre {
       white-space: pre-wrap;
       overflow-wrap: anywhere;
     }
