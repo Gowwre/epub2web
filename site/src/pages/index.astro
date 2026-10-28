@@ -1,0 +1,1947 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Icon from "../components/Icon.astro";
+import {
+  DEMO_URL,
+  FIRST_LAUNCH_URL,
+  GITHUB_URL,
+  LATEST_RELEASE_URL,
+  README_URL,
+  RELEASES_URL,
+  withBase,
+} from "../consts";
+
+const home720 = withBase("/screenshots/home-720.webp");
+const home1440 = withBase("/screenshots/home-1440.webp");
+const reading720 = withBase("/screenshots/reading-720.webp");
+const reading1440 = withBase("/screenshots/reading-1440.webp");
+const searchCrop = withBase("/screenshots/search-crop.webp");
+
+const gates = [
+  {
+    number: "01",
+    title: "Text, word for word.",
+    body: "Every rendered page is compared with its EPUB source — tokens and characters. A dropped clause, changed punctuation mark, or moved paragraph stops the build.",
+  },
+  {
+    number: "02",
+    title: "Images, accounted for.",
+    body: "The image count on every page is checked against its source. A missing figure fails the build instead of leaving a hole in a published book.",
+  },
+  {
+    number: "03",
+    title: "Links, followed through.",
+    body: "Every internal link, anchor, asset, and duplicate ID is verified before anything is published. No quiet 404s between chapters.",
+  },
+];
+
+const features = [
+  {
+    number: "01",
+    title: "Cover & contents",
+    body: "A proper cover page and a clickable table of contents, not a flat scroll of everything.",
+  },
+  {
+    number: "02",
+    title: "Search, built in",
+    body: "A static full-text index ships with the site and loads when needed. No search server, no account.",
+  },
+  {
+    number: "03",
+    title: "Light & dark",
+    body: "A paper-and-ink reading theme in both modes, with the reader's choice remembered.",
+  },
+  {
+    number: "04",
+    title: "The whole book",
+    body: "Figures, captions, tables, lists, notes, and cross-references all survive the move.",
+  },
+  {
+    number: "05",
+    title: "Accessible by default",
+    body: "Keyboard navigation, clear labels, and descriptions for images are part of the edition.",
+  },
+  {
+    number: "06",
+    title: "Yours to host",
+    body: "One folder of HTML, CSS, images, fonts, and search data. Put it anywhere, or keep it local.",
+  },
+];
+
+const faqs = [
+  {
+    question: "Is my book uploaded anywhere?",
+    answer:
+      "No. The EPUB is read on your computer, the site is built on your computer, and the finished folder stays there. There is no account and no upload step. Publishing it later is entirely your choice.",
+  },
+  {
+    question: "Does epub2web use AI?",
+    answer:
+      "No. It does not call a language model, summarize prose, or fetch anything from a remote service during a build. The text you see is the text in your EPUB, and the same book produces the same result every time.",
+  },
+  {
+    question: "What exactly do I get?",
+    answer:
+      "A static website folder: a cover, contents, every chapter as a reading page, optimized images, self-hosted fonts, a search index, a sitemap, and a small accessibility-minded theme. No Node build step, database, or server-side runtime.",
+  },
+  {
+    question: "Which EPUBs work best?",
+    answer:
+      "Normal, reflowable EPUB 2 and EPUB 3 books work best. DRM-protected, fixed-layout, and image-only books may not work. Books that load images from the internet are refused so the finished site remains self-contained.",
+  },
+  {
+    question: "What if my book does not convert?",
+    answer:
+      "epub2web stops rather than dropping content, leaves any previous working site untouched, and writes a support ZIP. Attach that ZIP to a GitHub issue, but not the book itself. The ZIP can contain file paths, metadata, and short excerpts, so review it first.",
+  },
+  {
+    question: "Can I put the site online?",
+    answer:
+      "Yes. The output is a plain static folder, so it works on GitHub Pages, Cloudflare Pages, Netlify, S3, nginx, or any other static host. Subpath hosting is supported with the command-line --base-path option.",
+  },
+  {
+    question: "Can I use the command line instead?",
+    answer:
+      "Yes. epub2web is a Python package for Python 3.10 and newer, and the CLI exposes preview, output, metadata, logging, and verification options. The desktop app is a friendly front end to the same pipeline.",
+  },
+];
+---
+
+<BaseLayout>
+  <section class="hero">
+    <div class="container hero__inner">
+      <div class="hero__copy">
+        <p class="eyebrow">EPUB → a reading website</p>
+        <h1 class="hero__title">
+          <span>Your book,</span>
+          <span class="hero__title-accent">opened to the web.</span>
+        </h1>
+        <p class="hero__intro">
+          A clean, static reading site made from the EPUB you already own. Every
+          word, figure, note, and link checked. Nothing uploaded. Nothing
+          rewritten.
+        </p>
+
+        <div class="hero__actions">
+          <a class="btn btn--primary btn--large" href={withBase("/download/")}>
+            <Icon name="download" size={17} />
+            Download the app
+          </a>
+          <a
+            class="btn btn--quiet btn--large"
+            href={DEMO_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Try the live demo
+            <Icon name="arrow-up-right" size={15} class="btn-arrow" />
+          </a>
+        </div>
+
+        <ul class="hero__meta" aria-label="At a glance">
+          <li>Free &amp; open source</li>
+          <li>Windows · macOS · Linux</li>
+          <li>No Python required</li>
+        </ul>
+
+        <p class="hero__audience">
+          For authors, translators, publishers, teachers, and readers.
+        </p>
+      </div>
+
+      <div class="hero__visual">
+        <figure class="browser-frame hero__edition">
+          <div class="browser-bar" aria-hidden="true">
+            <span class="browser-dots"><span></span><span></span><span></span></span>
+            <span class="browser-url">
+              <Icon name="lock" size={10} />
+              gowwre.github.io/epub2web/demo
+            </span>
+            <span class="browser-menu">···</span>
+          </div>
+          <img
+            src={home1440}
+            srcset={`${home720} 720w, ${home1440} 1440w`}
+            sizes="(max-width: 980px) 100vw, 46vw"
+            width="1440"
+            height="1000"
+            alt="The epub2web reader home page for Alice's Adventures in Wonderland, showing a cover, title, author, and Start reading button."
+            fetchpriority="high"
+          />
+        </figure>
+
+        <aside class="verify-card" aria-label="Example build verification">
+          <span class="verify-card__seal" aria-hidden="true">PASS</span>
+          <p class="verify-card__eyebrow">Build verified</p>
+          <ul>
+            <li><Icon name="check" size={13} /> 13/13 pages exact</li>
+            <li><Icon name="check" size={13} /> 743 links checked</li>
+            <li><Icon name="check" size={13} /> 0 bytes uploaded</li>
+          </ul>
+        </aside>
+
+        <p class="hero__caption">
+          A real edition of <cite>Alice's Adventures in Wonderland</cite>.
+          Built in 0.57 seconds.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <div class="promise-bar">
+    <div class="container">
+      <ul>
+        <li><Icon name="check" size={13} /> Every page checked</li>
+        <li><Icon name="check" size={13} /> Nothing uploaded</li>
+        <li><Icon name="check" size={13} /> No AI, ever</li>
+        <li><Icon name="check" size={13} /> One static folder</li>
+      </ul>
+    </div>
+  </div>
+
+  <section class="section fidelity" id="fidelity">
+    <div class="container">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">I · The rule</p>
+          <h2>
+            The EPUB is the{" "}
+            <span class="accent">source of truth.</span>
+          </h2>
+        </div>
+        <div class="section-heading__side">
+          <p class="fidelity__quote">“The design changes. The book does not.”</p>
+          <p class="fidelity__intro">
+            epub2web can change structure and presentation. It cannot lose your
+            words. Three gates stand between your EPUB and a published site.
+          </p>
+        </div>
+      </div>
+
+      <div class="gate-grid">
+        {
+          gates.map((gate) => (
+            <article class="gate">
+              <span class="gate__num">{gate.number}</span>
+              <h3>{gate.title}</h3>
+              <p>{gate.body}</p>
+            </article>
+          ))
+        }
+      </div>
+
+      <div class="proof">
+        <figure class="build-report">
+          <div class="build-report__bar" aria-hidden="true">
+            <span class="build-report__dots"><span></span><span></span><span></span></span>
+            <span class="build-report__title">one real run</span>
+          </div>
+          <pre><code><span class="report-muted">$</span> epub2web alice.epub --serve
+<span class="report-label">EPUB</span>     Alice's Adventures in Wonderland
+<span class="report-label">Pages</span>    13
+<span class="report-label">Words</span>    29,564
+<span class="report-label">Verify</span>   <span class="report-pass">PASS (13/13 pages exact)</span>
+<span class="report-label">Links</span>    <span class="report-pass">PASS (743 checked, 0 broken)</span>
+<span class="report-label">Search</span>   16 sections indexed
+<span class="report-label">Site</span>     <span class="report-accent">alice-site/index.html</span>
+<span class="report-label">Time</span>     0.57s</code></pre>
+        </figure>
+
+        <div class="proof__copy">
+          <p class="eyebrow">Nothing half-published</p>
+          <h3>A failed build is not a published book.</h3>
+          <p>
+            The site is assembled in a staging folder, verified, and only then
+            swapped into place. If extraction or any gate fails, your previous
+            working site stays exactly as it was.
+          </p>
+          <ul class="check-list">
+            <li><Icon name="check" size={14} /> Staged, checked, then published.</li>
+            <li><Icon name="check" size={14} /> Images and links included in the gate.</li>
+            <li><Icon name="check" size={14} /> No model or remote service in the loop.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section edition" id="edition">
+    <div class="container">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">II · The edition</p>
+          <h2>Not a <span class="accent">document dump.</span></h2>
+        </div>
+        <p class="lede">
+          A complete reading edition: cover, contents, chapters, figures, notes,
+          and search. All of it a plain folder you can keep or publish.
+        </p>
+      </div>
+
+      <div class="result-visual">
+        <figure class="browser-frame reading-shot">
+          <div class="browser-bar" aria-hidden="true">
+            <span class="browser-dots"><span></span><span></span><span></span></span>
+            <span class="browser-url">alice-site / read / 1</span>
+            <span class="browser-menu">···</span>
+          </div>
+          <img
+            src={reading1440}
+            srcset={`${reading720} 720w, ${reading1440} 1440w`}
+            sizes="(max-width: 900px) 100vw, 66vw"
+            width="1440"
+            height="1000"
+            alt="The reading view: a chapter of Alice's Adventures in Wonderland with a contents sidebar, progress line, and comfortable serif typography."
+            loading="lazy"
+          />
+        </figure>
+
+        <figure class="search-shot">
+          <div class="search-shot__bar">
+            <span><Icon name="search" size={14} /> Search the book</span>
+            <kbd>/</kbd>
+          </div>
+          <img
+            src={searchCrop}
+            width="660"
+            height="890"
+            alt="The built-in search panel showing highlighted results for the word rabbit across chapters."
+            loading="lazy"
+          />
+          <figcaption class="figure-caption">
+            Full-text results, generated with the site. No search server.
+          </figcaption>
+        </figure>
+      </div>
+
+      <div class="feature-ledger">
+        {
+          features.map((feature) => (
+            <article class="feature-row">
+              <span class="feature-row__num">{feature.number}</span>
+              <div>
+                <h3>{feature.title}</h3>
+                <p>{feature.body}</p>
+              </div>
+            </article>
+          ))
+        }
+      </div>
+
+      <p class="edition__more">
+        <a class="text-link" href={DEMO_URL} target="_blank" rel="noopener noreferrer">
+          Open the live edition
+          <Icon name="arrow-up-right" size={14} class="icon--external" />
+        </a>
+      </p>
+    </div>
+  </section>
+
+  <section class="private" id="privacy">
+    <div class="container private__grid">
+      <div class="private__lead">
+        <p class="eyebrow eyebrow--night">III · The promise</p>
+        <h2>
+          Nothing is uploaded.<br />
+          Nothing is rewritten.<br />
+          <span>Nothing is guessed.</span>
+        </h2>
+        <p class="private__lede">
+          No account. No AI service. No network at build time. The same EPUB
+          produces the same text and structure, run after run.
+        </p>
+        <a
+          class="btn btn--light"
+          href={GITHUB_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <Icon name="github" size={17} />
+          Read the source on GitHub
+        </a>
+      </div>
+
+      <div class="private__points">
+        <article class="private-point">
+          <span>01</span>
+          <div>
+            <h3>Stays on your computer</h3>
+            <p>
+              Your EPUB, the generated site, logs, and failure reports remain on
+              your machine. Nothing is sent to a server.
+            </p>
+          </div>
+        </article>
+        <article class="private-point">
+          <span>02</span>
+          <div>
+            <h3>Deterministic by design</h3>
+            <p>
+              No model, no remote fetch, no clever guess. Only the sitemap's
+              build timestamp changes between runs.
+            </p>
+          </div>
+        </article>
+        <article class="private-point">
+          <span>03</span>
+          <div>
+            <h3>Open all the way down</h3>
+            <p>
+              The converter, reader theme, and tests are MIT licensed. You can
+              audit exactly what happens to your book.
+            </p>
+          </div>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="section process" id="how-it-works">
+    <div class="container">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">IV · The process</p>
+          <h2>Three steps. <span class="accent">One static folder.</span></h2>
+        </div>
+        <p class="lede">
+          The desktop app bundles everything it needs. Choose a book, press
+          Convert, and the finished site opens in your browser.
+        </p>
+      </div>
+
+      <ol class="steps">
+        <li class="step">
+          <span class="step__num">01</span>
+          <h3>Choose your EPUB</h3>
+          <p>
+            A book you own, in the standard reflowable EPUB 2 or EPUB 3 format.
+            No conversion prep, no account.
+          </p>
+        </li>
+        <li class="step">
+          <span class="step__num">02</span>
+          <h3>Press Convert</h3>
+          <p>
+            Pages, images, and links are converted and checked with live,
+            page-by-page progress. A long book does not look frozen.
+          </p>
+        </li>
+        <li class="step">
+          <span class="step__num">03</span>
+          <h3>Read, or publish</h3>
+          <p>
+            Read locally in your browser, or upload the plain folder to any
+            static host. The site works without a server-side runtime.
+          </p>
+        </li>
+      </ol>
+
+      <div class="process__output">
+        <figure class="output-card">
+          <div class="output-card__head">
+            <span>What lands on disk</span>
+            <span class="output-card__badge">static</span>
+          </div>
+          <pre><code><span class="tree-root">book-site/</span>
+├── <span class="tree-file">index.html</span>
+├── <span class="tree-file">contents/index.html</span>
+├── <span class="tree-file">read/1/index.html</span>
+├── <span class="tree-file">read/2/index.html</span>
+├── <span class="tree-dir">assets/</span>        <span class="tree-note">CSS, JS, self-hosted fonts</span>
+├── <span class="tree-dir">images/</span>        <span class="tree-note">optimized figures</span>
+├── <span class="tree-file">search-index.json</span>
+├── <span class="tree-file">sitemap.xml</span>
+└── <span class="tree-file">robots.txt</span></code></pre>
+        </figure>
+
+        <div class="process__copy">
+          <h3>No Node build step. No database. No server required.</h3>
+          <p>
+            A finished book is just files. Keep it on your computer, put it on a
+            USB stick, or serve it from anywhere that can deliver static HTML.
+            Re-running the app refreshes an existing epub2web site automatically.
+          </p>
+          <p>
+            On the desktop, sites land in{" "}
+            <code>Documents/epub2web/&lt;book&gt;-site</code>. Closing the app
+            does not remove the site or your books.
+          </p>
+
+          <details class="cli-details">
+            <summary>Prefer the command line?</summary>
+            <p>
+              epub2web is also a Python package for Python 3.10 and newer. Install
+              it from GitHub with <code>pipx</code>, then build and preview:
+            </p>
+            <pre class="cli-code"><code>pipx install git+https://github.com/Gowwre/epub2web
+epub2web book.epub --serve</code></pre>
+            <p class="cli-details__foot">
+              Full options are in the{" "}
+              <a href={README_URL} target="_blank" rel="noopener noreferrer">README</a>.
+            </p>
+          </details>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section faq" id="faq">
+    <div class="container faq__layout">
+      <aside class="faq__aside">
+        <p class="eyebrow">V · Questions</p>
+        <h2>Before you download.</h2>
+        <p class="faq__intro">
+          Straight answers, including the warning your computer will probably
+          show the first time you open the app.
+        </p>
+        <div class="faq__warning-note">
+          <Icon name="alert" size={17} />
+          <p>
+            <strong>Unsigned, not unsafe.</strong> The desktop builds do not have
+            paid code-signing certificates yet. Only continue with a file from
+            the official releases page.
+          </p>
+        </div>
+      </aside>
+
+      <div class="faq__list">
+        <details class="faq-item faq-item--warning" id="first-launch" open>
+          <summary>
+            Why does Windows or macOS warn me when I open the app?
+            <span class="faq-item__marker" aria-hidden="true"></span>
+          </summary>
+          <div class="faq-item__answer">
+            <p>
+              Windows SmartScreen and macOS Gatekeeper may warn about an
+              unidentified developer on first launch. This is expected: the
+              desktop builds are not code-signed yet. It does not mean the
+              download was tampered with — but only continue if you downloaded it
+              from the{" "}
+              <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer">
+                official GitHub releases page
+              </a>.
+            </p>
+
+            <div class="warning-grid">
+              <div class="warning-card">
+                <h3><Icon name="windows" size={16} /> Windows</h3>
+                <p>If “Windows protected your PC” appears:</p>
+                <ol>
+                  <li>Click <strong>More info</strong>.</li>
+                  <li>Click <strong>Run anyway</strong>.</li>
+                  <li>Open the app and choose your EPUB.</li>
+                </ol>
+                <p class="warning-card__note">
+                  On a workplace or school PC, Smart App Control may block
+                  unsigned apps entirely. Ask your administrator rather than
+                  disabling security features.
+                </p>
+              </div>
+
+              <div class="warning-card">
+                <h3><Icon name="apple" size={16} /> macOS 15 and later</h3>
+                <p>After dragging the app to Applications:</p>
+                <ol>
+                  <li>Try to open it once, then click <strong>Done</strong>.</li>
+                  <li>
+                    Open <strong>System Settings → Privacy &amp; Security</strong>.
+                  </li>
+                  <li>
+                    Under <strong>Security</strong>, click{" "}
+                    <strong>Open Anyway</strong>, then authenticate.
+                  </li>
+                  <li>Open the app again.</li>
+                </ol>
+                <p class="warning-card__note">
+                  The Open Anyway button is available for about an hour after
+                  the first attempt. On macOS 14 and earlier, right-click the
+                  app and choose <strong>Open</strong>.
+                </p>
+              </div>
+            </div>
+
+            <p class="faq-item__fine">
+              If macOS says the app is damaged, delete it, re-download from the
+              official release, and try again. You can verify downloads against
+              the SHA-256 checksums on the release page.{" "}
+              <a href={FIRST_LAUNCH_URL} target="_blank" rel="noopener noreferrer">
+                Full first-launch guide
+              </a>.
+            </p>
+          </div>
+        </details>
+
+        {
+          faqs.map((faq) => (
+            <details class="faq-item">
+              <summary>
+                {faq.question}
+                <span class="faq-item__marker" aria-hidden="true" />
+              </summary>
+              <div class="faq-item__answer">
+                <p>{faq.answer}</p>
+              </div>
+            </details>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <section class="closing">
+    <div class="container closing__inner">
+      <span class="closing__watermark" aria-hidden="true">
+        <Icon name="book" size={420} strokeWidth={0.8} />
+      </span>
+      <p class="eyebrow">VI · Your move</p>
+      <h2>
+        Give your book a<br />
+        <span class="accent">home on the web.</span>
+      </h2>
+      <p class="closing__intro">
+        Download the desktop app, choose an EPUB, and read the finished site in
+        your browser. Then share it with anyone who has a browser.
+      </p>
+      <div class="closing__actions">
+        <a class="btn btn--primary btn--large" href={withBase("/download/")}>
+          <Icon name="download" size={17} />
+          Download epub2web
+        </a>
+        <a
+          class="btn btn--quiet btn--large"
+          href={DEMO_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Read the live demo
+          <Icon name="arrow-up-right" size={15} class="btn-arrow" />
+        </a>
+      </div>
+      <p class="closing__meta">
+        Free &amp; open source · MIT licensed · No account required ·{" "}
+        <a href={LATEST_RELEASE_URL} target="_blank" rel="noopener noreferrer">
+          Latest release on GitHub
+        </a>
+      </p>
+    </div>
+  </section>
+</BaseLayout>
+
+<style>
+  /* ------------------------------------------------------------------
+     Hero
+     ------------------------------------------------------------------ */
+
+  .hero {
+    padding-block: clamp(3.4rem, 7.5vw, 6.8rem) clamp(2.8rem, 5.5vw, 5rem);
+  }
+
+  .hero__inner {
+    display: grid;
+    grid-template-columns: minmax(0, 1.03fr) minmax(0, 0.97fr);
+    gap: clamp(2.5rem, 5vw, 5rem);
+    align-items: center;
+  }
+
+  .hero__title {
+    max-width: 11ch;
+    margin-top: 0.3rem;
+    font-size: clamp(3.3rem, 2rem + 4.4vw, 5.55rem);
+    line-height: 0.91;
+    letter-spacing: -0.05em;
+    font-variation-settings: "opsz" 100, "SOFT" 35, "WONK" 0;
+  }
+
+  .hero__title span {
+    display: block;
+  }
+
+  .hero__title-accent {
+    color: var(--accent);
+  }
+
+  .hero__intro {
+    max-width: 43ch;
+    margin: 1.7rem 0 1.9rem;
+    font-size: clamp(1.03rem, 0.97rem + 0.25vw, 1.14rem);
+    color: var(--ink-2);
+  }
+
+  .hero__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.7rem;
+  }
+
+  .hero__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.45rem 1rem;
+    margin: 1.5rem 0 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--font-ui);
+    font-size: 0.66rem;
+    font-weight: 550;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .hero__meta li {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .hero__meta li + li::before {
+    content: "";
+    width: 3px;
+    height: 3px;
+    border-radius: 50%;
+    background: var(--rule-strong);
+  }
+
+  .hero__audience {
+    margin: 2.3rem 0 0;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+    max-width: 38ch;
+    font-size: 0.83rem;
+    color: var(--muted);
+  }
+
+  .hero__visual {
+    position: relative;
+    z-index: 0;
+    padding-bottom: 2.1rem;
+  }
+
+  .hero__visual::before {
+    content: "";
+    position: absolute;
+    inset: 14px -14px -8px 14px;
+    z-index: -1;
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+    border-radius: 6px;
+    transform: rotate(1.2deg);
+  }
+
+  .hero__edition {
+    transform: rotate(-0.5deg);
+    transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+  }
+
+  .hero__visual:hover .hero__edition {
+    transform: rotate(0deg) translateY(-3px);
+  }
+
+  .hero__edition .browser-url {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+  }
+
+  .verify-card {
+    position: absolute;
+    bottom: 0.4rem;
+    left: -1.6rem;
+    z-index: 2;
+    width: 255px;
+    padding: 1.05rem 1.15rem 1rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 4px;
+    background: var(--paper-2);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .verify-card__seal {
+    position: absolute;
+    top: 0.85rem;
+    right: 0.9rem;
+    display: grid;
+    place-items: center;
+    width: 40px;
+    height: 40px;
+    border: 1.5px double color-mix(in srgb, var(--accent) 65%, transparent);
+    border-radius: 50%;
+    color: var(--accent);
+    font-family: var(--font-ui);
+    font-size: 0.52rem;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    transform: rotate(-10deg);
+  }
+
+  .verify-card__eyebrow {
+    margin: 0 0 0.55rem;
+    font-family: var(--font-ui);
+    font-size: 0.55rem;
+    font-weight: 650;
+    letter-spacing: 0.17em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .verify-card ul {
+    display: grid;
+    gap: 0.3rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .verify-card li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-ui);
+    font-size: 0.69rem;
+    color: var(--ink-2);
+  }
+
+  .verify-card li .icon {
+    color: var(--accent);
+  }
+
+  .hero__caption {
+    position: absolute;
+    right: 0;
+    bottom: -0.15rem;
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 0.64rem;
+    color: var(--muted);
+    text-align: right;
+  }
+
+  .hero__caption cite {
+    font-style: normal;
+    color: var(--ink-2);
+  }
+
+  /* ------------------------------------------------------------------
+     Promise bar
+     ------------------------------------------------------------------ */
+
+  .promise-bar {
+    border-block: 1px solid var(--rule);
+    background: color-mix(in srgb, var(--paper-2) 75%, transparent);
+  }
+
+  .promise-bar ul {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.55rem 1.5rem;
+    margin: 0;
+    padding: 0.85rem 0;
+    list-style: none;
+  }
+
+  .promise-bar li {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-family: var(--font-ui);
+    font-size: 0.61rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink-2);
+  }
+
+  .promise-bar .icon {
+    color: var(--accent);
+  }
+
+  /* ------------------------------------------------------------------
+     Shared section heading
+     ------------------------------------------------------------------ */
+
+  .section {
+    padding-block: clamp(4.2rem, 8vw, 7.5rem);
+    border-top: 1px solid var(--rule);
+  }
+
+  .section-heading {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    gap: clamp(2rem, 6vw, 5rem);
+    align-items: end;
+    margin-bottom: clamp(2.2rem, 4.5vw, 3.8rem);
+  }
+
+  .section-heading h2 {
+    margin-top: 0.15rem;
+    font-size: clamp(2.25rem, 1.55rem + 2.8vw, 4.1rem);
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+
+  .accent {
+    color: var(--accent);
+  }
+
+  .section-heading__side {
+    padding-bottom: 0.15rem;
+  }
+
+  .fidelity__quote {
+    margin: 0 0 0.8rem;
+    font-family: var(--font-display);
+    font-size: clamp(1.15rem, 1rem + 0.6vw, 1.45rem);
+    line-height: 1.25;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  .fidelity__intro {
+    max-width: 44ch;
+    margin: 0;
+    font-size: 0.95rem;
+    color: var(--ink-2);
+  }
+
+  /* ------------------------------------------------------------------
+     Fidelity gates
+     ------------------------------------------------------------------ */
+
+  .gate-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(1.5rem, 3vw, 3rem);
+  }
+
+  .gate {
+    padding-top: 1.15rem;
+    border-top: 1px solid var(--rule-strong);
+  }
+
+  .gate__num {
+    display: block;
+    margin-bottom: 0.6rem;
+    font-family: var(--font-ui);
+    font-size: 0.62rem;
+    font-weight: 650;
+    letter-spacing: 0.16em;
+    color: var(--accent);
+  }
+
+  .gate h3 {
+    margin-bottom: 0.5rem;
+    font-size: clamp(1.2rem, 1.1rem + 0.35vw, 1.42rem);
+    line-height: 1.18;
+    letter-spacing: -0.015em;
+  }
+
+  .gate p {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.65;
+    color: var(--ink-2);
+  }
+
+  .proof {
+    display: grid;
+    grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
+    gap: clamp(2rem, 5vw, 4.5rem);
+    align-items: center;
+    margin-top: clamp(3rem, 6vw, 5rem);
+  }
+
+  .build-report {
+    overflow: hidden;
+    margin: 0;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 5px;
+    background: #181410;
+    box-shadow: var(--shadow-deep);
+  }
+
+  .build-report__bar {
+    display: flex;
+    align-items: center;
+    gap: 0.8rem;
+    padding: 0.6rem 0.9rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.09);
+    background: #211c16;
+  }
+
+  .build-report__dots {
+    display: flex;
+    gap: 5px;
+  }
+
+  .build-report__dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: rgba(243, 235, 221, 0.22);
+  }
+
+  .build-report__title {
+    font-family: var(--font-ui);
+    font-size: 0.56rem;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: #9d907e;
+  }
+
+  .build-report pre {
+    margin: 0;
+    padding: clamp(1.1rem, 2.5vw, 1.6rem);
+    overflow-x: auto;
+    font-size: clamp(0.66rem, 0.61rem + 0.18vw, 0.78rem);
+    line-height: 1.9;
+    color: #efe6d6;
+    tab-size: 2;
+  }
+
+  .report-muted {
+    color: #998c78;
+  }
+
+  .report-label {
+    display: inline-block;
+    min-width: 5.7em;
+    color: #9d907e;
+  }
+
+  .report-pass {
+    color: #efb083;
+    font-weight: 650;
+  }
+
+  .report-accent {
+    color: #ef906b;
+  }
+
+  .proof__copy h3 {
+    margin-bottom: 0.7rem;
+    font-size: clamp(1.55rem, 1.3rem + 0.8vw, 2rem);
+    line-height: 1.12;
+    letter-spacing: -0.025em;
+  }
+
+  .proof__copy > p:not(.eyebrow) {
+    font-size: 0.93rem;
+    color: var(--ink-2);
+  }
+
+  .check-list {
+    display: grid;
+    gap: 0.55rem;
+    margin: 1.3rem 0 0;
+    padding: 1.1rem 0 0;
+    border-top: 1px solid var(--rule);
+    list-style: none;
+  }
+
+  .check-list li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    font-family: var(--font-ui);
+    font-size: 0.75rem;
+    color: var(--ink-2);
+  }
+
+  .check-list .icon {
+    margin-top: 0.16rem;
+    color: var(--accent);
+  }
+
+  /* ------------------------------------------------------------------
+     The edition
+     ------------------------------------------------------------------ */
+
+  .edition {
+    background: var(--paper-2);
+  }
+
+  .result-visual {
+    display: grid;
+    grid-template-columns: minmax(0, 1.8fr) minmax(250px, 0.75fr);
+    gap: clamp(1.2rem, 3.5vw, 3rem);
+    align-items: end;
+    margin-top: clamp(2rem, 4vw, 3rem);
+  }
+
+  .reading-shot {
+    transform: rotate(-0.35deg);
+  }
+
+  .search-shot {
+    margin: 0 0 1.8rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 4px;
+    background: var(--paper);
+    box-shadow: var(--shadow-soft);
+    transform: rotate(1deg);
+  }
+
+  .search-shot__bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.62rem 0.75rem;
+    border-bottom: 1px solid var(--rule);
+    font-family: var(--font-ui);
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .search-shot__bar span {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+  }
+
+  .search-shot__bar kbd {
+    font-size: 0.58rem;
+    line-height: 1;
+    padding: 0.2rem 0.3rem;
+    border: 1px solid var(--rule-strong);
+    border-bottom-width: 2px;
+    border-radius: 3px;
+    color: var(--muted);
+  }
+
+  .search-shot img {
+    width: 100%;
+  }
+
+  .search-shot figcaption {
+    padding: 0.6rem 0.75rem 0.7rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .feature-ledger {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: clamp(2rem, 5vw, 4.5rem);
+    margin-top: clamp(2.5rem, 5vw, 4rem);
+  }
+
+  .feature-row {
+    display: grid;
+    grid-template-columns: 2rem minmax(0, 1fr);
+    gap: 0.85rem;
+    padding-block: 1.15rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .feature-row__num {
+    padding-top: 0.2rem;
+    font-family: var(--font-ui);
+    font-size: 0.59rem;
+    font-weight: 650;
+    letter-spacing: 0.13em;
+    color: var(--accent);
+  }
+
+  .feature-row h3 {
+    margin-bottom: 0.25rem;
+    font-size: 1.1rem;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+
+  .feature-row p {
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.55;
+    color: var(--ink-2);
+  }
+
+  .edition__more {
+    margin: 2rem 0 0;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--rule);
+    text-align: right;
+  }
+
+  /* ------------------------------------------------------------------
+     Private by construction
+     ------------------------------------------------------------------ */
+
+  .private {
+    position: relative;
+    overflow: hidden;
+    padding-block: clamp(4.5rem, 9vw, 8rem);
+    background: var(--night);
+    color: var(--night-ink);
+  }
+
+  .private::before {
+    content: "";
+    position: absolute;
+    top: -20%;
+    right: -10%;
+    width: 52rem;
+    height: 40rem;
+    background: radial-gradient(
+      circle,
+      color-mix(in srgb, var(--night-accent) 12%, transparent),
+      transparent 65%
+    );
+    pointer-events: none;
+  }
+
+  .private__grid {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: clamp(2.5rem, 7vw, 7rem);
+    align-items: start;
+  }
+
+  .private h2 {
+    margin-top: 0.2rem;
+    font-size: clamp(2.5rem, 1.7rem + 3.4vw, 4.8rem);
+    line-height: 0.98;
+    letter-spacing: -0.045em;
+  }
+
+  .private h2 span {
+    color: var(--night-accent);
+  }
+
+  .private__lede {
+    max-width: 48ch;
+    margin: 1.5rem 0 1.8rem;
+    font-size: 1rem;
+    color: var(--night-muted);
+  }
+
+  .btn--light {
+    border-color: var(--night-rule);
+    background: transparent;
+    color: var(--night-ink);
+  }
+
+  .btn--light:hover {
+    border-color: var(--night-accent);
+    background: transparent;
+    color: var(--night-accent);
+  }
+
+  .private__points {
+    border-top: 1px solid var(--night-rule);
+  }
+
+  .private-point {
+    display: grid;
+    grid-template-columns: 2.1rem minmax(0, 1fr);
+    gap: 0.9rem;
+    padding-block: 1.3rem;
+    border-bottom: 1px solid var(--night-rule);
+  }
+
+  .private-point > span {
+    padding-top: 0.2rem;
+    font-family: var(--font-ui);
+    font-size: 0.59rem;
+    font-weight: 650;
+    letter-spacing: 0.13em;
+    color: var(--night-accent);
+  }
+
+  .private-point h3 {
+    margin-bottom: 0.3rem;
+    font-family: var(--font-ui);
+    font-size: 0.83rem;
+    font-weight: 650;
+    letter-spacing: 0.01em;
+  }
+
+  .private-point p {
+    margin: 0;
+    font-size: 0.87rem;
+    line-height: 1.6;
+    color: var(--night-muted);
+  }
+
+  /* ------------------------------------------------------------------
+     Process
+     ------------------------------------------------------------------ */
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(1.5rem, 3vw, 3rem);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .step {
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--rule-strong);
+  }
+
+  .step__num {
+    display: block;
+    margin-bottom: 1.2rem;
+    font-family: var(--font-display);
+    font-size: clamp(2.6rem, 1.8rem + 2.5vw, 4rem);
+    font-weight: 500;
+    line-height: 0.78;
+    letter-spacing: -0.06em;
+    color: color-mix(in srgb, var(--accent) 70%, var(--paper));
+  }
+
+  .step h3 {
+    margin-bottom: 0.4rem;
+    font-size: 1.28rem;
+    line-height: 1.18;
+  }
+
+  .step p {
+    margin: 0;
+    font-size: 0.89rem;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  .process__output {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: clamp(2rem, 6vw, 5rem);
+    align-items: start;
+    margin-top: clamp(3rem, 6vw, 5rem);
+  }
+
+  .output-card {
+    margin: 0;
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    background: var(--paper-2);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .output-card__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--rule);
+    font-family: var(--font-ui);
+    font-size: 0.61rem;
+    font-weight: 600;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .output-card__badge {
+    padding: 0.2rem 0.4rem;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    color: var(--accent);
+  }
+
+  .output-card pre {
+    margin: 0;
+    padding: clamp(1rem, 2.5vw, 1.5rem);
+    overflow-x: auto;
+    font-size: clamp(0.67rem, 0.62rem + 0.18vw, 0.78rem);
+    line-height: 2;
+    color: var(--ink-2);
+  }
+
+  .tree-root {
+    color: var(--accent);
+    font-weight: 650;
+  }
+
+  .tree-file {
+    color: var(--ink);
+  }
+
+  .tree-dir {
+    color: var(--ink);
+    font-weight: 650;
+  }
+
+  .tree-note {
+    color: var(--muted);
+  }
+
+  .process__copy {
+    padding-top: 0.2rem;
+  }
+
+  .process__copy h3 {
+    margin-bottom: 0.8rem;
+    font-size: clamp(1.6rem, 1.35rem + 0.8vw, 2.1rem);
+    line-height: 1.13;
+    letter-spacing: -0.025em;
+  }
+
+  .process__copy > p {
+    font-size: 0.92rem;
+    color: var(--ink-2);
+  }
+
+  .process__copy code {
+    padding: 0.1em 0.3em;
+    border: 1px solid var(--rule);
+    border-radius: 2px;
+    background: var(--paper-3);
+    font-size: 0.82em;
+  }
+
+  .cli-details {
+    margin-top: 1.4rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--rule);
+  }
+
+  .cli-details summary {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    font-family: var(--font-ui);
+    font-size: 0.77rem;
+    font-weight: 600;
+    color: var(--ink-2);
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .cli-details summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .cli-details summary::after {
+    content: "+";
+    color: var(--accent);
+    font-size: 1rem;
+    font-weight: 400;
+  }
+
+  .cli-details[open] summary::after {
+    content: "−";
+  }
+
+  .cli-details p {
+    margin: 0.9rem 0;
+    font-size: 0.85rem;
+    color: var(--ink-2);
+  }
+
+  .cli-code {
+    margin: 0;
+    padding: 0.9rem 1rem;
+    overflow-x: auto;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--paper-3);
+    font-size: 0.7rem;
+    line-height: 1.8;
+    color: var(--ink-2);
+  }
+
+  .cli-details__foot {
+    margin-bottom: 0 !important;
+  }
+
+  /* ------------------------------------------------------------------
+     FAQ
+     ------------------------------------------------------------------ */
+
+  .faq__layout {
+    display: grid;
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1.28fr);
+    gap: clamp(2.5rem, 7vw, 7rem);
+    align-items: start;
+  }
+
+  .faq__aside {
+    position: sticky;
+    top: calc(var(--header-h) + 2rem);
+  }
+
+  .faq__aside h2 {
+    font-size: clamp(2.3rem, 1.75rem + 2.5vw, 3.7rem);
+    line-height: 1;
+    letter-spacing: -0.04em;
+  }
+
+  .faq__intro {
+    max-width: 34ch;
+    margin: 1.1rem 0 1.5rem;
+    font-size: 0.95rem;
+    color: var(--ink-2);
+  }
+
+  .faq__warning-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    max-width: 34ch;
+    padding: 0.95rem 1rem;
+    border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--rule));
+    border-radius: 4px;
+    background: var(--accent-soft);
+    font-family: var(--font-ui);
+    font-size: 0.73rem;
+    line-height: 1.55;
+    color: var(--ink-2);
+  }
+
+  .faq__warning-note .icon {
+    margin-top: 0.1rem;
+    color: var(--accent);
+  }
+
+  .faq__warning-note p {
+    margin: 0;
+  }
+
+  .faq__warning-note strong {
+    color: var(--ink);
+  }
+
+  .faq-item {
+    border-top: 1px solid var(--rule);
+  }
+
+  .faq-item summary {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.2rem;
+    padding: 1.25rem 0;
+    font-family: var(--font-display);
+    font-size: clamp(1.05rem, 0.98rem + 0.3vw, 1.22rem);
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .faq-item summary::-webkit-details-marker {
+    display: none;
+  }
+
+  .faq-item__marker {
+    position: relative;
+    flex: 0 0 auto;
+    width: 15px;
+    height: 15px;
+    margin-top: 0.22rem;
+  }
+
+  .faq-item__marker::before,
+  .faq-item__marker::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 13px;
+    height: 1px;
+    background: var(--accent);
+    transform: translate(-50%, -50%);
+    transition: transform 0.2s ease;
+  }
+
+  .faq-item__marker::after {
+    transform: translate(-50%, -50%) rotate(90deg);
+  }
+
+  .faq-item[open] .faq-item__marker::after {
+    transform: translate(-50%, -50%) rotate(0deg);
+  }
+
+  .faq-item summary:hover {
+    color: var(--accent);
+  }
+
+  .faq-item__answer {
+    padding-bottom: 1.35rem;
+    font-size: 0.92rem;
+    color: var(--ink-2);
+  }
+
+  .faq-item__answer > p {
+    max-width: 65ch;
+  }
+
+  .faq-item--warning {
+    margin-bottom: 0.6rem;
+    padding-inline: clamp(1rem, 2vw, 1.4rem);
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--rule));
+    border-top-width: 2px;
+    border-radius: 4px;
+    background: color-mix(in srgb, var(--accent-soft) 58%, var(--paper-2));
+  }
+
+  .faq-item--warning summary {
+    color: var(--ink);
+  }
+
+  .faq-item--warning .faq-item__answer {
+    padding-bottom: 1.35rem;
+  }
+
+  .warning-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem;
+    margin: 1.2rem 0;
+  }
+
+  .warning-card {
+    padding: 0.9rem 1rem;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--paper-2);
+  }
+
+  .warning-card h3 {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-bottom: 0.55rem;
+    font-family: var(--font-ui);
+    font-size: 0.72rem;
+    font-weight: 650;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+
+  .warning-card h3 .icon {
+    color: var(--accent);
+  }
+
+  .warning-card p {
+    margin: 0;
+    font-size: 0.8rem;
+  }
+
+  .warning-card ol {
+    display: grid;
+    gap: 0.32rem;
+    margin: 0.5rem 0 0;
+    padding-left: 1.15rem;
+    font-size: 0.8rem;
+    line-height: 1.55;
+  }
+
+  .warning-card__note {
+    margin-top: 0.7rem !important;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--rule);
+    font-size: 0.73rem !important;
+    color: var(--muted);
+  }
+
+  .faq-item__fine {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 0.72rem;
+    line-height: 1.55;
+    color: var(--muted);
+  }
+
+  .faq-item__fine a {
+    color: var(--accent);
+  }
+
+  /* ------------------------------------------------------------------
+     Closing
+     ------------------------------------------------------------------ */
+
+  .closing {
+    position: relative;
+    overflow: hidden;
+    padding-block: clamp(4.5rem, 10vw, 9rem);
+    border-top: 1px solid var(--rule);
+    background: var(--paper-2);
+  }
+
+  .closing__inner {
+    position: relative;
+    z-index: 1;
+    max-width: 940px;
+  }
+
+  .closing__watermark {
+    position: absolute;
+    right: -2rem;
+    bottom: -9rem;
+    z-index: 0;
+    color: var(--accent);
+    opacity: 0.05;
+    pointer-events: none;
+    transform: rotate(-9deg);
+  }
+
+  .closing h2 {
+    max-width: 12ch;
+    font-size: clamp(2.9rem, 1.9rem + 4.8vw, 5.7rem);
+    line-height: 0.92;
+    letter-spacing: -0.055em;
+  }
+
+  .closing__intro {
+    max-width: 46ch;
+    margin: 1.5rem 0 1.8rem;
+    font-size: 1rem;
+    color: var(--ink-2);
+  }
+
+  .closing__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+  }
+
+  .closing__meta {
+    margin: 2.1rem 0 0;
+    font-family: var(--font-ui);
+    font-size: 0.68rem;
+    letter-spacing: 0.02em;
+    color: var(--muted);
+  }
+
+  .closing__meta a {
+    color: var(--accent);
+  }
+
+  /* ------------------------------------------------------------------
+     Responsive
+     ------------------------------------------------------------------ */
+
+  @media (max-width: 1120px) {
+    .hero__inner {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
+      gap: 2.8rem;
+    }
+
+    .hero__title {
+      font-size: clamp(3.1rem, 1.8rem + 4.4vw, 4.9rem);
+    }
+
+    .verify-card {
+      left: -0.8rem;
+    }
+  }
+
+  @media (max-width: 980px) {
+    .hero__inner {
+      grid-template-columns: 1fr;
+      gap: clamp(3rem, 8vw, 5rem);
+    }
+
+    .hero__copy {
+      max-width: 680px;
+    }
+
+    .hero__title {
+      max-width: 13ch;
+      font-size: clamp(3.3rem, 2rem + 5.5vw, 5.3rem);
+    }
+
+    .hero__visual {
+      max-width: 760px;
+      width: 100%;
+      margin-left: auto;
+    }
+
+    .hero__visual::before {
+      inset: 14px -10px -8px 10px;
+    }
+
+    .verify-card {
+      left: -0.6rem;
+    }
+
+    .section-heading {
+      grid-template-columns: 1fr;
+      gap: 1.3rem;
+      align-items: start;
+    }
+
+    .section-heading__side {
+      max-width: 620px;
+    }
+
+    .proof {
+      grid-template-columns: 1fr;
+      align-items: start;
+    }
+
+    .proof__copy {
+      max-width: 640px;
+    }
+
+    .result-visual {
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    .search-shot {
+      width: min(100%, 430px);
+      margin: 0 0 0 auto;
+      transform: rotate(0.7deg);
+    }
+
+    .private__grid {
+      grid-template-columns: 1fr;
+      gap: 2.8rem;
+    }
+
+    .private__lead {
+      max-width: 660px;
+    }
+
+    .process__output {
+      grid-template-columns: 1fr;
+      gap: 2.5rem;
+    }
+
+    .faq__layout {
+      grid-template-columns: 1fr;
+      gap: 2.5rem;
+    }
+
+    .faq__aside {
+      position: static;
+      max-width: 620px;
+    }
+
+    .faq__warning-note {
+      max-width: 44ch;
+    }
+  }
+
+  @media (max-width: 760px) {
+    .gate-grid {
+      grid-template-columns: 1fr;
+      gap: 1.8rem;
+    }
+
+    .gate {
+      max-width: 600px;
+    }
+
+    .feature-ledger {
+      grid-template-columns: 1fr;
+    }
+
+    .steps {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+
+    .step {
+      max-width: 560px;
+    }
+
+    .step__num {
+      margin-bottom: 0.8rem;
+    }
+
+    .warning-grid {
+      grid-template-columns: 1fr;
+    }
+
+    .hero__caption {
+      position: static;
+      margin-top: 1.2rem;
+      text-align: left;
+    }
+
+    .promise-bar ul {
+      justify-content: flex-start;
+    }
+  }
+
+  @media (max-width: 620px) {
+    .hero {
+      padding-top: 2.7rem;
+    }
+
+    .hero__actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .hero__actions .btn {
+      width: 100%;
+    }
+
+    .hero__meta {
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .hero__meta li + li::before {
+      display: none;
+    }
+
+    .hero__visual {
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 0;
+    }
+
+    .hero__visual::before {
+      inset: 10px -8px -6px 8px;
+    }
+
+    .hero__edition {
+      transform: none;
+    }
+
+    .hero__edition .browser-url {
+      justify-content: flex-start;
+    }
+
+    .verify-card {
+      position: relative;
+      inset: auto;
+      width: 100%;
+      margin-top: 1rem;
+      box-shadow: var(--shadow-soft);
+    }
+
+    .hero__caption {
+      margin-top: 0.8rem;
+    }
+
+    .promise-bar ul {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 0.55rem 1rem;
+    }
+
+    .closing__actions {
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .closing__actions .btn {
+      width: 100%;
+    }
+
+    .edition__more {
+      text-align: left;
+    }
+  }
+</style>

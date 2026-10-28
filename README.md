@@ -10,8 +10,9 @@ An EPUB is the standard ebook file format used by most ebook stores and reading
 apps. This tool is for authors, translators, publishers, teachers, and readers
 who want a readable web edition without handing the book to an online service.
 
-[**Download the desktop app**](https://github.com/Gowwre/epub2web/releases/latest)
-· [Try the live demo](https://gowwre.github.io/epub2web/)
+[**Visit the website**](https://gowwre.github.io/epub2web/)
+· [Download the desktop app](https://github.com/Gowwre/epub2web/releases/latest)
+· [Try the live demo](https://gowwre.github.io/epub2web/demo/)
 
 [![Latest release](https://img.shields.io/github/v/release/Gowwre/epub2web)](https://github.com/Gowwre/epub2web/releases)
 
@@ -372,7 +373,8 @@ epub2web book.epub --base-path /epub2web --serve
 ```
 
 The included [demo workflow](https://github.com/Gowwre/epub2web/blob/main/.github/workflows/pages.yml)
-does exactly this for the public-domain Alice in Wonderland demo.
+builds the landing page at the project root and this demo under `/demo/` on
+GitHub Pages.
 
 </details>
 

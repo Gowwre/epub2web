@@ -1,0 +1,82 @@
+---
+import Icon from "./Icon.astro";
+import { GITHUB_URL, NAV_LINKS, withBase } from "../consts";
+---
+
+<header class="site-header" data-site-header>
+  <div class="header-inner">
+    <a class="brand" href={withBase("/")}>
+      <img class="brand-mark" src={withBase("/favicon.svg")} alt="" width="32" height="32" />
+      <span class="brand-text">
+        <span class="brand-name">epub2web</span>
+        <span class="brand-sub" aria-hidden="true">EPUB → WEB</span>
+      </span>
+      <span class="sr-only">— home</span>
+    </a>
+
+    <nav class="primary-nav" aria-label="Primary">
+      {
+        NAV_LINKS.map((link) => (
+          <a href={withBase(link.href)}>{link.label}</a>
+        ))
+      }
+    </nav>
+
+    <div class="header-actions">
+      <a
+        class="icon-btn github-btn"
+        href={GITHUB_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="epub2web on GitHub (opens in a new tab)"
+        title="View epub2web on GitHub"
+      >
+        <Icon name="github" size={19} />
+      </a>
+
+      <button
+        class="icon-btn theme-btn"
+        type="button"
+        data-theme-toggle
+        aria-label="Switch between light and dark themes"
+        title="Switch color theme"
+      >
+        <span class="theme-icon sun-icon"><Icon name="sun" size={18} /></span>
+        <span class="theme-icon moon-icon"><Icon name="moon" size={18} /></span>
+      </button>
+
+      <a class="btn btn--primary btn--header" href={withBase("/download/")}>
+        Download
+        <Icon name="arrow-right" size={15} class="btn-arrow" />
+      </a>
+    </div>
+  </div>
+</header>
+
+<script>
+  const themeKey = "epub2web-landing-theme";
+  const root = document.documentElement;
+  const toggles = document.querySelectorAll<HTMLElement>("[data-theme-toggle]");
+
+  const syncThemeState = () => {
+    const isDark = root.dataset.theme === "dark";
+    toggles.forEach((toggle) => {
+      toggle.setAttribute("aria-pressed", String(isDark));
+    });
+  };
+
+  syncThemeState();
+
+  toggles.forEach((toggle) => {
+    toggle.addEventListener("click", () => {
+      const next = root.dataset.theme === "dark" ? "light" : "dark";
+      root.dataset.theme = next;
+      try {
+        localStorage.setItem(themeKey, next);
+      } catch {
+        // A theme preference is not worth breaking the page over.
+      }
+      syncThemeState();
+    });
+  });
+</script>

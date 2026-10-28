@@ -1,0 +1,95 @@
+---
+import SiteHeader from "../components/SiteHeader.astro";
+import SiteFooter from "../components/SiteFooter.astro";
+import frauncesLatin from "../assets/fonts/fraunces-latin.woff2?url";
+import literataLatin from "../assets/fonts/literata-latin.woff2?url";
+import { SITE_DESCRIPTION, withBase } from "../consts";
+import "../styles/global.css";
+
+interface Props {
+  title?: string;
+  description?: string;
+  bodyClass?: string;
+}
+
+const {
+  title = "epub2web — Turn an EPUB into a website worth reading",
+  description = SITE_DESCRIPTION,
+  bodyClass = "",
+} = Astro.props;
+
+const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefined;
+const socialImage = Astro.site
+  ? new URL(withBase("/og.png"), Astro.site).toString()
+  : undefined;
+---
+
+<!doctype html>
+<html lang="en" data-theme="light">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#f5f0e6" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#14120f" media="(prefers-color-scheme: dark)" />
+    {canonical && <link rel="canonical" href={canonical} />}
+    <link rel="icon" href={withBase("/favicon.svg")} type="image/svg+xml" />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:site_name" content="epub2web" />
+    {canonical && <meta property="og:url" content={canonical} />}
+    {socialImage && <meta property="og:image" content={socialImage} />}
+    {socialImage && <meta property="og:image:width" content="1200" />}
+    {socialImage && <meta property="og:image:height" content="630" />}
+    {socialImage && (
+      <meta
+        property="og:image:alt"
+        content="epub2web: Your book, opened to the web. A screenshot of the reader beside the headline."
+      />
+    )}
+    <meta name="twitter:card" content="summary_large_image" />
+    {socialImage && <meta name="twitter:image" content={socialImage} />}
+
+    <link
+      rel="preload"
+      href={frauncesLatin}
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href={literataLatin}
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+
+    <script is:inline>
+      (function () {
+        try {
+          var stored = localStorage.getItem("epub2web-landing-theme");
+          var theme =
+            stored === "dark" || stored === "light"
+              ? stored
+              : window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "light";
+          document.documentElement.dataset.theme = theme;
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body class={bodyClass}>
+    <a class="skip-link" href="#main">Skip to content</a>
+    <SiteHeader />
+    <main id="main">
+      <slot />
+    </main>
+    <SiteFooter />
+  </body>
+</html>

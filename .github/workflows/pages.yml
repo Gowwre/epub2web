@@ -1,10 +1,12 @@
-name: Demo site
+name: Pages
 
 on:
   push:
     branches: [main]
     paths:
+      - "site/**"
       - "epub2web/**"
+      - "pyproject.toml"
       - ".github/workflows/pages.yml"
   workflow_dispatch:
 
@@ -25,21 +27,44 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
       - name: Configure Pages
         uses: actions/configure-pages@v6
+
+      - name: Build the landing site
+        working-directory: site
+        env:
+          BASE_PATH: /epub2web
+          SITE_URL: https://gowwre.github.io
+        run: |
+          npm ci
+          npm run build
+
+      - name: Stage the landing site
+        run: |
+          mkdir -p _site
+          cp -R site/dist/. _site/
+
       - name: Install epub2web
         run: pip install .
+
       - name: Fetch a public-domain demo book
         run: >
           curl -fsSL -o "$RUNNER_TEMP/alice.epub"
           https://www.gutenberg.org/cache/epub/11/pg11-images.epub
+
       - name: Build the demo site
         run: >
           epub2web "$RUNNER_TEMP/alice.epub"
-          -o _site
-          --base-path /epub2web
+          -o _site/demo
+          --base-path /epub2web/demo
           --site-url https://gowwre.github.io
           --force
+
       - uses: actions/upload-pages-artifact@v5
         with:
           path: _site

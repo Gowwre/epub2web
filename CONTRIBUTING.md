@@ -48,6 +48,29 @@ do not need one. Preview a release section with:
 make release-notes VERSION=0.2.0
 ```
 
+## Landing site
+
+The public landing page and download page live in `site/` and are built with
+Astro. They are separate from the Python package and are not required to build
+a book.
+
+```bash
+cd site
+npm install
+npm run dev
+npm run build
+```
+
+The site self-hosts the reader fonts and the screenshots in `docs/`. All
+download calls-to-action point at the latest GitHub release rather than
+hard-coded asset names, because release assets include the version number.
+Keep the first-launch FAQ in sync with the README when warning behavior
+changes.
+
+The Pages workflow publishes the site at `/epub2web/` and the generated demo at
+`/epub2web/demo/`. Astro assets and internal links are base-path aware; use
+`withBase()` for new root-relative links or files in `public/`.
+
 ## Pull requests
 
 - Keep changes focused and explain the book structure they address.

@@ -77,6 +77,9 @@ renderer change.
 - `epub2web/worker.py` — worker process; must not import GUI modules.
 - `scripts/build_gui.py` — portable PyInstaller bundles.
 - `scripts/release_notes.py` — extracts a version section from `CHANGELOG.md`.
+- `site/` — Astro landing and download site. Self-contained; not part of the
+  Python package. Download CTAs point at the latest GitHub release. See
+  `site/README.md`.
 
 ## Testing rules
 
