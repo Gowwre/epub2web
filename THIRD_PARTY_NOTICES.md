@@ -5,11 +5,15 @@ their own licenses.
 
 ## Fonts
 
-The packaged theme self-hosts three typefaces from Google Fonts:
+The packaged theme self-hosts typefaces from Google Fonts:
 
 - **Fraunces** — Copyright 2018 The Fraunces Project Authors. SIL Open Font License 1.1.
 - **Literata** — Copyright 2017 The Literata Project Authors. SIL Open Font License 1.1.
 - **Inter** — Copyright 2016 The Inter Project Authors. SIL Open Font License 1.1.
+- **Noto Naskh Arabic**, **Noto Sans Arabic**, **Noto Serif Hebrew**,
+  **Noto Sans Hebrew**, **Noto Serif Devanagari**, **Noto Sans Devanagari**,
+  **Noto Serif Thai**, **Noto Sans Thai**, and **Noto Serif SC/TC/JP/KR** —
+  Copyright The Noto Project Authors. SIL Open Font License 1.1.
 
 License: https://openfontlicense.org/
 

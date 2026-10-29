@@ -31,6 +31,7 @@ from .text import (
     inner,
     match_key,
     normalize_text,
+    reading_units,
     slugify,
     split_title,
     strip_leading,
@@ -731,6 +732,10 @@ class GenericExtractor:
                 page["sections"] = sections
                 page["figure_count"] = fragment.count("<figure")
                 page["words"] = len(source_text[path].split())
+                page["characters"] = sum(
+                    1 for character in source_text[path] if not character.isspace()
+                )
+                page["reading_units"] = reading_units(source_text[path])
                 fragments[page["id"]] = fragment
                 self._report("extract-pages", "Laying out pages", index, total_pages)
 
@@ -1205,7 +1210,7 @@ class GenericExtractor:
             return (
                 f'<header class="chapter-header" id="{html.escape(hid)}">'
                 f'{anchors}{num}<h1 class="chapter-title">{title_html}</h1>'
-                f'<p class="chapter-meta" data-chrome><!--READTIME--></p></header>'
+                f'<p class="chapter-meta" data-chrome dir="auto"><!--READTIME--></p></header>'
             )
 
         i = 0
@@ -1232,13 +1237,13 @@ class GenericExtractor:
                 out.append(
                     f'<header class="chapter-header" data-chrome>'
                     f'<h1 class="chapter-title">{html.escape(page["title"])}</h1>'
-                    f'<p class="chapter-meta" data-chrome><!--READTIME--></p></header>'
+                    f'<p class="chapter-meta" data-chrome dir="auto"><!--READTIME--></p></header>'
                 )
         else:
             out.append(
                 f'<header class="chapter-header" data-chrome>'
                 f'<h1 class="chapter-title">{html.escape(page["title"])}</h1>'
-                f'<p class="chapter-meta" data-chrome><!--READTIME--></p></header>'
+                f'<p class="chapter-meta" data-chrome dir="auto"><!--READTIME--></p></header>'
             )
 
         while i < len(blocks):
@@ -1533,6 +1538,8 @@ class GenericExtractor:
                     "source_files": page["source_files"],
                     "sections": page["sections"],
                     "words": page["words"],
+                    "characters": page.get("characters", 0),
+                    "reading_units": page.get("reading_units", page["words"]),
                     "figure_count": page.get("figure_count", 0),
                     "images": page.get("images", 0),
                 }
@@ -1540,7 +1547,9 @@ class GenericExtractor:
 
         stats = {
             "words": sum(p["words"] for p in pages),
+            "characters": sum(p["characters"] for p in pages),
             "chapter_words": sum(p["words"] for p in pages if p["type"] == "chapter"),
+            "chapter_characters": sum(p["characters"] for p in pages if p["type"] == "chapter"),
             "chapters": self.chapter_count,
             "figures": sum(p.get("figure_count", 0) for p in pages),
             "images": len(self.images),

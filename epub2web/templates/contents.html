@@ -8,7 +8,7 @@
   <header class="contents-head">
     <p class="eyebrow" data-chrome>{{ book.meta.short_title }}</p>
     <h1 class="contents-title">CONTENTS</h1>
-    <p class="contents-intro" data-chrome>{{ contents_intro }}</p>
+    <p class="contents-intro" data-chrome dir="auto">{{ contents_intro }}</p>
     {% if contents_quick %}
     <nav class="contents-quick" aria-label="Quick links" data-chrome>
       {% for link in contents_quick %}<a href="{{ link.href }}">{{ link.label }}</a>{% endfor %}
@@ -22,20 +22,20 @@
       <li class="toc-chapter">
         <a class="toc-chapter-row" href="{{ block.href }}">
           <span class="toc-num">{{ block.number }}</span>
-          <span class="toc-chapter-title">{{ block.label }}</span>
-          {% if block.reading_minutes %}<span class="toc-readtime" data-chrome>{{ block.reading_minutes }} min</span>{% endif %}
+          <span class="toc-chapter-title" dir="auto">{{ block.label }}</span>
+          {% if block.reading_minutes %}<span class="toc-readtime" data-chrome dir="auto">{{ block.reading_minutes }} min</span>{% endif %}
         </a>
         {% if block.sections %}
         <ol class="toc-sections">
           {% for section in block.sections %}
-          <li><a href="{{ section.href }}">{{ section.label }}</a></li>
+          <li><a href="{{ section.href }}" dir="auto">{{ section.label }}</a></li>
           {% endfor %}
         </ol>
         {% endif %}
       </li>
       {% else %}
       <li class="toc-entry{% if block.generated %} toc-generated{% endif %}"{% if block.generated %} data-generated="true"{% endif %}>
-        <a href="{{ block.href }}">{{ block.label }}</a>
+        <a href="{{ block.href }}" dir="auto">{{ block.label }}</a>
       </li>
       {% endif %}
     {% endfor %}

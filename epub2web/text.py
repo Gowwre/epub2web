@@ -115,6 +115,29 @@ def tokens(text: str) -> list[str]:
     return normalize_text(text).split()
 
 
+_CJK_READING_RE = re.compile(
+    "[\u1100-\u11ff\u2e80-\u2fff\u3000-\u303f\u3040-\u30ff"
+    "\u3130-\u318f\u31f0-\u31ff\u3400-\u4dbf\u4e00-\u9fff"
+    "\ua960-\ua97f\uac00-\ud7af\uf900-\ufaff\uff66-\uff9f"
+    "\U00020000-\U0002fa1f]"
+)
+_THAI_READING_RE = re.compile("[\u0e00-\u0e7f]")
+
+
+def reading_units(text: str) -> float:
+    """Estimate reading length in word-equivalents for progress and time.
+
+    CJK and Thai text has no reliable whitespace word boundaries. Count those
+    characters separately and treat two characters as roughly one word; use
+    ordinary whitespace tokenization for the remaining text.
+    """
+    normalized = normalize_text(text)
+    cjk = len(_CJK_READING_RE.findall(normalized))
+    thai = len(_THAI_READING_RE.findall(normalized))
+    remainder = _THAI_READING_RE.sub(" ", _CJK_READING_RE.sub(" ", normalized))
+    return cjk / 2 + thai / 2 + len(remainder.split())
+
+
 TITLE_SEPARATOR_RE = re.compile(r"\s*[:\u2013\u2014]\s*")
 YEAR_RE = re.compile(r"(?<!\d)(\d{4})(?!\d)")
 

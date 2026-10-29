@@ -10,6 +10,7 @@ instructions for coding agents working in this repository; `README.md`,
 - `CONTRIBUTING.md` — contribution expectations and changelog rules.
 - `RELEASING.md` — tag-driven release and PyPI process.
 - `docs/gui.md` — GUI architecture and portable packaging.
+- `docs/fonts.md` — bundled fonts, script detection, and per-book font selection.
 - `CHANGELOG.md` — user-facing changes, grouped by release.
 
 ## Hard invariants
@@ -64,8 +65,11 @@ renderer change.
 
 - `epub2web/epub.py` — EPUB container reader; no network or prose heuristics.
 - `epub2web/generic.py` — deterministic EPUB → semantic page extraction.
-- `epub2web/text.py` — normalization, text extraction, tokenization, slugs.
-  Changes here affect the fidelity gate; test them carefully.
+- `epub2web/text.py` — normalization, text extraction, tokenization, slugs,
+  reading-length estimates. Changes here affect the fidelity gate; test them
+  carefully.
+- `epub2web/fonts.py` — script detection, font-manifest selection, generated
+  `@font-face` CSS, and RTL language checks.
 - `epub2web/render.py` — Jinja rendering, static assets, search index, sitemap.
 - `epub2web/paths.py` — shared route and base-path helpers.
 - `epub2web/verify.py` — text/image/structural fidelity gate.

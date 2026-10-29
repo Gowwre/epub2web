@@ -11,6 +11,9 @@ All notable, user-facing changes are documented here. The format follows
 - Add reading settings for text size and line spacing, remembered locally in the browser.
 - Make the mobile contents sheet compact by collapsing chapter sections on demand, highlighting the current chapter, and opening scrolled to it.
 - Add arrow-key and Enter navigation for search results.
+- Add self-hosted font subsets for Greek, Cyrillic, Arabic, Hebrew, Devanagari, Thai, and CJK, with only the scripts present in a book copied into its site.
+- Add right-to-left layout support for RTL book languages, including logical positioning and mirrored navigation arrows.
+- Count CJK and Thai reading length by characters for estimates and whole-book progress.
 
 ## 0.5.0 - 2026-10-29
 

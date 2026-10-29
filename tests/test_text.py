@@ -2,6 +2,7 @@ from bs4 import BeautifulSoup
 from epub2web.text import (
     inner,
     normalize_text,
+    reading_units,
     slugify,
     split_title,
     tokens,
@@ -18,6 +19,13 @@ def test_slugify():
     assert slugify("A Section: The Beginning!") == "a-section-the-beginning"
     assert slugify("设计", fallback="") == ""
     assert slugify("", fallback="book") == "book"
+
+
+def test_reading_units_for_unspaced_scripts():
+    assert reading_units("Hello world") == 2
+    assert reading_units("你好世界") == 2
+    assert reading_units("สวัสดี") == 3
+    assert reading_units("Hello 世界") == 2
 
 
 def test_inner_escapes_text_that_looks_like_markup():

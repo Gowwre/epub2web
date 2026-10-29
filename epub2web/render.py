@@ -16,6 +16,14 @@ from bs4 import BeautifulSoup, Comment, Tag
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from . import __version__
+from .fonts import (
+    detect_scripts,
+    is_rtl_language,
+    load_font_manifest,
+    render_font_css,
+    select_font_faces,
+    uses_character_metrics,
+)
 from .paths import normalize_base_path, route_to_file
 from .progress import ProgressCallback, report
 from .text import normalize_text, slugify, split_title, text_of, year_from_date
@@ -34,7 +42,7 @@ def comma(value) -> str:
         return str(value)
 
 
-def minutes(words: int) -> int:
+def minutes(words: float) -> int:
     return max(1, round(words / 230))
 
 
@@ -81,6 +89,9 @@ class SiteRenderer:
         self.base_path = normalize_base_path(base_path)
         self.site_url = site_url.rstrip("/")
         self.progress = progress
+        self.font_faces: list[dict] = []
+        self.cjk_regions: list[str] = []
+        self.text_direction = "ltr"
         if self.base_path:
             site_path = urlsplit(self.site_url).path.rstrip("/")
             if not (site_path == self.base_path or site_path.endswith(self.base_path)):
@@ -136,6 +147,7 @@ class SiteRenderer:
         self._report("render-assets", "Finishing site", 0, 1)
         self._apply_base_path()
         self._write_search_index()
+        self._select_fonts()
         self._assets()
         self._sitemap()
         self._report("render-assets", "Finishing site", 1, 1)
@@ -168,13 +180,15 @@ class SiteRenderer:
         meta.setdefault("source", "EPUB")
         meta.setdefault("title_lines", [])
         meta.setdefault("reading_id", "")
+        self.text_direction = "rtl" if is_rtl_language(meta.get("language", "")) else "ltr"
 
         self.pages = self.book.get("pages", [])
         self.page_by_id = {p["id"]: p for p in self.pages}
         self.page_by_route = {p["route"]: p for p in self.pages}
         self.reading_order = self.book.get("reading_order") or [p["id"] for p in self.pages]
         for page in self.pages:
-            page.setdefault("reading_minutes", minutes(page.get("words", 0)))
+            length = page.get("reading_units", page.get("words", 0))
+            page.setdefault("reading_minutes", minutes(length))
             page.setdefault("display_title", page.get("title", ""))
             page.setdefault("short_title", page.get("title", ""))
             if (
@@ -232,6 +246,14 @@ class SiteRenderer:
                 return f"Chapter {number}"
         return short_label(page.get("title", "")) or page.get("display_title", "")
 
+    @staticmethod
+    def _reading_weight(page: dict) -> int:
+        value = page.get("reading_units", page.get("words", 0)) or 0
+        try:
+            return max(1, round(float(value)))
+        except (TypeError, ValueError):
+            return 1
+
     def _prepare_progress(self) -> None:
         """Add stable page keys, chapter positions, and whole-book offsets."""
         meta = self.book["meta"]
@@ -242,7 +264,7 @@ class SiteRenderer:
 
         chapter_total = sum(1 for page in self.pages if page.get("type") == "chapter")
         chapter_index = 0
-        total_weight = sum(max(1, int(page.get("words", 0) or 0)) for page in self.pages) or 1
+        total_weight = sum(self._reading_weight(page) for page in self.pages) or 1
         cumulative = 0
         for page in self.pages:
             sources = page.get("source_files") or [page.get("id", "")]
@@ -256,8 +278,7 @@ class SiteRenderer:
                 page["chapter_index"] = 0
             page["chapter_total"] = chapter_total
             page["progress_start"] = round(cumulative / total_weight, 6)
-            weight = max(1, int(page.get("words", 0) or 0))
-            cumulative += weight
+            cumulative += self._reading_weight(page)
             page["progress_end"] = round(cumulative / total_weight, 6)
             page["continue_label"] = self._continue_label(page)
 
@@ -417,15 +438,21 @@ class SiteRenderer:
 
         stats = self.stats
         figure_count = stats.get("figures", 0)
-        chapter_words = stats.get("words") or stats.get("chapter_words", 0)
+        character_metrics = uses_character_metrics(self.book["meta"].get("language", ""))
+        if character_metrics:
+            chapter_length = stats.get("chapter_characters") or stats.get("characters", 0)
+            length_label = "characters"
+        else:
+            chapter_length = stats.get("chapter_words") or stats.get("words", 0)
+            length_label = "words"
         chapter_count = stats.get("chapters") or len(self.home_chapters)
         parts = []
         if chapter_count:
             parts.append(f"{chapter_count} chapters")
         if figure_count:
             parts.append(f"{figure_count} figures")
-        if chapter_words:
-            parts.append(f"{comma(chapter_words)} words")
+        if chapter_length:
+            parts.append(f"{comma(chapter_length)} {length_label}")
         if parts:
             self.hero_intro = (
                 "The complete text, set for the browser. "
@@ -437,7 +464,7 @@ class SiteRenderer:
         self.stats_items = []
         for label, value in (
             ("Chapters", chapter_count),
-            ("Words", chapter_words),
+            (length_label.title(), chapter_length),
             ("Figures", figure_count),
         ):
             if value:
@@ -470,6 +497,7 @@ class SiteRenderer:
             "page": page,
             "book": self.book,
             "site_url": self.site_url,
+            "text_direction": self.text_direction,
             "meta_description": meta_description,
             "sidebar": self.sidebar,
             "footer_links": self.footer_links,
@@ -715,10 +743,60 @@ class SiteRenderer:
         self.search_entries = len(entries)
 
     # -- assets -----------------------------------------------------------
+    def _select_fonts(self) -> None:
+        """Choose and record the font subsets needed by this book."""
+        meta = self.book["meta"]
+        parts = [
+            str(meta.get(key, ""))
+            for key in ("title", "short_title", "subtitle", "author", "publisher", "description")
+        ]
+        parts.extend(str(entry.get("label", "")) for entry in self.toc)
+        for page in self.pages:
+            parts.extend(str(page.get(key, "")) for key in ("title", "display_title"))
+            path = self.content_dir / "pages" / f"{page['id']}.html"
+            if not path.exists():
+                continue
+            soup = BeautifulSoup(path.read_text(encoding="utf-8"), "lxml")
+            parts.append(soup.get_text(" "))
+        text = "\n".join(parts)
+        scripts = detect_scripts(text)
+        codepoints = {ord(character) for character in text if ord(character) >= 0x0300}
+        manifest_path = self.static_dir / "assets" / "fonts" / "font-manifest.json"
+        manifest = load_font_manifest(manifest_path) if manifest_path.is_file() else None
+        self.font_faces, self.cjk_regions = select_font_faces(
+            scripts, str(meta.get("language", "")), codepoints, manifest=manifest
+        )
+        logger.info(
+            "fonts selected",
+            extra={
+                "scripts": sorted(scripts),
+                "cjk_regions": self.cjk_regions,
+                "fonts": len(self.font_faces),
+            },
+        )
+
     def _assets(self) -> None:
         assets = self.static_dir / "assets"
         if assets.exists():
-            shutil.copytree(assets, self.dist / "assets", dirs_exist_ok=True)
+            shutil.copytree(
+                assets,
+                self.dist / "assets",
+                dirs_exist_ok=True,
+                ignore=shutil.ignore_patterns("fonts", "fonts.css"),
+            )
+        font_dir = self.dist / "assets" / "fonts"
+        for face in self.font_faces:
+            source = self.static_dir / "assets" / "fonts" / face["file"]
+            if not source.is_file():
+                source = DEFAULT_STATIC / "assets" / "fonts" / face["file"]
+            if not source.is_file():
+                raise ValueError(f"missing bundled font: {source}")
+            destination = font_dir / face["file"]
+            destination.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(source, destination)
+        (self.dist / "assets" / "fonts.css").write_text(
+            render_font_css(self.font_faces), encoding="utf-8"
+        )
         favicon = self.static_dir / "favicon.svg"
         if favicon.exists():
             shutil.copyfile(favicon, self.dist / "favicon.svg")

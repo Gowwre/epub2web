@@ -122,6 +122,7 @@ A complete website, ready to read — not a raw document dump:
 - built-in search that works without an account or internet connection
 - light and dark reading modes
 - adjustable text size and line spacing, remembered in your browser
+- self-hosted fonts for Latin, Greek, Cyrillic, Arabic, Hebrew, Devanagari, Thai, and CJK text
 - remembers your place and shows progress through the whole book
 - a layout that works on phones, tablets, and desktops
 - keyboard navigation through chapters and search results, accessible labels, and image descriptions
@@ -480,6 +481,9 @@ for the tag-driven release and PyPI setup.
 - A spine document containing several chapters becomes one reading page.
 - A single-file HTML mode is not available yet; the output is a static site
   folder.
+- Right-to-left layout follows the book’s main language. Books that mix writing
+  directions should mark inline runs with `lang` and `dir` in the EPUB.
+- Interface labels remain in English.
 - PDF input is out of scope.
 
 If a book fails, open an issue with the command, the failing page, and a minimal

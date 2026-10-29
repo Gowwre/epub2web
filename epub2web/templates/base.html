@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{ book.meta.language or 'en' }}" data-theme="light" data-base="{{ base_path }}"{% if book.meta.reading_id %} data-reading-id="{{ book.meta.reading_id }}"{% endif %}>
+<html lang="{{ book.meta.language or 'en' }}" dir="{{ text_direction }}" data-theme="light" data-base="{{ base_path }}"{% if book.meta.reading_id %} data-reading-id="{{ book.meta.reading_id }}"{% endif %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -96,16 +96,16 @@
       <div class="footer-brand">
         <span class="brand-mark" aria-hidden="true">{{ (book.meta.short_title or book.meta.title or "E")[:1]|upper }}</span>
         <div>
-          <p class="footer-title">{{ book.meta.short_title }}</p>
-          <p class="footer-sub">A browser edition{% if book.meta.subtitle %} of the {{ book.meta.subtitle }}{% endif %}.</p>
+          <p class="footer-title" dir="auto">{{ book.meta.short_title }}</p>
+          <p class="footer-sub" dir="auto">A browser edition{% if book.meta.subtitle %} of the {{ book.meta.subtitle }}{% endif %}.</p>
         </div>
       </div>
       <nav class="footer-links" aria-label="Secondary">
         {% for link in footer_links %}<a href="{{ link.href }}">{{ link.label }}</a>{% endfor %}
       </nav>
       <div class="footer-note">
-        <p>{{ book.meta.rights or "Text rights belong to the respective rights holder." }} This browser edition is unabridged.</p>
-        <p><a href="/#colophon">Colophon</a> · Built with a deterministic extraction pipeline and a text-fidelity gate.</p>
+        <p dir="auto">{{ book.meta.rights or "Text rights belong to the respective rights holder." }} This browser edition is unabridged.</p>
+        <p dir="auto"><a href="/#colophon">Colophon</a> · Built with a deterministic extraction pipeline and a text-fidelity gate.</p>
       </div>
     </div>
   </footer>

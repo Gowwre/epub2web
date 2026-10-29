@@ -34,17 +34,17 @@
       {% endif %}
     </div>
     <div class="hero-copy">
-      <p class="eyebrow">A browser edition</p>
-      <h1 class="hero-title">
+      <p class="eyebrow" dir="auto">A browser edition</p>
+      <h1 class="hero-title" dir="auto">
         {% if book.meta.title_lines %}
           {% for line in book.meta.title_lines %}<span class="line{% if loop.last %} accent-line{% endif %}">{{ line }}</span>{% endfor %}
         {% else %}
           <span class="line">{{ book.meta.short_title }}</span>
         {% endif %}
       </h1>
-      {% if book.meta.author %}<p class="hero-author">{{ book.meta.author }}</p>{% endif %}
-      {% if book.meta.subtitle %}<p class="hero-edition">{{ book.meta.subtitle }}</p>{% endif %}
-      <p class="hero-intro">{{ hero_intro }}</p>
+      {% if book.meta.author %}<p class="hero-author" dir="auto">{{ book.meta.author }}</p>{% endif %}
+      {% if book.meta.subtitle %}<p class="hero-edition" dir="auto">{{ book.meta.subtitle }}</p>{% endif %}
+      <p class="hero-intro" dir="auto">{{ hero_intro }}</p>
       <div class="hero-actions">
         <a class="btn btn-primary" href="{{ start_href }}" data-reading-start>
           <span data-reading-label>Start reading</span> {{ icon("arrow-right", 18) }}
@@ -75,8 +75,8 @@
         <a href="{{ chapter.route }}" class="chapter-row">
           <span class="chapter-row-num">{{ chapter.display_number }}</span>
           <span class="chapter-row-main">
-            <span class="chapter-row-title">{{ chapter.title }}</span>
-            <span class="chapter-row-meta">{% if chapter.section_count %}{{ chapter.section_count }} sections · {% endif %}{{ chapter.reading_minutes }} min read</span>
+            <span class="chapter-row-title" dir="auto">{{ chapter.title }}</span>
+            <span class="chapter-row-meta" dir="auto">{% if chapter.section_count %}{{ chapter.section_count }} sections · {% endif %}{{ chapter.reading_minutes }} min read</span>
           </span>
           <span class="chapter-row-arrow" aria-hidden="true">{{ icon("arrow-right", 20) }}</span>
         </a>
@@ -85,7 +85,7 @@
     </ol>
     {% endif %}
     {% if home_extras %}
-    <p class="home-more">
+    <p class="home-more" dir="auto">
       <span>Also in this edition</span>
       {% for extra in home_extras %}<a href="{{ extra.href }}">{{ extra.label }}</a>{% endfor %}
     </p>
@@ -101,12 +101,12 @@
     </div>
     <div class="colophon-grid">
       <div class="colophon-copy">
-        <p>This is the complete text of {{ book.meta.title }}{% if book.meta.subtitle %}: {{ book.meta.subtitle }}{% endif %}, built from {{ book.meta.source }} as a static website. Navigation, scripts, and hidden layers are omitted; the words, headings, figures, captions, notes, references, and index remain.</p>
-        <p>Every paragraph is checked against the source by a text-fidelity gate. A build fails if a word is added, dropped, or moved. The design is the only thing that changes.</p>
-        <p class="colophon-rights">{{ book.meta.rights or "Text rights belong to the respective rights holder." }} This browser edition is unabridged and is not affiliated with the publisher.</p>
+        <p dir="auto">This is the complete text of {{ book.meta.title }}{% if book.meta.subtitle %}: {{ book.meta.subtitle }}{% endif %}, built from {{ book.meta.source }} as a static website. Navigation, scripts, and hidden layers are omitted; the words, headings, figures, captions, notes, references, and index remain.</p>
+        <p dir="auto">Every paragraph is checked against the source by a text-fidelity gate. A build fails if a word is added, dropped, or moved. The design is the only thing that changes.</p>
+        <p class="colophon-rights" dir="auto">{{ book.meta.rights or "Text rights belong to the respective rights holder." }} This browser edition is unabridged and is not affiliated with the publisher.</p>
       </div>
       <dl class="colophon-specs">
-        <div><dt>Typography</dt><dd>Fraunces, Literata, Inter</dd></div>
+        <div><dt>Typography</dt><dd dir="auto">Fraunces, Literata, Inter, Noto</dd></div>
         <div><dt>Build</dt><dd>Python + static HTML</dd></div>
         <div><dt>Search</dt><dd>{{ search_label or "Static full-text" }}</dd></div>
         <div><dt>Source</dt><dd>{{ book.meta.source }}</dd></div>

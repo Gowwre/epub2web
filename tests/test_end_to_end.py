@@ -27,6 +27,11 @@ def test_build_and_verify(tiny_epub, tmp_path: Path):
     assert search
     assert any("Hello" in entry["text"] for entry in search)
 
+    font_css = (site / "assets" / "fonts.css").read_text(encoding="utf-8")
+    assert "literata-latin.woff2" in font_css
+    assert "noto-" not in font_css
+    assert not (site / "assets" / "fonts" / "cjk").exists()
+
     verified = verify_site(content, site, verbose=False)
     assert verified["pass"], verified
 
@@ -148,6 +153,80 @@ def test_rendered_site_has_reading_controls(tiny_epub, tmp_path: Path):
     search_hint = page.find("p", class_="search-hint").get_text(" ", strip=True)
     assert "to choose a result" in search_hint
     assert "Enter" in search_hint
+
+
+def test_multilingual_fonts_are_selected_and_copied(epub_factory, tmp_path: Path):
+    multilingual = "Γειά σου. Привет. مرحبا. שלום. नमस्ते. สวัสดี. 你好。こんにちは。안녕하세요."  # noqa: RUF001
+    epub = epub_factory(
+        "multilingual.epub",
+        replacements={
+            "OEBPS/ch1.xhtml": [
+                (b"<p>Hello <em>world</em>.</p>", f"<p>{multilingual}</p>".encode()),
+            ]
+        },
+    )
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    site = tmp_path / "site"
+
+    book = GenericExtractor(epub, content, images).run()
+    assert book["stats"]["characters"] > 0
+    assert book["pages"][0]["reading_units"] > 0
+    render_site(content, site, site_url="http://localhost:8000")
+
+    home = BeautifulSoup((site / "index.html").read_text(encoding="utf-8"), "lxml")
+    assert home.html["dir"] == "ltr"
+
+    css = (site / "assets" / "fonts.css").read_text(encoding="utf-8")
+    for filename in (
+        "literata-greek.woff2",
+        "literata-cyrillic.woff2",
+        "noto-naskh-arabic-arabic.woff2",
+        "noto-serif-hebrew-hebrew.woff2",
+        "noto-serif-devanagari-devanagari.woff2",
+        "noto-serif-thai-thai.woff2",
+    ):
+        assert filename in css
+        assert (site / "assets" / "fonts" / filename).is_file()
+    assert "epub2web-cjk" in css
+    for region in ("jp", "kr", "sc"):
+        assert f"cjk/{region}/" in css
+        assert (site / "assets" / "fonts" / "cjk" / region).is_dir()
+
+    verified = verify_site(content, site, verbose=False)
+    assert verified["pass"], verified
+
+
+def test_rtl_book_sets_direction(epub_factory, tmp_path: Path):
+    epub = epub_factory(
+        "arabic.epub",
+        replacements={
+            "OEBPS/content.opf": [
+                (b"<dc:language>en</dc:language>", b"<dc:language>ar</dc:language>"),
+            ],
+            "OEBPS/ch1.xhtml": [
+                (
+                    b"<p>Hello <em>world</em>.</p>",
+                    "<p>مرحبا بالعالم.</p>".encode(),
+                ),
+            ],
+        },
+    )
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    site = tmp_path / "site"
+
+    book = GenericExtractor(epub, content, images).run()
+    assert book["meta"]["language"] == "ar"
+    render_site(content, site, site_url="http://localhost:8000")
+
+    home = BeautifulSoup((site / "index.html").read_text(encoding="utf-8"), "lxml")
+    page = BeautifulSoup((site / "read" / "1" / "index.html").read_text(encoding="utf-8"), "lxml")
+    assert home.html["dir"] == "rtl"
+    assert page.html["dir"] == "rtl"
+    assert "noto-naskh-arabic-arabic.woff2" in (site / "assets" / "fonts.css").read_text(
+        encoding="utf-8"
+    )
 
 
 def test_base_path_build(tiny_epub, tmp_path: Path):

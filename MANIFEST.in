@@ -2,4 +2,4 @@ include LICENSE README.md CHANGELOG.md CONTRIBUTING.md CODE_OF_CONDUCT.md THIRD_
 recursive-include tests *.py
 recursive-include docs *.png *.md
 recursive-include scripts *.py
-recursive-include epub2web/theme *.png *.svg
+recursive-include epub2web/theme *.png *.svg *.css *.js *.json *.woff2
