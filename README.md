@@ -42,9 +42,11 @@ Then:
 
 The finished website opens in your browser. It is saved under
 `Documents/epub2web/<book>-site` (or `~/epub2web/<book>-site` if you do not
-have a Documents folder). The preview stays running while you read; use
-**Stop** to shut it down. Closing the window also stops it. To read the site
-again later, see [Run the site](#run-the-site).
+have a Documents folder). Use **Change…** next to the output path to choose a
+different location; the app creates the `<book>-site` folder inside it. The
+preview stays running while you read; use **Stop** to shut it down. Closing the
+window also stops it. To read the site again later, see
+[Run the site](#run-the-site).
 
 The app shows live progress while it works, down to individual pages and
 images, so a long book does not look frozen.
@@ -161,7 +163,8 @@ untouched. It does not publish a half-finished version.
 These paths apply to the desktop app:
 
 - **Book website:** `Documents/epub2web/<book>-site`, or
-  `~/epub2web/<book>-site` when there is no Documents folder.
+  `~/epub2web/<book>-site` when there is no Documents folder. Use **Change…**
+  in the desktop app to save the site somewhere else.
 - **Logs:** the platform application-data folder (`~/.local/share/epub2web` on
   Linux, `~/Library/Application Support/epub2web` on macOS, and
   `%LOCALAPPDATA%\epub2web` on Windows).

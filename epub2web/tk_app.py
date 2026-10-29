@@ -100,6 +100,8 @@ class Epub2WebApp:
 
         self.epub: Path | None = None
         self.output: Path | None = None
+        self._output_parent: Path | None = None
+        self._book_title = ""
         self.preview_url: str | None = None
         self.controller: BuildController | None = None
         self.events: queue.Queue[BuildEvent] = queue.Queue()
@@ -536,8 +538,15 @@ class Epub2WebApp:
             font=self.font_small,
             anchor="w",
             justify="left",
-            wraplength=600,
+            wraplength=470,
         ).grid(row=0, column=1, sticky="w")
+        self.output_button = ttk.Button(
+            output,
+            text="Change…",
+            style="Secondary.TButton",
+            command=self._choose_output,
+        )
+        self.output_button.grid(row=0, column=2, sticky="e", padx=(12, 0))
 
     def _build_actions(self, outer: tk.Frame) -> None:
         actions = tk.Frame(outer, bg=BG)
@@ -696,10 +705,10 @@ class Epub2WebApp:
         self._last_dir = path.parent
         self.controller = None
         self.preview_url = None
-        self.output = default_output_dir(path)
+        self._book_title = ""
+        self._update_output_path()
         self.file_name_var.set(self._friendly_filename(path))
         self.file_path_var.set(self._display_path(path))
-        self.output_var.set(self._display_path(self.output))
         self._reset_log()
         self._append_log(f"Selected {self._friendly_filename(path)}", tag="muted")
         self._set_status("Ready to convert.", "ready")
@@ -723,9 +732,11 @@ class Epub2WebApp:
     @staticmethod
     def _display_path(path: Path, name_limit: int = 44) -> str:
         try:
-            parent = "~" + os.sep + str(path.parent.relative_to(Path.home()))
+            relative = path.parent.relative_to(Path.home())
         except ValueError:
             parent = str(path.parent)
+        else:
+            parent = "~" if relative == Path(".") else f"~{os.sep}{relative}"
         name = path.name
         if len(name) > name_limit:
             name = name[: name_limit - 1].rstrip() + "…"
@@ -747,9 +758,47 @@ class Epub2WebApp:
         if not title:
             return
         self.file_name_var.set(title)
-        self.output = default_output_dir(path, title=title)
-        self.output_var.set(self._display_path(self.output))
+        self._update_output_path(title=title)
         self._set_status("Ready to convert.", "ready")
+
+    def _update_output_path(self, *, title: str | None = None) -> Path | None:
+        """Refresh the site path from the book, title, and chosen parent."""
+        if self.epub is None:
+            return None
+        if title is not None:
+            self._book_title = title
+        self.output = default_output_dir(
+            self.epub,
+            title=self._book_title,
+            parent=self._output_parent,
+        )
+        self.output_var.set(self._display_path(self.output))
+        return self.output
+
+    def _choose_output(self) -> None:
+        if self.epub is None or self._building or self._preview_running:
+            return
+        current = self.output or default_output_dir(
+            self.epub,
+            title=self._book_title,
+            parent=self._output_parent,
+        )
+        initial = current.parent
+        if not initial.is_dir():
+            initial = self._last_dir
+        filename = filedialog.askdirectory(
+            parent=self.root,
+            title="Choose where to save the generated site",
+            initialdir=str(initial),
+            mustexist=True,
+        )
+        if not filename:
+            return
+        self._output_parent = Path(filename).expanduser().resolve()
+        output = self._update_output_path()
+        self._set_status("Ready to convert.", "ready")
+        if output is not None:
+            self._append_log(f"Output folder: {self._display_path(output)}", tag="muted")
 
     def _convert(self) -> None:
         if self.epub is None or self.output is None or self._building:
@@ -1046,6 +1095,9 @@ class Epub2WebApp:
     def _refresh_controls(self) -> None:
         locked = self._building or self._preview_running
         self.choose_button.configure(state="disabled" if locked else "normal")
+        self.output_button.configure(
+            state="normal" if (self.epub is not None and not locked) else "disabled"
+        )
         self.convert_button.configure(
             state="normal" if (self.epub is not None and not locked) else "disabled"
         )

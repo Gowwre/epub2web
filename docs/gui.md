@@ -12,7 +12,9 @@ the same extractor, fidelity gate, link gate, and theme as the CLI, then opens
 in the default browser.
 
 - Output defaults to `~/Documents/epub2web/<book>-site`, or
-  `~/epub2web/<book>-site` when there is no `Documents` folder.
+  `~/epub2web/<book>-site` when there is no `Documents` folder. Use
+  **Change…** to pick another location; the app creates the `<book>-site`
+  folder inside it and reuses that location for the rest of the session.
 - The local preview server stays alive while you browse, so navigation and
   search work. **Stop** shuts it down; closing the window also stops it. It
   uses port 8000 when available, so the browser can keep the reading position
@@ -165,9 +167,9 @@ those credentials are not stored in the repository. This work is tracked in
 [issue #2](https://github.com/Gowwre/epub2web/issues/2).
 
 Portable means "no installation and no Python required". Generated sites still
-go to `~/Documents/epub2web/<book>-site`, and logs still go to the platform
-application-data directory described above. Removing the app folder does not
-remove books or logs.
+go to `~/Documents/epub2web/<book>-site` unless you choose another location
+with **Change…**, and logs still go to the platform application-data directory
+described above. Removing the app folder does not remove books or logs.
 
 ## Current scope
 

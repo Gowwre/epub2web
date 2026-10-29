@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 import time
 from pathlib import Path
@@ -208,6 +209,138 @@ def test_default_output_dir_sanitizes_unsafe_names(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
     assert default_output_dir("A<B>C.epub") == (tmp_path / "epub2web" / "A-B-C-site")
     assert default_output_dir("设计.epub") == (tmp_path / "epub2web" / "设计-site")
+
+
+def test_default_output_dir_can_use_custom_parent(tmp_path: Path):
+    parent = tmp_path / "library"
+    assert default_output_dir("My Book.epub", parent=parent) == (parent / "My Book-site")
+
+
+def test_tk_app_output_picker_uses_selected_parent(monkeypatch, tmp_path: Path):
+    tk_app = _import_tk_app()
+    chosen = tmp_path / "library"
+    chosen.mkdir()
+    initial = tmp_path / "old"
+    initial.mkdir()
+    calls = []
+    monkeypatch.setattr(
+        tk_app.filedialog,
+        "askdirectory",
+        lambda **kwargs: calls.append(kwargs) or str(chosen),
+    )
+    shown = []
+    app = object.__new__(tk_app.Epub2WebApp)
+    app.root = None
+    app.epub = tmp_path / "My Book.epub"
+    app._building = False
+    app._preview_running = False
+    app._last_dir = tmp_path
+    app._output_parent = None
+    app._book_title = ""
+    app.output = initial / "My Book-site"
+    app.output_var = SimpleNamespace(set=shown.append)
+    app._set_status = lambda *_args, **_kwargs: None
+    app._append_log = lambda *_args, **_kwargs: None
+
+    app._choose_output()
+
+    assert app._output_parent == chosen
+    assert app.output == chosen / "My Book-site"
+    assert shown == [tk_app.Epub2WebApp._display_path(chosen / "My Book-site")]
+    assert calls == [
+        {
+            "parent": None,
+            "title": "Choose where to save the generated site",
+            "initialdir": str(initial),
+            "mustexist": True,
+        }
+    ]
+
+
+def test_tk_app_output_picker_keeps_metadata_title(monkeypatch, tmp_path: Path):
+    tk_app = _import_tk_app()
+    chosen = tmp_path / "library"
+    chosen.mkdir()
+    monkeypatch.setattr(tk_app.filedialog, "askdirectory", lambda **_kwargs: str(chosen))
+    app = object.__new__(tk_app.Epub2WebApp)
+    app.root = None
+    app.epub = tmp_path / "book.epub"
+    app._building = False
+    app._preview_running = False
+    app._last_dir = tmp_path
+    app._output_parent = None
+    app._book_title = "Vol. 1"
+    app.output = tmp_path / "epub2web" / "Vol. 1-site"
+    app.output_var = SimpleNamespace(set=lambda _value: None)
+    app._set_status = lambda *_args, **_kwargs: None
+    app._append_log = lambda *_args, **_kwargs: None
+
+    app._choose_output()
+
+    assert app.output == chosen / "Vol. 1-site"
+
+
+def test_tk_app_output_picker_cancel_keeps_output(monkeypatch, tmp_path: Path):
+    tk_app = _import_tk_app()
+    monkeypatch.setattr(tk_app.filedialog, "askdirectory", lambda **_kwargs: "")
+    app = object.__new__(tk_app.Epub2WebApp)
+    app.root = None
+    app.epub = tmp_path / "book.epub"
+    app._building = False
+    app._preview_running = False
+    app._last_dir = tmp_path
+    app._output_parent = None
+    app._book_title = ""
+    app.output = tmp_path / "site"
+    app.output_var = SimpleNamespace(set=lambda _value: pytest.fail("output should not change"))
+    app._set_status = lambda *_args, **_kwargs: None
+    app._append_log = lambda *_args, **_kwargs: None
+
+    app._choose_output()
+
+    assert app.output == tmp_path / "site"
+    assert app._output_parent is None
+
+
+def test_tk_app_output_picker_ignores_locked_build(monkeypatch, tmp_path: Path):
+    tk_app = _import_tk_app()
+    monkeypatch.setattr(
+        tk_app.filedialog,
+        "askdirectory",
+        lambda **_kwargs: pytest.fail("folder picker should not open"),
+    )
+    app = object.__new__(tk_app.Epub2WebApp)
+    app.epub = tmp_path / "book.epub"
+    app._building = True
+    app._preview_running = False
+    app.output = tmp_path / "site"
+
+    app._choose_output()
+
+    assert app.output == tmp_path / "site"
+
+
+def test_tk_app_metadata_keeps_custom_output_parent(tmp_path: Path):
+    tk_app = _import_tk_app()
+    parent = tmp_path / "library"
+    app = object.__new__(tk_app.Epub2WebApp)
+    app.epub = tmp_path / "book.epub"
+    app.controller = None
+    app._output_parent = parent
+    app.output = parent / "book-site"
+    app.output_var = SimpleNamespace(set=lambda _value: None)
+    app.file_name_var = SimpleNamespace(set=lambda _value: None)
+    app._set_status = lambda *_args, **_kwargs: None
+
+    app._apply_book_info(app.epub, {"title": "Vol. 1"})
+
+    assert app.output == parent / "Vol. 1-site"
+
+
+def test_tk_app_display_path_handles_home(tmp_path: Path, monkeypatch):
+    tk_app = _import_tk_app()
+    monkeypatch.setattr(Path, "home", classmethod(lambda cls: tmp_path))
+    assert tk_app.Epub2WebApp._display_path(tmp_path / "book-site") == (f"~{os.sep}book-site")
 
 
 def test_controller_builds_and_reports_success(tiny_epub, tmp_path: Path):

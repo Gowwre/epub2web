@@ -69,8 +69,17 @@ def documents_dir() -> Path:
     return documents if documents.is_dir() else Path.home()
 
 
-def default_output_dir(epub: str | Path, *, title: str = "") -> Path:
-    """Choose a stable, user-visible destination for a book's site."""
+def default_output_dir(
+    epub: str | Path,
+    *,
+    title: str = "",
+    parent: str | Path | None = None,
+) -> Path:
+    """Choose a stable, user-visible destination for a book's site.
+
+    ``parent`` overrides the default ``Documents/epub2web`` location. The site
+    itself is always created in a ``<book>-site`` folder inside that parent.
+    """
     name = (title or Path(epub).stem).strip()
     name = unicodedata.normalize("NFC", name)
     name = FOLDER_UNSAFE_RE.sub("-", name)
@@ -79,7 +88,8 @@ def default_output_dir(epub: str | Path, *, title: str = "") -> Path:
     if not name:
         name = "book"
     name = name[:80].rstrip(" .-") or "book"
-    return documents_dir() / "epub2web" / f"{name}-site"
+    base = Path(parent).expanduser() if parent is not None else documents_dir() / "epub2web"
+    return base / f"{name}-site"
 
 
 def app_data_dir() -> Path:
