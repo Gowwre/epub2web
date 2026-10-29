@@ -207,7 +207,7 @@ def test_index_and_reference_classes_survive(epub_factory, tmp_path: Path):
                 (
                     b"<p>Hello <em>world</em>.</p>",
                     b'<p class="index">Alpha</p><p class="indexsub">Beta</p>'
-                    b'<p class="hangs">Citation</p>',
+                    b'<p class="hangs">Citation</p><p class="index">The Zebra</p>',
                 )
             ]
         },
@@ -219,6 +219,20 @@ def test_index_and_reference_classes_survive(epub_factory, tmp_path: Path):
     assert 'class="lede index-entry"' in html
     assert 'class="index-subentry"' in html
     assert 'class="hanging"' in html
+    soup = BeautifulSoup(html, "lxml")
+    nav = soup.find("nav", class_="index-nav")
+    assert nav is not None
+    assert nav.find("a", href="#index-a") is not None
+    assert nav.find("a", href="#index-z") is not None
+    assert nav.find("span", class_="index-nav-empty") is not None
+    assert soup.find("span", id="index-a") is not None
+    assert soup.find("span", id="index-z") is not None
+
+    zebra = soup.find("p", string=lambda value: value and "The Zebra" in value)
+    assert zebra is not None
+    anchor = zebra.find_previous_sibling("span")
+    assert anchor is not None
+    assert anchor.get("id") == "index-z"
 
 
 def test_figure_caption_anchors_point_to_the_figure(epub_factory, tmp_path: Path):

@@ -14,6 +14,7 @@ All notable, user-facing changes are documented here. The format follows
 - Make the mobile contents sheet compact by collapsing chapter sections on demand, highlighting the current chapter, and opening scrolled to it.
 - Add arrow-key and Enter navigation for search results.
 - Browse figures in the lightbox with previous/next buttons, a figure counter, and arrow-key navigation.
+- Add an A–Z jump bar to the index, linking to the first entry for each letter while ignoring leading articles and quotation marks.
 - Add self-hosted font subsets for Greek, Cyrillic, Arabic, Hebrew, Devanagari, Thai, and CJK, with only the scripts present in a book copied into its site.
 - Add right-to-left layout support for RTL book languages, including logical positioning and mirrored navigation arrows.
 - Count CJK and Thai reading length by characters for estimates and whole-book progress.

@@ -940,6 +940,48 @@ ol.book-list li::marker { font-family: var(--font-ui); font-size: 0.85em; font-w
    Reference pages
    ------------------------------------------------------------------ */
 
+.index-nav {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.2rem 0.3rem;
+  margin: 0 0 1.8rem;
+  padding-block: 0.7rem;
+  border-block: 1px solid var(--rule);
+  font-family: var(--font-ui);
+  font-size: 0.66rem;
+  line-height: 1;
+}
+.index-nav-title {
+  margin-inline-end: 0.2rem;
+  font-size: 0.6rem;
+  font-weight: 650;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.index-nav a,
+.index-nav-empty {
+  display: inline-grid;
+  place-items: center;
+  min-width: 1.6rem;
+  min-height: 1.6rem;
+  border-radius: 2px;
+}
+.index-nav a {
+  color: var(--ink-2);
+  font-weight: 600;
+  text-decoration: none;
+}
+.index-nav a:hover {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.index-nav-empty {
+  color: var(--muted);
+  opacity: 0.3;
+}
+
 .book-page .hanging {
   margin-block: 0 0.85em;
   padding-inline-start: 1.8em;
@@ -965,6 +1007,7 @@ ol.book-list li::marker { font-family: var(--font-ui); font-size: 0.85em; font-w
     column-rule: 1px solid var(--rule);
   }
   .book-page:has(> p.index-entry) > .chapter-header { column-span: all; }
+  .book-page:has(> p.index-entry) > .index-nav { column-span: all; break-inside: avoid; }
   .book-page:has(> p.index-entry) > p { break-inside: avoid; }
 }
 
@@ -1743,7 +1786,7 @@ dialog.lightbox figcaption b { color: #f4eadb; }
   :root { --paper: #fff; --ink: #000; --ink-2: #222; --muted: #555; --rule: #ddd; --rule-strong: #999; --accent: #000; }
   body { background: #fff; font-size: 11pt; line-height: 1.5; }
   .site-header, .site-footer, .sidebar, .progress, .chapter-nav, .page-end,
-  dialog { display: none !important; }
+  .index-nav, dialog { display: none !important; }
   .reading-shell { display: block; }
   .page-main { max-width: none; padding: 0; }
   .book-page { max-width: 100%; }

@@ -18,6 +18,7 @@ import io
 import json
 import logging
 import re
+import unicodedata
 import warnings
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -597,6 +598,38 @@ def number_short(number_label: str) -> str:
     return m.group(1) if m else ""
 
 
+INDEX_LETTERS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+INDEX_LEADING_PUNCT_RE = re.compile(r"^[^0-9A-Za-z]+")
+INDEX_ARTICLE_RE = re.compile(r"^(?:a|an|the)\s+", re.IGNORECASE)
+
+
+def index_letter(text: str) -> str:
+    """Return the filing letter for an index entry, ignoring articles."""
+    value = unicodedata.normalize("NFKD", text).encode("ascii", "ignore").decode("ascii")
+    value = INDEX_LEADING_PUNCT_RE.sub("", value)
+    if not value or not value[0].isalpha():
+        return ""
+    value = INDEX_ARTICLE_RE.sub("", value)
+    value = INDEX_LEADING_PUNCT_RE.sub("", value)
+    if not value or not value[0].isalpha():
+        return ""
+    return value[0].upper()
+
+
+def index_main_entry(text: str) -> bool:
+    """Reject lowercase subentries that print conversions mislabel as index entries."""
+    value = text.strip()
+    if not value:
+        return False
+    if value[0] in "\"'\u2018\u2019\u201c\u201d\u00ab\u00bb":
+        return True
+    stripped = INDEX_LEADING_PUNCT_RE.sub("", value)
+    if not stripped or stripped[0].isdigit() or stripped[0].isupper():
+        return True
+    first_word = re.split(r"\s+", stripped, maxsplit=1)[0]
+    return any(char.isupper() for char in first_word[1:])
+
+
 def class_names(el: Tag) -> str:
     return " ".join(el.get("class", [])).lower()
 
@@ -1173,6 +1206,7 @@ class GenericExtractor:
         used_ids: set[str] = set()
         fig_index = [0]
         first_para = True
+        index_anchors: dict[str, str] = {}
 
         def add_id(el: Tag) -> str:
             text = heading_text(el)
@@ -1203,6 +1237,19 @@ class GenericExtractor:
             if "hangs" in cls:
                 classes.append("hanging")
             return f' class="{" ".join(classes)}"' if classes else ""
+
+        def index_anchor(el: Tag, cls: str) -> str:
+            if "index" not in cls or "indexsub" in cls:
+                return ""
+            text = heading_text(el)
+            if not index_main_entry(text):
+                return ""
+            letter = index_letter(text)
+            if not letter or letter in index_anchors:
+                return ""
+            anchor_id = f"index-{letter.lower()}"
+            index_anchors[letter] = anchor_id
+            return f'<span id="{anchor_id}" class="index-anchor"></span>'
 
         def header_for(elements: list[Tag]) -> str:
             text = " ".join(heading_text(e) for e in elements).strip()
@@ -1333,7 +1380,7 @@ class GenericExtractor:
                     pcls = paragraph_classes(el, cls)
                     pid = f' id="{html.escape(el["id"])}"' if el.get("id") else ""
                     out.append(
-                        f"<p{pid}{pcls}>{self._inline(el, page['source_files'][0]).strip()}</p>"
+                        f"{index_anchor(el, cls)}<p{pid}{pcls}>{self._inline(el, page['source_files'][0]).strip()}</p>"
                     )
                     i += 1
                     continue
@@ -1496,8 +1543,26 @@ class GenericExtractor:
 
             pcls = paragraph_classes(el, cls)
             pid = f' id="{html.escape(el["id"])}"' if el.get("id") else ""
-            out.append(f"<p{pid}{pcls}>{self._inline(el, source_path).strip()}</p>")
+            out.append(
+                f"{index_anchor(el, cls)}<p{pid}{pcls}>{self._inline(el, source_path).strip()}</p>"
+            )
             i += 1
+
+        if index_anchors:
+            nav_links = []
+            for letter in INDEX_LETTERS:
+                anchor_id = index_anchors.get(letter)
+                if anchor_id:
+                    nav_links.append(f'<a href="#{anchor_id}">{letter}</a>')
+                else:
+                    nav_links.append(
+                        f'<span class="index-nav-empty" aria-hidden="true">{letter}</span>'
+                    )
+            out.insert(
+                1,
+                '<nav class="index-nav" aria-label="Index letters" data-chrome>'
+                '<span class="index-nav-title">A\u2013Z</span>' + "".join(nav_links) + "</nav>",
+            )
 
         return dedupe_fragment_ids("".join(out)), sections
 
