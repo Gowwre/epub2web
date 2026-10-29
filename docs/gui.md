@@ -21,6 +21,11 @@ in the default browser.
   the `reports` subdirectory.
 - The header links to the [project website](https://gowwre.github.io/epub2web/)
   and the [GitHub repository](https://github.com/Gowwre/epub2web).
+- On startup the GUI checks GitHub Releases for a newer version. When one is
+  available, an **Update** button shows its release notes and a link to the
+  download page. The check runs in the background, fails silently when offline,
+  and does not affect book conversion. Set `EPUB2WEB_NO_UPDATE_CHECK=1` to skip
+  it.
 - The GUI is a thin front end. For automation, use the CLI.
 
 ## Requirements
@@ -45,6 +50,7 @@ continues to work normally.
 - `epub2web/worker.py` — worker process that calls the existing CLI.
 - `epub2web/progress.py` — phase progress definitions and the machine-readable
   `--progress` stream used by the worker.
+- `epub2web/updates.py` — best-effort GitHub release check used by the GUI.
 - `scripts/build_gui.py` — portable bundle builder for Windows, macOS, and Linux.
 - `scripts/gui_entry.py` — PyInstaller entry point.
 

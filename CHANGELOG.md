@@ -9,6 +9,7 @@ All notable, user-facing changes are documented here. The format follows
 ### Added
 
 - Add GitHub and project website shortcuts to the desktop GUI header.
+- Check GitHub Releases at desktop GUI startup and show an **Update** button when a newer version is available. The button opens release notes and a download-page link. The check runs in the background, fails silently offline, and can be disabled with `EPUB2WEB_NO_UPDATE_CHECK=1`.
 
 ### Changed
 

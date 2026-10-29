@@ -18,6 +18,7 @@ import webbrowser
 from pathlib import Path
 from tkinter import filedialog, ttk
 
+from . import __version__
 from .controller import (
     BuildController,
     BuildEvent,
@@ -25,9 +26,15 @@ from .controller import (
     default_output_dir,
     default_report_dir,
 )
+from .updates import (
+    DOWNLOAD_URL,
+    GITHUB_URL,
+    ReleaseInfo,
+    fetch_latest_release,
+    is_newer,
+)
 
 APP_TITLE = "epub2web"
-GITHUB_URL = "https://github.com/Gowwre/epub2web"
 WEBSITE_URL = "https://gowwre.github.io/epub2web/"
 LOG_LINE_LIMIT = 2000
 
@@ -97,6 +104,8 @@ class Epub2WebApp:
         self.controller: BuildController | None = None
         self.events: queue.Queue[BuildEvent] = queue.Queue()
         self.book_info_queue: queue.Queue[tuple[Path, dict]] = queue.Queue()
+        self.update_queue: queue.Queue[ReleaseInfo | None] = queue.Queue()
+        self.update_info: ReleaseInfo | None = None
         self._building = False
         self._preview_running = False
         self._auto_open_preview = False
@@ -120,6 +129,7 @@ class Epub2WebApp:
         self._set_log_hint("Fidelity and link checks appear here.")
         self._append_log("Choose an EPUB to begin.", tag="muted")
         self._poll()
+        self._check_for_updates()
 
     @staticmethod
     def _default_open_dir() -> Path:
@@ -367,6 +377,12 @@ class Epub2WebApp:
 
         brand_actions = tk.Frame(brand, bg=BG)
         brand_actions.pack(side="right")
+        self.update_button = ttk.Button(
+            brand_actions,
+            text="Update",
+            style="Primary.TButton",
+            command=self._show_update_dialog,
+        )
         self.website_button = ttk.Button(
             brand_actions,
             text="Website",
@@ -802,6 +818,9 @@ class Epub2WebApp:
     def _open_website(self) -> None:
         self._open_external_url(WEBSITE_URL, "Open website")
 
+    def _open_download_page(self) -> None:
+        self._open_external_url(DOWNLOAD_URL, "Open download page")
+
     def _open_external_url(
         self,
         url: str,
@@ -833,12 +852,42 @@ class Epub2WebApp:
             name="epub2web-browser",
         ).start()
 
+    # -- update checks ----------------------------------------------------
+    def _check_for_updates(self) -> None:
+        if os.environ.get("EPUB2WEB_NO_UPDATE_CHECK"):
+            return
+        threading.Thread(
+            target=self._fetch_update,
+            daemon=True,
+            name="epub2web-update",
+        ).start()
+
+    def _fetch_update(self) -> None:
+        try:
+            release = fetch_latest_release()
+        except Exception:
+            release = None
+        self.update_queue.put(release)
+
+    def _apply_update(self, release: ReleaseInfo | None) -> None:
+        if release is None or self.update_info is not None:
+            return
+        if not is_newer(release.version):
+            return
+        self.update_info = release
+        self.update_button.pack(side="right", padx=(0, 8))
+
     # -- event handling ---------------------------------------------------
     def _poll(self) -> None:
         try:
             while True:
                 path, info = self.book_info_queue.get_nowait()
                 self._apply_book_info(path, info)
+        except queue.Empty:
+            pass
+        try:
+            while True:
+                self._apply_update(self.update_queue.get_nowait())
         except queue.Empty:
             pass
         try:
@@ -1126,6 +1175,131 @@ class Epub2WebApp:
 
     def _set_log_hint(self, text: str) -> None:
         self.log_hint_var.set(text)
+
+    def _show_update_dialog(self) -> None:
+        release = self.update_info
+        if release is None:
+            return
+
+        dialog = tk.Toplevel(self.root)
+        dialog.title(f"{APP_TITLE} — Update available")
+        dialog.transient(self.root)
+        dialog.configure(bg=BG)
+        dialog.minsize(520, 420)
+        if self._icon_image is not None:
+            with contextlib.suppress(tk.TclError):
+                dialog.iconphoto(True, self._icon_image)
+
+        def close() -> None:
+            with contextlib.suppress(tk.TclError):
+                dialog.grab_release()
+            with contextlib.suppress(tk.TclError):
+                dialog.destroy()
+
+        def download() -> None:
+            close()
+            self.root.after(0, self._open_download_page)
+
+        tk.Frame(dialog, bg=ACCENT, height=4).pack(fill="x")
+        outer = tk.Frame(dialog, bg=BG, padx=18, pady=18)
+        outer.pack(fill="both", expand=True)
+        card = tk.Frame(
+            outer,
+            bg=SURFACE,
+            highlightbackground=RULE,
+            highlightthickness=1,
+        )
+        card.pack(fill="both", expand=True)
+        inner = tk.Frame(card, bg=SURFACE, padx=22, pady=20)
+        inner.pack(fill="both", expand=True)
+
+        tk.Label(
+            inner,
+            text="Update available",
+            bg=SURFACE,
+            fg=INK,
+            font=self.font_dialog,
+            anchor="w",
+            justify="left",
+        ).pack(fill="x")
+        tk.Label(
+            inner,
+            text=f"epub2web {release.version} is available. You are running {__version__}.",
+            bg=SURFACE,
+            fg=INK_2,
+            font=self.font_body,
+            anchor="w",
+            justify="left",
+            wraplength=500,
+        ).pack(fill="x", pady=(8, 0))
+
+        tk.Label(
+            inner,
+            text="WHAT'S NEW",
+            bg=SURFACE,
+            fg=MUTED,
+            font=self.font_brand,
+            anchor="w",
+        ).pack(fill="x", pady=(18, 6))
+
+        notes_frame = tk.Frame(
+            inner,
+            bg=SURFACE_ALT,
+            highlightbackground=RULE,
+            highlightthickness=1,
+        )
+        notes_frame.pack(fill="both", expand=True)
+        notes_frame.columnconfigure(0, weight=1)
+        notes_frame.rowconfigure(0, weight=1)
+        notes = tk.Text(
+            notes_frame,
+            height=12,
+            width=58,
+            wrap="word",
+            bg=SURFACE_ALT,
+            fg=INK_2,
+            font=self.font_body,
+            relief="flat",
+            borderwidth=0,
+            highlightthickness=0,
+            padx=12,
+            pady=10,
+        )
+        notes.grid(row=0, column=0, sticky="nsew")
+        scroll = ttk.Scrollbar(notes_frame, orient="vertical", command=notes.yview)
+        scroll.grid(row=0, column=1, sticky="ns")
+        notes.configure(yscrollcommand=scroll.set)
+        notes.insert("1.0", release.notes.strip() or "See the download page for details.")
+        notes.configure(state="disabled")
+
+        actions = tk.Frame(inner, bg=SURFACE)
+        actions.pack(fill="x", pady=(18, 0))
+        download_button = ttk.Button(
+            actions,
+            text="Open download page",
+            style="Primary.TButton",
+            command=download,
+        )
+        download_button.pack(side="right")
+        later = ttk.Button(
+            actions,
+            text="Later",
+            style="Secondary.TButton",
+            command=close,
+        )
+        later.pack(side="right", padx=(0, 8))
+
+        dialog.bind("<Escape>", lambda _event: close())
+        dialog.protocol("WM_DELETE_WINDOW", close)
+        dialog.update_idletasks()
+        width = max(540, dialog.winfo_reqwidth())
+        height = max(460, dialog.winfo_reqheight())
+        x = self.root.winfo_rootx() + max(0, (self.root.winfo_width() - width) // 2)
+        y = self.root.winfo_rooty() + max(0, (self.root.winfo_height() - height) // 3)
+        dialog.geometry(f"{width}x{height}+{x}+{y}")
+        dialog.grab_set()
+        download_button.focus_set()
+        self.root.wait_window(dialog)
 
     def _show_error(
         self,

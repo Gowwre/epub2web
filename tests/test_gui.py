@@ -3,6 +3,7 @@ from __future__ import annotations
 import sys
 import time
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 from epub2web.controller import (
@@ -13,6 +14,7 @@ from epub2web.controller import (
     worker_command,
 )
 from epub2web.gui import main as gui_main
+from epub2web.updates import ReleaseInfo
 from epub2web.worker import main as worker_main
 
 CH1 = "OEBPS/ch1.xhtml"
@@ -62,6 +64,38 @@ def test_tk_app_header_links_fall_back_to_visible_address(monkeypatch):
         ("Open GitHub", tk_app.GITHUB_URL),
         ("Open website", tk_app.WEBSITE_URL),
     ]
+
+
+def test_tk_app_update_check_can_be_disabled(monkeypatch):
+    tk_app = _import_tk_app()
+    app = object.__new__(tk_app.Epub2WebApp)
+    monkeypatch.setenv("EPUB2WEB_NO_UPDATE_CHECK", "1")
+    monkeypatch.setattr(
+        tk_app.threading,
+        "Thread",
+        lambda **_kwargs: pytest.fail("update check should be disabled"),
+    )
+
+    app._check_for_updates()
+
+
+def test_tk_app_shows_update_button_only_for_newer_release():
+    tk_app = _import_tk_app()
+    app = object.__new__(tk_app.Epub2WebApp)
+    app.update_info = None
+    packed = []
+    app.update_button = SimpleNamespace(pack=lambda **kwargs: packed.append(kwargs))
+
+    app._apply_update(None)
+    app._apply_update(ReleaseInfo("0.0.1", ""))
+    assert packed == []
+
+    update = ReleaseInfo("999.0.0", "notes")
+    app._apply_update(update)
+    app._apply_update(update)
+
+    assert app.update_info is update
+    assert packed == [{"side": "right", "padx": (0, 8)}]
 
 
 def test_tk_app_assets_exist():
