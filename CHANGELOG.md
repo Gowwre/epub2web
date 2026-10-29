@@ -6,6 +6,10 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+### Changed
+
+- Point the download page’s Release notes button at the site changelog instead of the GitHub release page.
+
 ## 0.3.0 - 2026-10-28
 
 ### Added

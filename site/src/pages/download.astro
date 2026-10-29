@@ -147,14 +147,9 @@ const platforms = [
             <dd>None</dd>
           </div>
         </dl>
-        <a
-          class="btn btn--quiet release-card__button"
-          href={release.releaseUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
+        <a class="btn btn--quiet release-card__button" href={withBase("/changelog/")}>
           Release notes
-          <Icon name="arrow-up-right" size={15} />
+          <Icon name="arrow-right" size={15} />
         </a>
         <p class="release-card__note">
           Direct download links for every platform are below.{" "}
