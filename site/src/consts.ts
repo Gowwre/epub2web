@@ -22,10 +22,10 @@ export function withBase(path: string): string {
 }
 
 export const SITE_DESCRIPTION =
-  "Turn the EPUB you own into a clean, static reading website. Every word, figure, note, and link checked. No account, no upload, no AI.";
+  "Turn an EPUB you own into a reading website. Your words stay as they are, the files stay on your computer, and the folder is yours to keep or publish.";
 
 export const NAV_LINKS = [
-  { label: "Fidelity", href: "/#fidelity" },
+  { label: "Text checks", href: "/#fidelity" },
   { label: "The edition", href: "/#edition" },
   { label: "How it works", href: "/#how-it-works" },
   { label: "Changelog", href: "/changelog/" },

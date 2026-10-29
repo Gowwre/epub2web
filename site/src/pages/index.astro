@@ -20,56 +20,56 @@ const searchCrop = withBase("/screenshots/search-crop.webp");
 const gates = [
   {
     number: "01",
-    title: "Text, word for word.",
-    body: "Every rendered page is compared with its EPUB source — tokens and characters. A dropped clause, changed punctuation mark, or moved paragraph stops the build.",
+    title: "The words come through unchanged.",
+    body: "Each page is compared with the EPUB it came from. If a sentence is dropped, punctuation changes, or a paragraph moves, the build stops.",
   },
   {
     number: "02",
-    title: "Images, accounted for.",
-    body: "The image count on every page is checked against its source. A missing figure fails the build instead of leaving a hole in a published book.",
+    title: "Every picture has to be there.",
+    body: "The image count on each page is checked against the source. If a figure is missing, the build fails instead of publishing a book with a hole in it.",
   },
   {
     number: "03",
-    title: "Links, followed through.",
-    body: "Every internal link, anchor, asset, and duplicate ID is verified before anything is published. No quiet 404s between chapters.",
+    title: "Links work before the site goes live.",
+    body: "Internal links, anchors, images, and duplicate IDs are checked before anything is published. Readers don't hit a dead end between chapters.",
   },
 ];
 
 const features = [
   {
     number: "01",
-    title: "Cover & contents",
-    body: "A proper cover page and a clickable table of contents, not a flat scroll of everything.",
+    title: "Cover and contents",
+    body: "A cover page and a table of contents you can click through, instead of one long scroll.",
   },
   {
     number: "02",
-    title: "Search, built in",
-    body: "A static full-text index ships with the site and loads when needed. Type, use arrow keys, and press Enter. No search server, no account.",
+    title: "Search the whole book",
+    body: "The whole book is indexed when the site is built. Search for a word and jump straight to it; no search service or account.",
   },
   {
     number: "03",
-    title: "Made for reading",
-    body: "Light, dark, and automatic modes, adjustable text size, line spacing, paragraph style, and page width, with the reader's choices remembered.",
+    title: "Easy on the eyes",
+    body: "Light and dark themes, adjustable text size, line spacing, paragraph style, and page width. Your choices are remembered the next time you open the book.",
   },
   {
     number: "04",
-    title: "Your place, kept",
-    body: "Continue where you left off, with progress through the whole book. The position stays in your browser, per EPUB.",
+    title: "Pick up where you left off",
+    body: "The site remembers your page and shows how far you've read. Your place is stored in the browser, separately for each EPUB.",
   },
   {
     number: "05",
-    title: "The whole book",
-    body: "Figures, captions, tables, lists, notes, cross-references, and self-hosted fonts for major writing systems all survive the move.",
+    title: "The whole book comes along",
+    body: "Pictures with captions, tables, lists, footnotes, and cross-references all survive the move. Fonts for major writing systems are included, so the text looks right.",
   },
   {
     number: "06",
-    title: "Accessible by default",
-    body: "Keyboard navigation, clear labels, and descriptions for images are part of the edition.",
+    title: "Works for more readers",
+    body: "You can navigate with a keyboard, labels are clear, and images have descriptions.",
   },
   {
     number: "07",
-    title: "Yours to host",
-    body: "One folder of HTML, CSS, images, fonts, and search data. Put it anywhere, or keep it local.",
+    title: "Yours to keep",
+    body: "The finished site is one folder of HTML, CSS, images, fonts, and search data. Put it on any static host, or keep it on your computer.",
   },
 ];
 
@@ -77,32 +77,32 @@ const faqs = [
   {
     question: "Is my book uploaded anywhere?",
     answer:
-      "No. The EPUB is read on your computer, the site is built on your computer, and the finished folder stays there. There is no account and no upload step. Publishing it later is entirely your choice.",
+      "No. The EPUB is read on your computer, the site is built there, and the finished folder stays there. There is no account and no upload step. If you want to publish it later, that's up to you.",
   },
   {
-    question: "Does epub2web use AI?",
+    question: "Will the text be changed?",
     answer:
-      "No. It does not call a language model, summarize prose, or fetch anything from a remote service during a build. The text you see is the text in your EPUB, and the same book produces the same result every time.",
+      "No. The words and punctuation stay as they are. The site may change how the book looks, but not what it says.",
   },
   {
     question: "What exactly do I get?",
     answer:
-      "A static website folder: a cover, contents, every chapter as a reading page, optimized images, self-hosted fonts, a search index, a sitemap, and a small accessibility-minded theme. No Node build step, database, or server-side runtime.",
+      "A folder with a cover page, a table of contents, a page for each chapter, the images, the fonts, and a search index. It includes a small reading theme that works on phones and desktops.",
   },
   {
     question: "How do I open the site after I close the app?",
     answer:
-      "The preview stops when the app closes. Reopen the app, choose the same EPUB, and click Convert to refresh and preview the existing site. You can also serve the site folder with any local static server. See “Run the site” above for commands.",
+      "The preview stops when the app closes. Reopen the app, choose the same EPUB, and press Convert to refresh the site and start the preview again. You can also serve the folder with any local static server; the commands are above.",
   },
   {
     question: "Which EPUBs work best?",
     answer:
-      "Normal, reflowable EPUB 2 and EPUB 3 books work best. DRM-protected, fixed-layout, and image-only books may not work. Books that load images from the internet are refused so the finished site remains self-contained.",
+      "Normal, reflowable EPUB 2 and EPUB 3 books work best. DRM-protected, fixed-layout, and image-only books may not work. Books that load images from the internet are refused, so the finished site doesn't depend on another server.",
   },
   {
-    question: "What if my book does not convert?",
+    question: "What if my book doesn't convert?",
     answer:
-      "epub2web stops rather than dropping content, leaves any previous working site untouched, and writes a support ZIP. Attach that ZIP to a GitHub issue, but not the book itself. The ZIP can contain file paths, metadata, and short excerpts, so review it first.",
+      "epub2web stops instead of dropping content, leaves any previous working site untouched, and creates a support ZIP you can attach to a GitHub issue. Don't attach the book itself. The ZIP can contain file paths, metadata, and short excerpts, so look through it first.",
   },
   {
     question: "Can I put the site online?",
@@ -112,7 +112,7 @@ const faqs = [
   {
     question: "Can I use the command line instead?",
     answer:
-      "Yes. epub2web is a Python package for Python 3.10 and newer, and the CLI exposes preview, output, metadata, logging, and verification options. The desktop app is a friendly front end to the same pipeline.",
+      "Yes. epub2web is a Python package for Python 3.10 and newer. The CLI offers preview, output, metadata, logging, and verification options. The desktop app runs the same converter with a window around it.",
   },
 ];
 ---
@@ -123,13 +123,13 @@ const faqs = [
       <div class="hero__copy">
         <p class="eyebrow">EPUB → a reading website</p>
         <h1 class="hero__title">
-          <span>Your book,</span>
-          <span class="hero__title-accent">opened to the web.</span>
+          <span>Turn an EPUB</span>
+          <span class="hero__title-accent">into a website.</span>
         </h1>
         <p class="hero__intro">
-          A clean, static reading site made from the EPUB you already own. Every
-          word, figure, note, and link checked. Nothing uploaded. Nothing
-          rewritten.
+          epub2web builds a reading website from the EPUB you own. The text
+          stays exactly as it appears in the EPUB, the pictures and notes come
+          along, and the finished folder is yours to keep or publish.
         </p>
 
         <div class="hero__actions">
@@ -155,7 +155,8 @@ const faqs = [
         </ul>
 
         <p class="hero__audience">
-          For authors, translators, publishers, teachers, and readers.
+          For authors, translators, small presses, and anyone else with a book
+          to share.
         </p>
       </div>
 
@@ -184,15 +185,14 @@ const faqs = [
           <span class="verify-card__seal" aria-hidden="true">PASS</span>
           <p class="verify-card__eyebrow">Build verified</p>
           <ul>
-            <li><Icon name="check" size={13} /> 13/13 pages exact</li>
+            <li><Icon name="check" size={13} /> 13/13 pages match</li>
             <li><Icon name="check" size={13} /> 743 links checked</li>
-            <li><Icon name="check" size={13} /> 0 bytes uploaded</li>
+            <li><Icon name="check" size={13} /> Nothing uploaded</li>
           </ul>
         </aside>
 
         <p class="hero__caption">
-          A real edition of <cite>Alice's Adventures in Wonderland</cite>.
-          Built in 0.57 seconds.
+          Converted in 0.57 seconds.
         </p>
       </div>
     </div>
@@ -202,9 +202,9 @@ const faqs = [
     <div class="container">
       <ul>
         <li><Icon name="check" size={13} /> Every page checked</li>
+        <li><Icon name="check" size={13} /> Your text unchanged</li>
         <li><Icon name="check" size={13} /> Nothing uploaded</li>
-        <li><Icon name="check" size={13} /> No AI, ever</li>
-        <li><Icon name="check" size={13} /> One static folder</li>
+        <li><Icon name="check" size={13} /> One folder to share</li>
       </ul>
     </div>
   </div>
@@ -215,15 +215,16 @@ const faqs = [
         <div>
           <p class="eyebrow">I · The rule</p>
           <h2>
-            The EPUB is the{" "}
-            <span class="accent">source of truth.</span>
+            What's in the EPUB is{" "}
+            <span class="accent">what goes online.</span>
           </h2>
         </div>
         <div class="section-heading__side">
-          <p class="fidelity__quote">“The design changes. The book does not.”</p>
+          <p class="fidelity__quote">“The layout can change. The words can't.”</p>
           <p class="fidelity__intro">
-            epub2web can change structure and presentation. It cannot lose your
-            words. Three gates stand between your EPUB and a published site.
+            epub2web changes how a book looks on the web. It doesn't change what
+            the book says. Three checks stand between your EPUB and a finished
+            site.
           </p>
         </div>
       </div>
@@ -244,13 +245,13 @@ const faqs = [
         <figure class="build-report">
           <div class="build-report__bar" aria-hidden="true">
             <span class="build-report__dots"><span></span><span></span><span></span></span>
-            <span class="build-report__title">one real run</span>
+            <span class="build-report__title">a real build</span>
           </div>
           <pre><code><span class="report-muted">$</span> epub2web alice.epub --serve
 <span class="report-label">EPUB</span>     Alice's Adventures in Wonderland
 <span class="report-label">Pages</span>    13
 <span class="report-label">Words</span>    29,564
-<span class="report-label">Verify</span>   <span class="report-pass">PASS (13/13 pages exact)</span>
+<span class="report-label">Verify</span>   <span class="report-pass">PASS (13/13 pages match)</span>
 <span class="report-label">Links</span>    <span class="report-pass">PASS (743 checked, 0 broken)</span>
 <span class="report-label">Search</span>   16 sections indexed
 <span class="report-label">Site</span>     <span class="report-accent">alice-site/index.html</span>
@@ -258,17 +259,17 @@ const faqs = [
         </figure>
 
         <div class="proof__copy">
-          <p class="eyebrow">Nothing half-published</p>
-          <h3>A failed build is not a published book.</h3>
+          <p class="eyebrow">If something goes wrong</p>
+          <h3>You keep the last good version.</h3>
           <p>
-            The site is assembled in a staging folder, verified, and only then
-            swapped into place. If extraction or any gate fails, your previous
-            working site stays exactly as it was.
+            The new site is built in a staging folder and checked before it
+            replaces anything. If a check fails, your previous site stays
+            exactly where it was.
           </p>
           <ul class="check-list">
-            <li><Icon name="check" size={14} /> Staged, checked, then published.</li>
-            <li><Icon name="check" size={14} /> Images and links included in the gate.</li>
-            <li><Icon name="check" size={14} /> No model or remote service in the loop.</li>
+            <li><Icon name="check" size={14} /> Built in a staging folder first.</li>
+            <li><Icon name="check" size={14} /> Text, images, and links are all checked.</li>
+            <li><Icon name="check" size={14} /> A failed build changes nothing.</li>
           </ul>
         </div>
       </div>
@@ -280,11 +281,12 @@ const faqs = [
       <div class="section-heading">
         <div>
           <p class="eyebrow">II · The edition</p>
-          <h2>Not a <span class="accent">document dump.</span></h2>
+          <h2>A website that <span class="accent">reads like a book.</span></h2>
         </div>
         <p class="lede">
-          A complete reading edition: cover, contents, chapters, figures, notes,
-          and search. All of it a plain folder you can keep or publish.
+          You get a cover, a table of contents, a page for each chapter, the
+          pictures and notes, and search. It's all one folder you can keep or
+          publish.
         </p>
       </div>
 
@@ -319,7 +321,7 @@ const faqs = [
             loading="lazy"
           />
           <figcaption class="figure-caption">
-            Full-text results, generated with the site. No search server.
+            Search results come from the site itself.
           </figcaption>
         </figure>
       </div>
@@ -340,7 +342,7 @@ const faqs = [
 
       <p class="edition__more">
         <a class="text-link" href={DEMO_URL} target="_blank" rel="noopener noreferrer">
-          Open the live edition
+          Open the live demo
           <Icon name="arrow-up-right" size={14} class="icon--external" />
         </a>
       </p>
@@ -350,15 +352,16 @@ const faqs = [
   <section class="private" id="privacy">
     <div class="container private__grid">
       <div class="private__lead">
-        <p class="eyebrow eyebrow--night">III · The promise</p>
+        <p class="eyebrow eyebrow--night">III · Your book stays yours</p>
         <h2>
-          Nothing is uploaded.<br />
-          Nothing is rewritten.<br />
-          <span>Nothing is guessed.</span>
+          Your book stays<br />
+          on your computer.<br />
+          <span>The text stays intact.</span>
         </h2>
         <p class="private__lede">
-          No account. No AI service. No network at build time. The same EPUB
-          produces the same text and structure, run after run.
+          There's no account and no upload. The app reads the EPUB on your
+          machine and builds the site there. Run it again and you get the same
+          site.
         </p>
         <a
           class="btn btn--light"
@@ -375,30 +378,31 @@ const faqs = [
         <article class="private-point">
           <span>01</span>
           <div>
-            <h3>Stays on your computer</h3>
+            <h3>Nothing leaves your computer</h3>
             <p>
-              Your EPUB, the generated site, logs, and failure reports remain on
-              your machine. Nothing is sent to a server.
+              The EPUB, the finished site, the logs, and any error reports stay
+              on your machine. Nothing is sent to a server.
             </p>
           </div>
         </article>
         <article class="private-point">
           <span>02</span>
           <div>
-            <h3>Deterministic by design</h3>
+            <h3>The same book gives the same site</h3>
             <p>
-              No model, no remote fetch, no clever guess. Only the sitemap's
-              build timestamp changes between runs.
+              Run the converter twice and you get the same text and structure.
+              Only the build timestamp in the sitemap changes.
             </p>
           </div>
         </article>
         <article class="private-point">
           <span>03</span>
           <div>
-            <h3>Open all the way down</h3>
+            <h3>You can check the work</h3>
             <p>
-              The converter, reader theme, and tests are MIT licensed. You can
-              audit exactly what happens to your book.
+              The converter, the reader theme, and the tests are MIT licensed.
+              If you want to know exactly what happens to your book, the code is
+              there to read.
             </p>
           </div>
         </article>
@@ -410,12 +414,13 @@ const faqs = [
     <div class="container">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">IV · The process</p>
-          <h2>Three steps. <span class="accent">One static folder.</span></h2>
+          <p class="eyebrow">IV · How it works</p>
+          <h2>From EPUB to website <span class="accent">in three steps.</span></h2>
         </div>
         <p class="lede">
-          The desktop app bundles everything it needs. Choose a book, press
-          Convert, and the finished site opens in your browser.
+          The desktop app comes with the converter, Python, and the fonts.
+          Choose a book, press Convert, and the finished site opens in your
+          browser.
         </p>
       </div>
 
@@ -424,24 +429,23 @@ const faqs = [
           <span class="step__num">01</span>
           <h3>Choose your EPUB</h3>
           <p>
-            A book you own, in the standard reflowable EPUB 2 or EPUB 3 format.
-            No conversion prep, no account.
+            Pick a book you own. Standard EPUB 2 and EPUB 3 files work best.
           </p>
         </li>
         <li class="step">
           <span class="step__num">02</span>
           <h3>Press Convert</h3>
           <p>
-            Pages, images, and links are converted and checked with live,
-            page-by-page progress. A long book does not look frozen.
+            The app converts the book and checks each page as it goes. You can
+            watch the progress, so a long book doesn't look stuck.
           </p>
         </li>
         <li class="step">
           <span class="step__num">03</span>
-          <h3>Read, or publish</h3>
+          <h3>Read it or publish it</h3>
           <p>
-            Read through the app&apos;s preview, or upload the plain folder to
-            any static host. The site works without a server-side runtime.
+            Read the site in your browser, or upload the folder to any static
+            host.
           </p>
         </li>
       </ol>
@@ -465,11 +469,11 @@ const faqs = [
         </figure>
 
         <div class="process__copy">
-          <h3>No Node build step. No database. No server required.</h3>
+          <h3>A finished site is just files.</h3>
           <p>
-            A finished book is just files. Keep it on your computer, put it on a
-            USB stick, or serve it from anywhere that can deliver static HTML.
-            Re-running the app refreshes an existing epub2web site automatically.
+            Keep the folder on your computer, put it on a USB stick, or serve it
+            from anywhere that can deliver static HTML. Running the app again
+            refreshes an existing epub2web site automatically.
           </p>
           <p>
             On the desktop, sites land in{" "}
@@ -499,14 +503,14 @@ epub2web book.epub --serve</code></pre>
     <div class="container">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">V · Run it</p>
+          <p class="eyebrow">V · Reading it later</p>
           <h2>Serve the folder. <span class="accent">Don&apos;t double-click.</span></h2>
         </div>
         <div class="section-heading__side">
           <p class="lede">
-            The finished edition uses absolute links and loads its search index
-            over HTTP. The app previews it while open; later, use any local
-            static server or publish the folder.
+            The finished site needs a web server, even on your own computer. The
+            app starts one for you; later, you can use any local server or
+            publish the folder.
           </p>
           <p class="run-site__docs">
             <a
@@ -537,18 +541,17 @@ epub2web book.epub --serve</code></pre>
           <article class="run-step">
             <span class="run-step__num">02</span>
             <div>
-              <h3>Or open it again</h3>
+              <h3>Or reopen the app</h3>
               <p>
-                Reopen the app, choose the same EPUB, and press{" "}
-                <strong>Convert</strong>. It refreshes the existing site and
-                starts the preview again.
+                Choose the same EPUB and press <strong>Convert</strong>. It
+                refreshes the site and starts the preview again.
               </p>
             </div>
           </article>
           <article class="run-step">
             <span class="run-step__num">03</span>
             <div>
-              <h3>Or serve it yourself</h3>
+              <h3>Or use your own server</h3>
               <p>
                 Start any static file server from the site folder. Python is one
                 option; the commands are on the right.
@@ -582,8 +585,8 @@ py -m http.server 8000</code></pre>
       <p class="run-site__note">
         <Icon name="alert" size={15} />
         <span>
-          Opening <code>index.html</code> from your filesystem is not enough:
-          absolute links and the search index need <code>http://</code>.
+          Opening <code>index.html</code> from your filesystem won't work: the
+          site uses absolute links, and search needs <code>http://</code>.
         </span>
       </p>
     </div>
@@ -595,8 +598,8 @@ py -m http.server 8000</code></pre>
         <p class="eyebrow">VI · Questions</p>
         <h2>Before you download.</h2>
         <p class="faq__intro">
-          Straight answers, including the warning your computer will probably
-          show the first time you open the app.
+          What people ask before downloading, including the security warning
+          your computer may show the first time you open the app.
         </p>
         <div class="faq__warning-note">
           <Icon name="alert" size={17} />
@@ -617,9 +620,9 @@ py -m http.server 8000</code></pre>
           <div class="faq-item__answer">
             <p>
               Windows SmartScreen and macOS Gatekeeper may warn about an
-              unidentified developer on first launch. This is expected: the
-              desktop builds are not code-signed yet. It does not mean the
-              download was tampered with — but only continue if you downloaded it
+              unidentified developer on first launch. That's expected because
+              the desktop builds aren't code-signed yet. It doesn't mean the
+              download was tampered with, but only continue if you downloaded it
               from the{" "}
               <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer">
                 official GitHub releases page
@@ -697,14 +700,15 @@ py -m http.server 8000</code></pre>
       <span class="closing__watermark" aria-hidden="true">
         <Icon name="book" size={420} strokeWidth={0.8} />
       </span>
-      <p class="eyebrow">VII · Your move</p>
+      <p class="eyebrow">VII · Get started</p>
       <h2>
-        Give your book a<br />
-        <span class="accent">home on the web.</span>
+        Make a web edition<br />
+        <span class="accent">of your book.</span>
       </h2>
       <p class="closing__intro">
-        Download the desktop app, choose an EPUB, and read the finished site in
-        your browser. Then share it with anyone who has a browser.
+        Download the app, choose an EPUB, and the finished site opens in your
+        browser. Read it there, or share the folder with anyone who has a
+        browser.
       </p>
       <div class="closing__actions">
         <a class="btn btn--primary btn--large" href={withBase("/download/")}>

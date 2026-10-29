@@ -13,7 +13,7 @@ interface Props {
 }
 
 const {
-  title = "epub2web — Turn an EPUB into a website worth reading",
+  title = "epub2web — Turn an EPUB into a reading website",
   description = SITE_DESCRIPTION,
   bodyClass = "",
 } = Astro.props;
@@ -48,7 +48,7 @@ const socialImage = Astro.site
     {socialImage && (
       <meta
         property="og:image:alt"
-        content="epub2web: Your book, opened to the web. A screenshot of the reader beside the headline."
+        content="epub2web: Turn an EPUB into a website. A screenshot of the reader beside the headline."
       />
     )}
     <meta name="twitter:card" content="summary_large_image" />

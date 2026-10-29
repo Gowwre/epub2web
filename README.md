@@ -4,11 +4,12 @@
 
 `epub2web` takes an ebook you already own and turns it into a clean,
 comfortable website. It works on your computer, even offline. There is no
-account, no upload, and no AI rewriting.
+account, no upload, and your text is not rewritten.
 
 An EPUB is the standard ebook file format used by most ebook stores and reading
-apps. This tool is for authors, translators, publishers, teachers, and readers
-who want a readable web edition without handing the book to an online service.
+apps. This tool is for authors, translators, small presses, teachers, and
+readers who want a readable web edition without handing the book to an online
+service.
 
 [**Visit the website**](https://gowwre.github.io/epub2web/)
 · [Download the desktop app](https://github.com/Gowwre/epub2web/releases/latest)
@@ -114,7 +115,7 @@ more about portable builds and first-launch warnings.
 
 ## What you get
 
-A complete website, ready to read — not a raw document dump:
+A complete website, ready to read:
 
 - a cover page and a clickable table of contents
 - every chapter as a clean, readable web page
@@ -138,12 +139,12 @@ options.
 
 ## Your book stays your book
 
-Most EPUB-to-website tools either look like a document dump or quietly rewrite
-the text. `epub2web` follows one rule: **the EPUB is the source of truth**.
+Most EPUB-to-website tools either flatten the book into one long document or
+quietly change the text. `epub2web` follows one rule: **the book stays the
+book**.
 
-- **No AI. No rewriting.** The app does not call a language model or a remote
-  service. The text you see is the text in your book, and the book is never sent
-  to an AI service.
+- **No rewriting.** The app builds the site on your computer and does not send
+  the book to a remote service. The text you see is the text in your book.
 - **Checked word for word.** Every page is compared with its EPUB source. A
   dropped sentence, changed punctuation mark, or moved paragraph stops the
   build.
@@ -351,9 +352,8 @@ serve the folder rather than opening `index.html` directly from the filesystem.
 - An **image gate** compares the number of images on each source page with the
   rendered page, so a missing figure cannot pass silently.
 - A **link gate** checks every internal anchor, image, asset, and duplicate ID.
-- The build never calls a language model or a remote service. The same EPUB
-  always produces the same text and structure; only the sitemap's build
-  timestamp changes.
+- The build never calls a remote service. The same EPUB always produces the
+  same text and structure; only the sitemap's build timestamp changes.
 - The site is built in a staging directory, verified, and only then swapped into
   place. If extraction or a gate fails, an existing site is left untouched.
 - Re-running a command for a site that `epub2web` created refreshes it
