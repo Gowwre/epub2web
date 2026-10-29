@@ -120,8 +120,8 @@ A complete website, ready to read — not a raw document dump:
 - every chapter as a clean, readable web page
 - pictures, captions, tables, lists, notes, and cross-references
 - built-in search that works without an account or internet connection
-- light and dark reading modes
-- adjustable text size and line spacing, remembered in your browser
+- light, dark, and automatic reading modes
+- adjustable text size, line spacing, paragraph style, and page width, remembered in your browser
 - self-hosted fonts for Latin, Greek, Cyrillic, Arabic, Hebrew, Devanagari, Thai, and CJK text
 - remembers your place and shows progress through the whole book
 - a layout that works on phones, tablets, and desktops

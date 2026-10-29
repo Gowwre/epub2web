@@ -80,7 +80,14 @@ def test_rendered_pages_expose_reading_progress(tiny_epub, tmp_path: Path):
 
     home = BeautifulSoup((site / "index.html").read_text(encoding="utf-8"), "lxml")
     assert home.html["data-reading-id"] == reading_id
-    start = home.find(attrs={"data-reading-start": True})
+    start = next(
+        (
+            link
+            for link in home.find_all(attrs={"data-reading-start": True})
+            if link.find(attrs={"data-reading-label": True}) is not None
+        ),
+        None,
+    )
     assert start is not None
     assert start.find(attrs={"data-reading-label": True}).get_text(strip=True) == "Start reading"
     restart = home.find(attrs={"data-reading-restart": True})
@@ -125,6 +132,10 @@ def test_rendered_site_has_reading_controls(tiny_epub, tmp_path: Path):
 
     home = BeautifulSoup((site / "index.html").read_text(encoding="utf-8"), "lxml")
     assert home.find(attrs={"data-reader-open": True}) is not None
+    header_read = home.find("a", class_="header-read-link")
+    assert header_read is not None
+    assert header_read.get_text(strip=True) == "Read"
+    assert header_read.has_attr("data-reading-start")
     reader = home.find("dialog", id="epub2web-reader-dialog")
     assert reader is not None
     assert {input["value"] for input in reader.select('input[name="reader-size"]')} == {
@@ -138,8 +149,23 @@ def test_rendered_site_has_reading_controls(tiny_epub, tmp_path: Path):
         "default",
         "relaxed",
     }
+    assert {input["value"] for input in reader.select('input[name="reader-paragraphs"]')} == {
+        "spaced",
+        "indented",
+    }
+    assert {input["value"] for input in reader.select('input[name="reader-width"]')} == {
+        "narrow",
+        "standard",
+        "wide",
+    }
+    assert {input["value"] for input in reader.select('input[name="reader-theme"]')} == {
+        "auto",
+        "light",
+        "dark",
+    }
 
     page = BeautifulSoup((site / "read" / "1" / "index.html").read_text(encoding="utf-8"), "lxml")
+    assert page.find("a", class_="header-read-link") is None
     menu = page.find("dialog", id="epub2web-menu-dialog")
     assert menu is not None
     current = menu.find("a", attrs={"aria-current": "page"})

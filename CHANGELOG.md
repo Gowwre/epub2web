@@ -9,6 +9,8 @@ All notable, user-facing changes are documented here. The format follows
 ### Added
 
 - Add reading settings for text size and line spacing, remembered locally in the browser.
+- Add paragraph style, page width, and Auto/Light/Dark theme controls to reading settings. The Auto theme follows the device until a manual theme is chosen.
+- Add a compact **Read** shortcut to the header on phones so the home page’s reading action is available without scrolling.
 - Make the mobile contents sheet compact by collapsing chapter sections on demand, highlighting the current chapter, and opening scrolled to it.
 - Add arrow-key and Enter navigation for search results.
 - Browse figures in the lightbox with previous/next buttons, a figure counter, and arrow-key navigation.

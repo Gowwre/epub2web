@@ -70,7 +70,30 @@
         <label class="reader-option"><input type="radio" name="reader-spacing" value="relaxed"><span>Relaxed</span></label>
       </div>
     </fieldset>
-    <p class="reader-note">These settings apply only to this browser. Your book is unchanged.</p>
+    <fieldset class="reader-group">
+      <legend>Paragraphs</legend>
+      <div class="reader-options">
+        <label class="reader-option"><input type="radio" name="reader-paragraphs" value="spaced" checked><span>Spaced</span></label>
+        <label class="reader-option"><input type="radio" name="reader-paragraphs" value="indented"><span>Indented</span></label>
+      </div>
+    </fieldset>
+    <fieldset class="reader-group">
+      <legend>Page width</legend>
+      <div class="reader-options">
+        <label class="reader-option"><input type="radio" name="reader-width" value="narrow"><span>Narrow</span></label>
+        <label class="reader-option"><input type="radio" name="reader-width" value="standard" checked><span>Standard</span></label>
+        <label class="reader-option"><input type="radio" name="reader-width" value="wide"><span>Wide</span></label>
+      </div>
+    </fieldset>
+    <fieldset class="reader-group">
+      <legend>Theme</legend>
+      <div class="reader-options">
+        <label class="reader-option"><input type="radio" name="reader-theme" value="auto" checked><span>Auto</span></label>
+        <label class="reader-option"><input type="radio" name="reader-theme" value="light"><span>Light</span></label>
+        <label class="reader-option"><input type="radio" name="reader-theme" value="dark"><span>Dark</span></label>
+      </div>
+    </fieldset>
+    <p class="reader-note">These settings apply only to this browser. Auto follows your device theme. Your book is unchanged.</p>
     <button class="reader-reset" type="button" data-reader-reset>Reset to defaults</button>
   </div>
 </dialog>

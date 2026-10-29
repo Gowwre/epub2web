@@ -48,6 +48,12 @@
         if (["compact", "relaxed"].indexOf(saved.spacing) !== -1) {
           document.documentElement.dataset.readerSpacing = saved.spacing;
         }
+        if (["narrow", "wide"].indexOf(saved.width) !== -1) {
+          document.documentElement.dataset.readerWidth = saved.width;
+        }
+        if (saved.paragraphs === "indented") {
+          document.documentElement.dataset.readerParagraphs = saved.paragraphs;
+        }
       } catch (e) {}
     })();
   </script>
@@ -72,6 +78,7 @@
       </a>
       <nav class="header-nav" aria-label="Primary">
         <a class="nav-link" href="/contents/">Contents</a>
+        {% if page.type == 'home' %}<a class="nav-link header-read-link" href="{{ start_href }}" data-reading-start>Read</a>{% endif %}
         <button class="icon-btn search-btn" type="button" data-search-open aria-label="Search the book">
           {% from "macros.html" import icon %}{{ icon("search") }}
         </button>

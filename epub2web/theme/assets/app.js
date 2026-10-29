@@ -67,24 +67,72 @@
   /* ------------------------------------------------------------------
      Theme
      ------------------------------------------------------------------ */
+  const themeKey = "epub2web-theme";
+  const themeModes = ["auto", "light", "dark"];
   const themeButton = document.querySelector("[data-theme-toggle]");
+  const systemTheme = window.matchMedia
+    ? window.matchMedia("(prefers-color-scheme: dark)")
+    : null;
+
+  function storedThemeMode() {
+    try {
+      const stored = localStorage.getItem(themeKey);
+      return themeModes.indexOf(stored) !== -1 ? stored : "auto";
+    } catch (e) {
+      return "auto";
+    }
+  }
+
   function currentTheme() {
     return root.dataset.theme === "dark" ? "dark" : "light";
   }
+
   function syncThemeLabel() {
     if (!themeButton) return;
     const next = currentTheme() === "dark" ? "light" : "dark";
     themeButton.setAttribute("aria-label", "Switch to " + next + " theme");
     themeButton.setAttribute("title", "Switch to " + next + " theme");
   }
+
+  function syncThemeInputs() {
+    if (!readerDialog) return;
+    const mode = storedThemeMode();
+    readerDialog.querySelectorAll('input[name="reader-theme"]').forEach(function (input) {
+      input.checked = input.value === mode;
+    });
+  }
+
+  function applyThemeMode(mode) {
+    const resolved = mode === "dark" || mode === "light"
+      ? mode
+      : (systemTheme && systemTheme.matches ? "dark" : "light");
+    root.dataset.theme = resolved;
+    syncThemeLabel();
+    if (readerDialog && readerDialog.open) syncThemeInputs();
+  }
+
+  function setThemeMode(mode) {
+    if (themeModes.indexOf(mode) === -1) mode = "auto";
+    try {
+      if (mode === "auto") localStorage.removeItem(themeKey);
+      else localStorage.setItem(themeKey, mode);
+    } catch (e) {}
+    applyThemeMode(mode);
+  }
+
   if (themeButton) {
     syncThemeLabel();
     themeButton.addEventListener("click", function () {
       const next = currentTheme() === "dark" ? "light" : "dark";
-      root.dataset.theme = next;
-      try { localStorage.setItem("epub2web-theme", next); } catch (e) {}
-      syncThemeLabel();
+      setThemeMode(next);
     });
+  }
+  if (systemTheme) {
+    const handleSystemTheme = function () {
+      if (storedThemeMode() === "auto") applyThemeMode("auto");
+    };
+    if (systemTheme.addEventListener) systemTheme.addEventListener("change", handleSystemTheme);
+    else if (systemTheme.addListener) systemTheme.addListener(handleSystemTheme);
   }
 
   /* ------------------------------------------------------------------
@@ -156,13 +204,15 @@
   const readerKey = "epub2web-reader:v1";
   const readerSizes = ["small", "default", "large", "x-large"];
   const readerSpacings = ["compact", "default", "relaxed"];
+  const readerParagraphs = ["spaced", "indented"];
+  const readerWidths = ["narrow", "standard", "wide"];
   const readerInputs = readerDialog
-    ? readerDialog.querySelectorAll('input[name="reader-size"], input[name="reader-spacing"]')
+    ? readerDialog.querySelectorAll('input[type="radio"]')
     : [];
   const readerReset = readerDialog ? readerDialog.querySelector("[data-reader-reset]") : null;
 
   function defaultReaderSettings() {
-    return { size: "default", spacing: "default" };
+    return { size: "default", spacing: "default", paragraphs: "spaced", width: "standard" };
   }
 
   function readReaderSettings() {
@@ -179,6 +229,8 @@
       if (!saved || typeof saved !== "object") return settings;
       if (readerSizes.indexOf(saved.size) !== -1) settings.size = saved.size;
       if (readerSpacings.indexOf(saved.spacing) !== -1) settings.spacing = saved.spacing;
+      if (readerParagraphs.indexOf(saved.paragraphs) !== -1) settings.paragraphs = saved.paragraphs;
+      if (readerWidths.indexOf(saved.width) !== -1) settings.width = saved.width;
     } catch (e) {
       try { localStorage.removeItem(readerKey); } catch (e2) {}
     }
@@ -190,6 +242,10 @@
     else root.setAttribute("data-reader-size", settings.size);
     if (settings.spacing === "default") root.removeAttribute("data-reader-spacing");
     else root.setAttribute("data-reader-spacing", settings.spacing);
+    if (settings.paragraphs === "spaced") root.removeAttribute("data-reader-paragraphs");
+    else root.setAttribute("data-reader-paragraphs", settings.paragraphs);
+    if (settings.width === "standard") root.removeAttribute("data-reader-width");
+    else root.setAttribute("data-reader-width", settings.width);
   }
 
   function writeReaderSettings(settings) {
@@ -204,6 +260,13 @@
     readerDialog.querySelectorAll('input[name="reader-spacing"]').forEach(function (input) {
       input.checked = input.value === settings.spacing;
     });
+    readerDialog.querySelectorAll('input[name="reader-paragraphs"]').forEach(function (input) {
+      input.checked = input.value === settings.paragraphs;
+    });
+    readerDialog.querySelectorAll('input[name="reader-width"]').forEach(function (input) {
+      input.checked = input.value === settings.width;
+    });
+    syncThemeInputs();
   }
 
   function currentReaderSettings() {
@@ -211,12 +274,19 @@
     if (!readerDialog) return settings;
     const size = readerDialog.querySelector('input[name="reader-size"]:checked');
     const spacing = readerDialog.querySelector('input[name="reader-spacing"]:checked');
+    const paragraphs = readerDialog.querySelector('input[name="reader-paragraphs"]:checked');
+    const width = readerDialog.querySelector('input[name="reader-width"]:checked');
     if (size && readerSizes.indexOf(size.value) !== -1) settings.size = size.value;
     if (spacing && readerSpacings.indexOf(spacing.value) !== -1) settings.spacing = spacing.value;
+    if (paragraphs && readerParagraphs.indexOf(paragraphs.value) !== -1) {
+      settings.paragraphs = paragraphs.value;
+    }
+    if (width && readerWidths.indexOf(width.value) !== -1) settings.width = width.value;
     return settings;
   }
 
   applyReaderSettings(readReaderSettings());
+  applyThemeMode(storedThemeMode());
 
   document.querySelectorAll("[data-reader-open]").forEach(function (button) {
     button.addEventListener("click", function () {
@@ -227,6 +297,10 @@
 
   readerInputs.forEach(function (input) {
     input.addEventListener("change", function () {
+      if (input.name === "reader-theme") {
+        setThemeMode(input.value);
+        return;
+      }
       const settings = currentReaderSettings();
       writeReaderSettings(settings);
       applyReaderSettings(settings);
@@ -236,6 +310,7 @@
   if (readerReset) {
     readerReset.addEventListener("click", function () {
       try { localStorage.removeItem(readerKey); } catch (e) {}
+      setThemeMode("auto");
       const settings = defaultReaderSettings();
       applyReaderSettings(settings);
       syncReaderInputs(settings);
@@ -243,7 +318,8 @@
   }
 
   window.addEventListener("storage", function (event) {
-    if (event.key !== readerKey && event.key !== null) return;
+    if (event.key !== readerKey && event.key !== themeKey && event.key !== null) return;
+    applyThemeMode(storedThemeMode());
     const settings = readReaderSettings();
     applyReaderSettings(settings);
     if (readerDialog && readerDialog.open) syncReaderInputs(settings);
@@ -650,24 +726,33 @@
      Continue reading
      ------------------------------------------------------------------ */
   if (!isReading && readingId && progressKey) {
-    const startLink = document.querySelector("[data-reading-start]");
+    const startLinks = Array.from(document.querySelectorAll("[data-reading-start]"));
     const startLabel = document.querySelector("[data-reading-label]");
+    const startLink = startLabel ? startLabel.closest("[data-reading-start]") : null;
     const restart = document.querySelector("[data-reading-restart]");
     const mapElement = document.getElementById("epub2web-reading-map");
-    const defaultHref = startLink ? startLink.getAttribute("href") : "";
+    const defaultHref = startLinks.length ? startLinks[0].getAttribute("href") : "";
     const defaultLabel = startLabel ? startLabel.textContent : "";
 
+    function setStartHrefs(href) {
+      startLinks.forEach(function (link) {
+        if (href) link.setAttribute("href", href);
+      });
+    }
+
     function resetHomeContinue() {
-      if (!startLink || !startLabel) return;
-      if (defaultHref) startLink.setAttribute("href", defaultHref);
-      startLink.removeAttribute("aria-label");
-      startLink.removeAttribute("title");
-      startLabel.textContent = defaultLabel || "Start reading";
+      if (!startLinks.length) return;
+      setStartHrefs(defaultHref);
+      startLinks.forEach(function (link) {
+        link.removeAttribute("aria-label");
+        link.removeAttribute("title");
+      });
+      if (startLabel) startLabel.textContent = defaultLabel || "Start reading";
       if (restart) restart.hidden = true;
     }
 
     function enhanceHomeContinue() {
-      if (!startLink || !startLabel) return;
+      if (!startLinks.length) return;
       const stored = readProgress();
       if (!stored) {
         resetHomeContinue();
@@ -693,15 +778,19 @@
         return;
       }
       const continueHref = withBase(entry.route);
-      startLink.href = continueHref + (continueHref.indexOf("?") === -1 ? "?continue=1" : "&continue=1");
+      setStartHrefs(continueHref + (continueHref.indexOf("?") === -1 ? "?continue=1" : "&continue=1"));
       const description = entry.label ? "Continue reading: " + entry.label : "Continue reading";
-      startLink.setAttribute("aria-label", description);
-      startLink.title = description;
-      startLabel.textContent = description.length <= 42 ? description : "Continue reading";
+      if (startLink) {
+        startLink.setAttribute("aria-label", description);
+        startLink.title = description;
+      }
+      if (startLabel) {
+        startLabel.textContent = description.length <= 42 ? description : "Continue reading";
+      }
       if (restart) restart.hidden = false;
     }
 
-    if (startLink && startLabel) {
+    if (startLinks.length) {
       enhanceHomeContinue();
       window.addEventListener("pageshow", function (event) {
         if (event.persisted) enhanceHomeContinue();
