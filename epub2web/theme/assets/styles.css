@@ -1584,6 +1584,44 @@ dialog.lightbox figcaption b { color: #f4eadb; }
   cursor: pointer;
 }
 .lightbox-close:hover { border-color: #f4eadb; }
+.lightbox-nav {
+  position: fixed;
+  top: 50%;
+  z-index: 2;
+  width: 3rem;
+  height: 3rem;
+  display: grid;
+  place-items: center;
+  transform: translateY(-50%);
+  border: 1px solid rgba(244, 234, 219, 0.28);
+  border-radius: 50%;
+  background: rgba(20, 15, 10, 0.6);
+  color: #f4eadb;
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, opacity 0.15s ease;
+}
+.lightbox-prev { inset-inline-start: clamp(0.7rem, 2vw, 1.4rem); }
+.lightbox-next { inset-inline-end: clamp(0.7rem, 2vw, 1.4rem); }
+.lightbox-nav:hover { border-color: #f4eadb; background: rgba(20, 15, 10, 0.85); }
+.lightbox-nav:disabled { opacity: 0.25; cursor: default; }
+.lightbox-status {
+  position: fixed;
+  top: 1.35rem;
+  left: 50%;
+  z-index: 2;
+  margin: 0;
+  transform: translateX(-50%);
+  font-family: var(--font-ui);
+  font-size: 0.66rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(244, 234, 219, 0.7);
+}
+@media (max-width: 700px) {
+  .lightbox-nav { width: 2.5rem; height: 2.5rem; }
+  .lightbox-status { top: 0.85rem; font-size: 0.6rem; }
+}
 
 /* ------------------------------------------------------------------
    404

@@ -96,6 +96,9 @@
 
 <dialog id="epub2web-lightbox" class="lightbox" aria-label="Figure viewer">
   <button class="lightbox-close" type="button" data-lightbox-close aria-label="Close figure">{{ icon("close", 24) }}</button>
+  <button class="lightbox-nav lightbox-prev" type="button" data-lightbox-prev aria-label="Previous figure">{{ icon("arrow-left", 24) }}</button>
+  <button class="lightbox-nav lightbox-next" type="button" data-lightbox-next aria-label="Next figure">{{ icon("arrow-right", 24) }}</button>
+  <p class="lightbox-status" data-lightbox-status aria-live="polite"></p>
   <figure>
     <img alt="">
     <figcaption></figcaption>

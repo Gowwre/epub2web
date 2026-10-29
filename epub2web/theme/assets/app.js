@@ -433,18 +433,66 @@
      ------------------------------------------------------------------ */
   const lightboxImage = lightbox ? lightbox.querySelector("img") : null;
   const lightboxCaption = lightbox ? lightbox.querySelector("figcaption") : null;
+  const lightboxPrev = lightbox ? lightbox.querySelector("[data-lightbox-prev]") : null;
+  const lightboxNext = lightbox ? lightbox.querySelector("[data-lightbox-next]") : null;
+  const lightboxStatus = lightbox ? lightbox.querySelector("[data-lightbox-status]") : null;
+  let lightboxIndex = -1;
 
-  function openLightbox(link) {
+  function lightboxLinks() {
+    return Array.from(document.querySelectorAll("a.lightbox-link"));
+  }
+
+  function updateLightboxControls() {
+    const links = lightboxLinks();
+    const multiple = links.length > 1;
+    if (lightboxPrev) {
+      lightboxPrev.hidden = !multiple;
+      lightboxPrev.disabled = lightboxIndex <= 0;
+    }
+    if (lightboxNext) {
+      lightboxNext.hidden = !multiple;
+      lightboxNext.disabled = lightboxIndex < 0 || lightboxIndex >= links.length - 1;
+    }
+    if (lightboxStatus) {
+      lightboxStatus.hidden = !multiple || lightboxIndex < 0;
+      lightboxStatus.textContent =
+        multiple && lightboxIndex >= 0 ? lightboxIndex + 1 + " of " + links.length : "";
+    }
+  }
+
+  function showLightboxLink(link) {
     if (!lightbox || !lightboxImage || !lightboxCaption) return;
+    const links = lightboxLinks();
+    const index = links.indexOf(link);
+    if (index === -1) return;
+    lightboxIndex = index;
     const figure = link.closest("figure");
     const caption = figure ? figure.querySelector("figcaption") : null;
     const img = link.querySelector("img");
     lightboxImage.src = link.getAttribute("href");
     lightboxImage.alt = img ? (img.alt || "") : "";
     lightboxCaption.innerHTML = caption ? caption.innerHTML : "";
+    updateLightboxControls();
+    [-1, 1].forEach(function (delta) {
+      const neighbor = links[index + delta];
+      if (!neighbor) return;
+      const preload = new Image();
+      preload.src = neighbor.getAttribute("href");
+    });
+  }
+
+  function openLightbox(link) {
+    if (!lightbox || !lightboxImage || !lightboxCaption) return;
+    showLightboxLink(link);
     openDialog(lightbox);
     const close = lightbox.querySelector("[data-lightbox-close]");
     if (close) close.focus();
+  }
+
+  function stepLightbox(delta) {
+    const links = lightboxLinks();
+    const target = links[lightboxIndex + delta];
+    if (target) showLightboxLink(target);
   }
 
   document.addEventListener("click", function (event) {
@@ -455,14 +503,30 @@
   });
 
   if (lightbox) {
+    if (lightboxPrev) {
+      lightboxPrev.addEventListener("click", function () { stepLightbox(-1); });
+    }
+    if (lightboxNext) {
+      lightboxNext.addEventListener("click", function () { stepLightbox(1); });
+    }
     lightbox.querySelectorAll("[data-lightbox-close]").forEach(function (button) {
       button.addEventListener("click", function () { closeDialog(lightbox); });
     });
     lightbox.addEventListener("close", function () {
+      lightboxIndex = -1;
       if (lightboxImage) lightboxImage.removeAttribute("src");
       if (lightboxCaption) lightboxCaption.textContent = "";
+      updateLightboxControls();
     });
   }
+
+  document.addEventListener("keydown", function (event) {
+    if (!lightbox || !lightbox.open) return;
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    stepLightbox(event.key === "ArrowLeft" ? -1 : 1);
+  });
 
   /* ------------------------------------------------------------------
      Reading progress

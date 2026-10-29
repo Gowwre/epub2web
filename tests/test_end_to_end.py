@@ -154,6 +154,13 @@ def test_rendered_site_has_reading_controls(tiny_epub, tmp_path: Path):
     assert "to choose a result" in search_hint
     assert "Enter" in search_hint
 
+    lightbox = page.find("dialog", id="epub2web-lightbox")
+    assert lightbox is not None
+    assert lightbox.find(attrs={"data-lightbox-prev": True}) is not None
+    assert lightbox.find(attrs={"data-lightbox-next": True}) is not None
+    assert lightbox.find(attrs={"data-lightbox-status": True}) is not None
+    assert page.find("a", class_="lightbox-link") is not None
+
 
 def test_multilingual_fonts_are_selected_and_copied(epub_factory, tmp_path: Path):
     multilingual = "Γειά σου. Привет. مرحبا. שלום. नमस्ते. สวัสดี. 你好。こんにちは。안녕하세요."  # noqa: RUF001
