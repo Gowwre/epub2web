@@ -14,7 +14,9 @@ in the default browser.
 - Output defaults to `~/Documents/epub2web/<book>-site`, or
   `~/epub2web/<book>-site` when there is no `Documents` folder.
 - The local preview server stays alive while you browse, so navigation and
-  search work. **Stop** shuts it down; closing the window also stops it.
+  search work. **Stop** shuts it down; closing the window also stops it. It
+  uses port 8000 when available, so the browser can keep the reading position
+  between runs.
 - Logs go to the platform application-data directory (`~/.local/share/epub2web`
   on Linux, `~/Library/Application Support/epub2web` on macOS, and
   `%LOCALAPPDATA%\epub2web` on Windows). Failure support ZIPs are written to

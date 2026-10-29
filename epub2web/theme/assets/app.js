@@ -5,6 +5,13 @@
   const root = document.documentElement;
   const body = document.body;
   const basePath = root.dataset.base || "";
+  const readingId = (root.dataset.readingId || "").trim();
+  const progressKey = readingId ? "epub2web:progress:v1:" + readingId : "";
+  const isReading = body.hasAttribute("data-reading");
+  const pageKey = isReading ? (body.dataset.pageKey || "").trim() : "";
+  const chapterKey = isReading ? (body.dataset.chapterKey || "").trim() : "";
+  const progressStart = isReading ? parseFloat(body.dataset.progressStart || "0") : 0;
+  const progressEnd = isReading ? parseFloat(body.dataset.progressEnd || "1") : 1;
 
   function withBase(path) {
     if (!path) return basePath + "/";
@@ -12,6 +19,49 @@
     if (path.charAt(0) !== "/") return path;
     if (basePath && (path === basePath || path.indexOf(basePath + "/") === 0)) return path;
     return basePath + path;
+  }
+
+  function readProgress() {
+    if (!progressKey) return null;
+    let raw;
+    try {
+      raw = localStorage.getItem(progressKey);
+    } catch (e) {
+      return null;
+    }
+    if (!raw) return null;
+    try {
+      const data = JSON.parse(raw);
+      if (!data || data.v !== 1) return null;
+      if (typeof data.pageKey !== "string" || !data.pageKey) return null;
+      if (typeof data.ratio !== "number" || !isFinite(data.ratio)) return null;
+      return data;
+    } catch (e) {
+      try { localStorage.removeItem(progressKey); } catch (e2) {}
+      return null;
+    }
+  }
+
+  function writeProgress(data) {
+    if (!progressKey) return;
+    try { localStorage.setItem(progressKey, JSON.stringify(data)); } catch (e) {}
+  }
+
+  function clearProgress() {
+    if (!progressKey) return;
+    try { localStorage.removeItem(progressKey); } catch (e) {}
+  }
+
+  function currentScrollRatio() {
+    const doc = document.documentElement;
+    const max = doc.scrollHeight - doc.clientHeight;
+    return max > 0 ? Math.min(1, Math.max(0, doc.scrollTop / max)) : 0;
+  }
+
+  function currentBookRatio() {
+    const start = isFinite(progressStart) ? Math.min(1, Math.max(0, progressStart)) : 0;
+    const end = isFinite(progressEnd) ? Math.min(1, Math.max(start, progressEnd)) : 1;
+    return start + (end - start) * currentScrollRatio();
   }
 
   /* ------------------------------------------------------------------
@@ -269,13 +319,47 @@
      Reading progress
      ------------------------------------------------------------------ */
   const progressBar = document.querySelector(".progress span");
-  if (progressBar && body.hasAttribute("data-reading")) {
+  let saveTimer = null;
+  let userMoved = false;
+  const storedAtLoad = isReading ? readProgress() : null;
+
+  function savePosition() {
+    if (!isReading || !pageKey || !progressKey) return;
+    const ratio = currentScrollRatio();
+    if (!userMoved && ratio <= 0) return;
+    const data = {
+      v: 1,
+      pageKey: pageKey,
+      ratio: Math.round(ratio * 10000) / 10000,
+      updatedAt: Date.now(),
+    };
+    if (chapterKey) data.chapterKey = chapterKey;
+    writeProgress(data);
+  }
+
+  function scheduleSave() {
+    if (!isReading || !pageKey || !progressKey || saveTimer !== null) return;
+    saveTimer = window.setTimeout(function () {
+      saveTimer = null;
+      savePosition();
+    }, 500);
+  }
+
+  if (isReading && pageKey && progressKey) {
+    window.addEventListener("scroll", scheduleSave, { passive: true });
+    window.addEventListener("pagehide", savePosition);
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") savePosition();
+    });
+    ["wheel", "touchstart", "keydown", "mousedown"].forEach(function (type) {
+      window.addEventListener(type, function () { userMoved = true; }, { passive: true, once: true });
+    });
+  }
+
+  if (progressBar && isReading) {
     let ticking = false;
     function updateProgress() {
-      const doc = document.documentElement;
-      const max = doc.scrollHeight - doc.clientHeight;
-      const ratio = max > 0 ? Math.min(1, Math.max(0, doc.scrollTop / max)) : 0;
-      progressBar.style.width = (ratio * 100).toFixed(2) + "%";
+      progressBar.style.width = (currentBookRatio() * 100).toFixed(2) + "%";
       ticking = false;
     }
     window.addEventListener("scroll", function () {
@@ -286,6 +370,140 @@
     }, { passive: true });
     window.addEventListener("resize", updateProgress);
     updateProgress();
+  }
+
+  function removeContinueParam() {
+    try {
+      const url = new URL(window.location.href);
+      if (url.searchParams.get("continue") !== "1") return;
+      url.searchParams.delete("continue");
+      const query = url.searchParams.toString();
+      history.replaceState(null, "", url.pathname + (query ? "?" + query : "") + url.hash);
+    } catch (e) {}
+  }
+
+  function navigationType() {
+    try {
+      const perf = window.performance;
+      if (!perf) return "navigate";
+      const entries = perf.getEntriesByType ? perf.getEntriesByType("navigation") : [];
+      if (entries && entries.length && entries[0].type) return entries[0].type;
+      if (perf.navigation) {
+        if (perf.navigation.type === 1) return "reload";
+        if (perf.navigation.type === 2) return "back_forward";
+      }
+    } catch (e) {}
+    return "navigate";
+  }
+
+  function applyScrollRatio(ratio) {
+    function apply() {
+      if (userMoved) return;
+      const doc = document.documentElement;
+      const max = doc.scrollHeight - doc.clientHeight;
+      if (max <= 0) return;
+      const top = Math.min(max, Math.max(0, ratio * max));
+      const previous = doc.style.scrollBehavior;
+      doc.style.scrollBehavior = "auto";
+      window.scrollTo(0, top);
+      window.requestAnimationFrame(function () {
+        if (previous) doc.style.scrollBehavior = previous;
+        else doc.style.removeProperty("scroll-behavior");
+      });
+    }
+    apply();
+    if (document.readyState === "complete") apply();
+    else window.addEventListener("load", apply, { once: true });
+    if (document.fonts && document.fonts.ready) {
+      document.fonts.ready.then(function () { window.requestAnimationFrame(apply); });
+    }
+  }
+
+  if (isReading && pageKey && progressKey && storedAtLoad) {
+    const wantsContinue = new URLSearchParams(window.location.search).get("continue") === "1";
+    if (wantsContinue) removeContinueParam();
+    const navType = navigationType();
+    const shouldRestore = !window.location.hash
+      && (wantsContinue || navType === "reload" || navType === "back_forward");
+    if (shouldRestore && storedAtLoad.pageKey === pageKey) {
+      if ("scrollRestoration" in history) history.scrollRestoration = "manual";
+      applyScrollRatio(Math.min(1, Math.max(0, storedAtLoad.ratio)));
+    }
+  } else if (isReading) {
+    removeContinueParam();
+  }
+
+  /* ------------------------------------------------------------------
+     Continue reading
+     ------------------------------------------------------------------ */
+  if (!isReading && readingId && progressKey) {
+    const startLink = document.querySelector("[data-reading-start]");
+    const startLabel = document.querySelector("[data-reading-label]");
+    const restart = document.querySelector("[data-reading-restart]");
+    const mapElement = document.getElementById("epub2web-reading-map");
+    const defaultHref = startLink ? startLink.getAttribute("href") : "";
+    const defaultLabel = startLabel ? startLabel.textContent : "";
+
+    function resetHomeContinue() {
+      if (!startLink || !startLabel) return;
+      if (defaultHref) startLink.setAttribute("href", defaultHref);
+      startLink.removeAttribute("aria-label");
+      startLink.removeAttribute("title");
+      startLabel.textContent = defaultLabel || "Start reading";
+      if (restart) restart.hidden = true;
+    }
+
+    function enhanceHomeContinue() {
+      if (!startLink || !startLabel) return;
+      const stored = readProgress();
+      if (!stored) {
+        resetHomeContinue();
+        return;
+      }
+      let map = [];
+      if (mapElement) {
+        try {
+          map = JSON.parse(mapElement.textContent || "[]");
+        } catch (e) {
+          map = [];
+        }
+      }
+      let entry = null;
+      if (map.length) {
+        entry = map.find(function (item) { return item.key === stored.pageKey; }) || null;
+        if (!entry && stored.chapterKey) {
+          entry = map.find(function (item) { return item.chapterKey === stored.chapterKey; }) || null;
+        }
+      }
+      if (!entry) {
+        resetHomeContinue();
+        return;
+      }
+      const continueHref = withBase(entry.route);
+      startLink.href = continueHref + (continueHref.indexOf("?") === -1 ? "?continue=1" : "&continue=1");
+      const description = entry.label ? "Continue reading: " + entry.label : "Continue reading";
+      startLink.setAttribute("aria-label", description);
+      startLink.title = description;
+      startLabel.textContent = description.length <= 42 ? description : "Continue reading";
+      if (restart) restart.hidden = false;
+    }
+
+    if (startLink && startLabel) {
+      enhanceHomeContinue();
+      window.addEventListener("pageshow", function (event) {
+        if (event.persisted) enhanceHomeContinue();
+      });
+      document.addEventListener("visibilitychange", function () {
+        if (document.visibilityState === "visible") enhanceHomeContinue();
+      });
+      window.addEventListener("storage", function (event) {
+        if (event.key === progressKey) enhanceHomeContinue();
+      });
+    }
+
+    if (restart) {
+      restart.addEventListener("click", function () { clearProgress(); });
+    }
   }
 
   /* ------------------------------------------------------------------

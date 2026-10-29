@@ -119,6 +119,7 @@ A complete website, ready to read — not a raw document dump:
 - pictures, captions, tables, lists, notes, and cross-references
 - built-in search that works without an account or internet connection
 - light and dark reading modes
+- remembers your place and shows progress through the whole book
 - a layout that works on phones, tablets, and desktops
 - keyboard navigation, accessible labels, and image descriptions
 - your text exactly as it appears in the EPUB
@@ -148,6 +149,9 @@ the text. `epub2web` follows one rule: **the EPUB is the source of truth**.
   verified before the site is published.
 - **Nothing is uploaded.** Your book and the generated site stay on your
   computer.
+- **Your place stays in your browser.** Reading position is stored locally per
+  EPUB file. Rebuilding the same EPUB keeps it; a different EPUB starts a
+  separate position. Clearing site data removes it.
 
 If a check fails, `epub2web` stops and leaves any previous working site
 untouched. It does not publish a half-finished version.
@@ -205,6 +209,9 @@ build-and-serve command is:
 ```bash
 epub2web book.epub --serve
 ```
+
+Reading position is stored by the browser for the address you use. Serving the
+same site on a different port, host, or domain starts a fresh position.
 
 To share the site, upload the same folder to a static host. See
 [Hosting and subpaths](#hosting-and-subpaths).

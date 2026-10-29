@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import html
 import json
 import logging
@@ -17,7 +18,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 from . import __version__
 from .paths import normalize_base_path, route_to_file
 from .progress import ProgressCallback, report
-from .text import normalize_text, split_title, text_of, year_from_date
+from .text import normalize_text, slugify, split_title, text_of, year_from_date
 
 logger = logging.getLogger(__name__)
 
@@ -166,6 +167,7 @@ class SiteRenderer:
         meta.setdefault("edition", "")
         meta.setdefault("source", "EPUB")
         meta.setdefault("title_lines", [])
+        meta.setdefault("reading_id", "")
 
         self.pages = self.book.get("pages", [])
         self.page_by_id = {p["id"]: p for p in self.pages}
@@ -183,10 +185,91 @@ class SiteRenderer:
                 page["display_title"] = f"Chapter {page['number']}: {page['title']}"
             page.setdefault("sections", [])
 
+        self._prepare_progress()
+
         self.toc = self.book.get("toc", [])
         self.stats = self.book.get("stats", {})
         self._build_navigation()
         self._build_home()
+
+    def _fallback_reading_id(self) -> str:
+        """Derive a stable id for content directories without a source hash."""
+        payload = json.dumps(
+            [
+                {
+                    "id": page.get("id", ""),
+                    "route": page.get("route", ""),
+                    "sources": page.get("source_files", []),
+                    "title": page.get("title", ""),
+                }
+                for page in self.pages
+            ],
+            ensure_ascii=False,
+            sort_keys=True,
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _chapter_key(page: dict) -> str:
+        kind = page.get("type") or "page"
+        number = str(page.get("number") or "").strip()
+        if kind in ("chapter", "part") and number:
+            slug = slugify(number, fallback="")
+            if slug:
+                return f"{kind}-{slug}"
+        title = page.get("title") or page.get("display_title") or page.get("id") or "page"
+        return f"{kind}-{slugify(title)}"
+
+    @staticmethod
+    def _continue_label(page: dict) -> str:
+        if page.get("type") == "chapter":
+            number = str(page.get("number") or "").strip()
+            if number.isdigit():
+                number = str(int(number))
+            if not number:
+                number = str(page.get("chapter_index") or "")
+            if number:
+                return f"Chapter {number}"
+        return short_label(page.get("title", "")) or page.get("display_title", "")
+
+    def _prepare_progress(self) -> None:
+        """Add stable page keys, chapter positions, and whole-book offsets."""
+        meta = self.book["meta"]
+        reading_id = str(meta.get("reading_id") or "").strip()
+        if not reading_id:
+            reading_id = self._fallback_reading_id()
+        meta["reading_id"] = reading_id
+
+        chapter_total = sum(1 for page in self.pages if page.get("type") == "chapter")
+        chapter_index = 0
+        total_weight = sum(max(1, int(page.get("words", 0) or 0)) for page in self.pages) or 1
+        cumulative = 0
+        for page in self.pages:
+            sources = page.get("source_files") or [page.get("id", "")]
+            payload = json.dumps(sources, ensure_ascii=False)
+            page["key"] = hashlib.sha256(payload.encode("utf-8")).hexdigest()[:16]
+            page["chapter_key"] = self._chapter_key(page)
+            if page.get("type") == "chapter":
+                chapter_index += 1
+                page["chapter_index"] = chapter_index
+            else:
+                page["chapter_index"] = 0
+            page["chapter_total"] = chapter_total
+            page["progress_start"] = round(cumulative / total_weight, 6)
+            weight = max(1, int(page.get("words", 0) or 0))
+            cumulative += weight
+            page["progress_end"] = round(cumulative / total_weight, 6)
+            page["continue_label"] = self._continue_label(page)
+
+        self.reading_map = [
+            {
+                "key": page["key"],
+                "chapterKey": page["chapter_key"],
+                "route": page["route"],
+                "label": page["continue_label"],
+            }
+            for page in self.pages
+        ]
 
     def _page_for_href(self, href: str) -> dict | None:
         route = href.split("#", 1)[0]
@@ -456,6 +539,7 @@ class SiteRenderer:
             start_href=self.start_href,
             home_heading=self.home_heading,
             book_json_ld=book_json_ld,
+            reading_map=self.reading_map,
             cover_width=meta.get("cover_width", 438),
             cover_height=meta.get("cover_height", 662),
             search_label="Built-in full-text index",
@@ -495,7 +579,12 @@ class SiteRenderer:
                 self._report("render-pages", "Building pages", page_index, total_pages)
                 continue
             fragment = fragment_path.read_text(encoding="utf-8")
-            fragment = fragment.replace("<!--READTIME-->", f"{page['reading_minutes']} min read")
+            readtime = f"{page['reading_minutes']} min read"
+            if page.get("chapter_index") and page.get("chapter_total"):
+                readtime = (
+                    f"Chapter {page['chapter_index']} of {page['chapter_total']} · {readtime}"
+                )
+            fragment = fragment.replace("<!--READTIME-->", readtime)
             pos = self.reading_order.index(page["id"]) if page["id"] in self.reading_order else -1
             prev_page = self.page_by_id.get(self.reading_order[pos - 1]) if pos > 0 else None
             next_page = (

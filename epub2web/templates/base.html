@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="{{ book.meta.language or 'en' }}" data-theme="light" data-base="{{ base_path }}">
+<html lang="{{ book.meta.language or 'en' }}" data-theme="light" data-base="{{ base_path }}"{% if book.meta.reading_id %} data-reading-id="{{ book.meta.reading_id }}"{% endif %}>
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -41,9 +41,9 @@
 <body
   id="epub2web-top"
   class="page-{{ page.id }}"
-  {% if is_reading %}data-reading="true"{% endif %}
-  {% if prev %}data-prev="{{ prev.route }}"{% endif %}
-  {% if next %}data-next="{{ next.route }}"{% endif %}
+  {% if is_reading %}data-reading="true" data-page-key="{{ page.key }}" data-chapter-key="{{ page.chapter_key }}" data-progress-start="{{ page.progress_start }}" data-progress-end="{{ page.progress_end }}"{% endif %}
+  {% if prev %} data-prev="{{ prev.route }}"{% endif %}
+  {% if next %} data-next="{{ next.route }}"{% endif %}
 >
   {% if "top" in legacy_anchors %}<span id="top" aria-hidden="true"></span>{% endif %}
   <a class="skip-link" href="#epub2web-main">Skip to content</a>

@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 from epub2web.cli import main
+from epub2web.generic import GenericExtractor
 from epub2web.render import SITE_MARKER
 
 
@@ -71,6 +72,17 @@ def test_cli_title_override_splits_dash_subtitle(tiny_epub, tmp_path: Path):
     index = (site / "index.html").read_text(encoding="utf-8")
     assert '<span class="line">Book</span>' in index
     assert "A Novel" in index
+
+
+def test_title_override_keeps_the_reading_id(tiny_epub, tmp_path: Path):
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    reading_id = GenericExtractor(tiny_epub, content, images).run()["meta"]["reading_id"]
+
+    site = tmp_path / "site"
+    assert main([str(tiny_epub), "-o", str(site), "--title", "Renamed Book"]) == 0
+    index = (site / "index.html").read_text(encoding="utf-8")
+    assert f'data-reading-id="{reading_id}"' in index
 
 
 def test_cli_can_skip_gates_for_development(tiny_epub, tmp_path: Path, capsys):

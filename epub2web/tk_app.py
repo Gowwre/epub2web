@@ -779,6 +779,9 @@ class Epub2WebApp:
         try:
             controller = BuildController(
                 on_event=self.events.put,
+                # Keep the preview origin stable between runs so the browser
+                # can restore the reader's saved position.
+                port=8000,
                 open_browser=False,
                 log_dir=default_log_dir(),
                 report_dir=default_report_dir(),

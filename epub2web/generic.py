@@ -157,6 +157,15 @@ RASTER_EXTENSIONS = {
 }
 
 
+def _file_sha256(path: Path) -> str:
+    """Return a deterministic identity for the EPUB file itself."""
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def label_matches(label: str, labels: set[str]) -> bool:
     key = match_key(label)
     for raw in labels:
@@ -1505,6 +1514,10 @@ class GenericExtractor:
         year = year_from_date(md.get("date") or "")
         cover = self.cover_info["name"] if self.cover_info else ""
         cover_webp = self.cover_info.get("webp", "") if self.cover_info else ""
+        try:
+            reading_id = _file_sha256(self.epub_path)
+        except OSError:
+            reading_id = ""
 
         pages = []
         for page in self.pages:
@@ -1552,6 +1565,7 @@ class GenericExtractor:
                 "cover_height": self.cover_info["height"] if self.cover_info else 0,
                 "edition": "",
                 "source": "EPUB",
+                "reading_id": reading_id,
             },
             "pages": pages,
             "toc": self.toc,

@@ -6,6 +6,14 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+### Added
+
+- Remember the reader’s place and show progress through the whole book, with a **Continue reading** action on the home page and a **Start over** option. Positions are stored locally in the browser per EPUB file; rebuilding the same EPUB preserves them, while a different EPUB starts a separate position.
+
+### Changed
+
+- Use a stable local preview port in the desktop app so the browser can keep the reading position between runs.
+
 ## 0.4.0 - 2026-10-29
 
 ### Added

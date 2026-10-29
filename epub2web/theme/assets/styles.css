@@ -899,6 +899,8 @@ ol.book-list li::marker { font-family: var(--font-ui); font-size: 0.85em; font-w
   color: var(--ink-2);
 }
 .hero-actions { display: flex; flex-wrap: wrap; gap: 0.7rem; }
+.reading-restart { align-self: center; color: var(--muted); }
+.reading-restart:hover { color: var(--accent); }
 .hero-stats {
   display: flex;
   flex-wrap: wrap;

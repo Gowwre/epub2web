@@ -7,6 +7,7 @@
 <script type="application/ld+json">
 {{ book_json_ld|safe }}
 </script>
+<script type="application/json" id="epub2web-reading-map">{{ reading_map|tojson }}</script>
 {% endblock %}
 
 {% block layout %}
@@ -45,8 +46,11 @@
       {% if book.meta.subtitle %}<p class="hero-edition">{{ book.meta.subtitle }}</p>{% endif %}
       <p class="hero-intro">{{ hero_intro }}</p>
       <div class="hero-actions">
-        <a class="btn btn-primary" href="{{ start_href }}">Start reading {{ icon("arrow-right", 18) }}</a>
+        <a class="btn btn-primary" href="{{ start_href }}" data-reading-start>
+          <span data-reading-label>Start reading</span> {{ icon("arrow-right", 18) }}
+        </a>
         <a class="btn btn-quiet" href="/contents/">Contents</a>
+        <a class="text-link reading-restart" href="{{ start_href }}" data-reading-restart hidden title="Clear the saved reading position">Start over</a>
       </div>
       {% if stats_items %}
       <dl class="hero-stats">
