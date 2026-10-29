@@ -6,6 +6,10 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+### Changed
+
+- Use the Linux penguin logo for the Linux download card on the landing site instead of a terminal icon.
+
 ## 0.6.0 - 2026-10-29
 
 ### Added

@@ -46,3 +46,10 @@ build-time dependencies include:
 
 Neither is bundled into the book output or included in the runtime of the
 generated static site.
+
+## Platform icons
+
+The landing site uses platform icons from
+[Simple Icons](https://simpleicons.org/), released under CC0 1.0. Windows,
+Apple, Linux, and GitHub are trademarks of their respective owners; the icons
+identify their platforms only.
