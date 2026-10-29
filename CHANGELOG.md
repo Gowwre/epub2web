@@ -6,6 +6,8 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+## 0.4.0 - 2026-10-29
+
 ### Added
 
 - Add GitHub and project website shortcuts to the desktop GUI header.
