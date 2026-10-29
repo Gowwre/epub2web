@@ -19,6 +19,8 @@ in the default browser.
   on Linux, `~/Library/Application Support/epub2web` on macOS, and
   `%LOCALAPPDATA%\epub2web` on Windows). Failure support ZIPs are written to
   the `reports` subdirectory.
+- The header links to the [project website](https://gowwre.github.io/epub2web/)
+  and the [GitHub repository](https://github.com/Gowwre/epub2web).
 - The GUI is a thin front end. For automation, use the CLI.
 
 ## Requirements

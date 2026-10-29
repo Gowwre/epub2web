@@ -27,6 +27,8 @@ from .controller import (
 )
 
 APP_TITLE = "epub2web"
+GITHUB_URL = "https://github.com/Gowwre/epub2web"
+WEBSITE_URL = "https://gowwre.github.io/epub2web/"
 LOG_LINE_LIMIT = 2000
 
 # The desktop palette mirrors the reader theme in theme/assets/styles.css.
@@ -133,13 +135,30 @@ class Epub2WebApp:
         y = max(0, (screen_h - height) // 2)
         self.root.geometry(f"{width}x{height}+{x}+{y}")
 
-    def _set_icon(self) -> None:
-        icon_path = Path(__file__).resolve().parent / "theme" / "gui-icon.png"
+    @staticmethod
+    def _load_image(name: str) -> tk.PhotoImage | None:
+        path = Path(__file__).resolve().parent / "theme" / name
         try:
-            self._icon_image = tk.PhotoImage(file=str(icon_path))
-            self.root.iconphoto(True, self._icon_image)
+            return tk.PhotoImage(file=str(path))
         except (OSError, tk.TclError):
-            self._icon_image = None
+            return None
+
+    def _set_icon(self) -> None:
+        self._icon_image = self._load_image("gui-icon.png")
+        if self._icon_image is not None:
+            with contextlib.suppress(tk.TclError):
+                self.root.iconphoto(True, self._icon_image)
+
+    def _is_high_density(self) -> bool:
+        try:
+            dpi = float(self.root.winfo_fpixels("1i")) / 96.0
+        except (tk.TclError, ValueError):
+            dpi = 1.0
+        try:
+            scaling = float(self.root.tk.call("tk", "scaling")) / (96.0 / 72.0)
+        except (tk.TclError, ValueError):
+            scaling = 1.0
+        return max(dpi, scaling) >= 1.5
 
     # -- typography and widgets -------------------------------------------
     def _configure_fonts(self) -> None:
@@ -270,6 +289,37 @@ class Epub2WebApp:
         )
 
         style.configure(
+            "Icon.TButton",
+            background=BG,
+            foreground=INK_2,
+            bordercolor=BG,
+            lightcolor=BG,
+            darkcolor=BG,
+            relief="flat",
+            padding=(8, 8),
+            focuscolor=ACCENT,
+        )
+        style.map(
+            "Icon.TButton",
+            background=[
+                ("pressed", SURFACE_ALT),
+                ("active", SURFACE_ALT),
+            ],
+            bordercolor=[
+                ("pressed", SURFACE_ALT),
+                ("active", SURFACE_ALT),
+            ],
+            lightcolor=[
+                ("pressed", SURFACE_ALT),
+                ("active", SURFACE_ALT),
+            ],
+            darkcolor=[
+                ("pressed", SURFACE_ALT),
+                ("active", SURFACE_ALT),
+            ],
+        )
+
+        style.configure(
             "Accent.Horizontal.TProgressbar",
             troughcolor=SURFACE_ALT,
             background=ACCENT,
@@ -301,16 +351,43 @@ class Epub2WebApp:
 
         brand = tk.Frame(header, bg=BG)
         brand.pack(fill="x")
-        mark = tk.Canvas(brand, width=10, height=10, bg=BG, highlightthickness=0)
+
+        brand_mark = tk.Frame(brand, bg=BG)
+        brand_mark.pack(side="left")
+        mark = tk.Canvas(brand_mark, width=10, height=10, bg=BG, highlightthickness=0)
         mark.create_oval(1, 1, 9, 9, fill=ACCENT, outline="")
         mark.pack(side="left", pady=(1, 0))
         tk.Label(
-            brand,
+            brand_mark,
             text="epub2web",
             bg=BG,
             fg=ACCENT,
             font=self.font_brand,
         ).pack(side="left", padx=(8, 0))
+
+        brand_actions = tk.Frame(brand, bg=BG)
+        brand_actions.pack(side="right")
+        self.website_button = ttk.Button(
+            brand_actions,
+            text="Website",
+            style="Ghost.TButton",
+            command=self._open_website,
+        )
+        self.website_button.pack(side="right")
+
+        self._github_icon = self._load_image(
+            "gui-github-2x.png" if self._is_high_density() else "gui-github.png"
+        )
+        self.github_button = ttk.Button(
+            brand_actions,
+            text="GitHub",
+            style="Icon.TButton",
+            command=self._open_github,
+            takefocus=True,
+        )
+        if self._github_icon is not None:
+            self.github_button.configure(image=self._github_icon, compound="none")
+        self.github_button.pack(side="right", padx=(0, 8))
 
         tk.Label(
             header,
@@ -713,17 +790,36 @@ class Epub2WebApp:
     def _open_preview(self) -> None:
         if not self.preview_url or not self._preview_running:
             return
+        self._open_external_url(
+            self.preview_url,
+            "Open preview",
+            detail_label="PREVIEW ADDRESS",
+        )
+
+    def _open_github(self) -> None:
+        self._open_external_url(GITHUB_URL, "Open GitHub")
+
+    def _open_website(self) -> None:
+        self._open_external_url(WEBSITE_URL, "Open website")
+
+    def _open_external_url(
+        self,
+        url: str,
+        title: str,
+        *,
+        detail_label: str = "ADDRESS",
+    ) -> None:
         try:
-            opened = webbrowser.open(self.preview_url)
+            opened = webbrowser.open(url)
         except Exception as exc:
             self._show_error("Could not open the browser", str(exc))
             return
         if not opened:
             self._show_info(
-                "Open preview",
+                title,
                 "Open this address in your browser:",
-                self.preview_url,
-                "PREVIEW ADDRESS",
+                url,
+                detail_label,
             )
 
     def _open_preview_async(self) -> None:

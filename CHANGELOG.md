@@ -6,6 +6,10 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+### Added
+
+- Add GitHub and project website shortcuts to the desktop GUI header.
+
 ### Changed
 
 - Point the download page’s Release notes button at the site changelog instead of the GitHub release page.

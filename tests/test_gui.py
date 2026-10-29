@@ -18,12 +18,57 @@ from epub2web.worker import main as worker_main
 CH1 = "OEBPS/ch1.xhtml"
 
 
-def test_tk_app_imports_when_tk_is_available():
+def _import_tk_app():
     try:
         import tkinter  # noqa: F401
     except ImportError as exc:
         pytest.skip(f"Tkinter is not available: {exc}")
-    import epub2web.tk_app  # noqa: F401
+    from epub2web import tk_app
+
+    return tk_app
+
+
+def test_tk_app_imports_when_tk_is_available():
+    assert _import_tk_app()
+
+
+def test_tk_app_header_links_open_project_pages(monkeypatch):
+    tk_app = _import_tk_app()
+    opened = []
+    monkeypatch.setattr(tk_app.webbrowser, "open", lambda url: opened.append(url) or True)
+
+    app = object.__new__(tk_app.Epub2WebApp)
+    app._open_github()
+    app._open_website()
+
+    assert opened == [tk_app.GITHUB_URL, tk_app.WEBSITE_URL]
+    assert tk_app.GITHUB_URL == "https://github.com/Gowwre/epub2web"
+    assert tk_app.WEBSITE_URL == "https://gowwre.github.io/epub2web/"
+
+
+def test_tk_app_header_links_fall_back_to_visible_address(monkeypatch):
+    tk_app = _import_tk_app()
+    monkeypatch.setattr(tk_app.webbrowser, "open", lambda _url: False)
+    messages = []
+    app = object.__new__(tk_app.Epub2WebApp)
+    app._show_info = lambda title, message, detail="", detail_label="DETAILS": messages.append(
+        (title, detail)
+    )
+
+    app._open_github()
+    app._open_website()
+
+    assert messages == [
+        ("Open GitHub", tk_app.GITHUB_URL),
+        ("Open website", tk_app.WEBSITE_URL),
+    ]
+
+
+def test_tk_app_assets_exist():
+    tk_app = _import_tk_app()
+    theme = Path(tk_app.__file__).resolve().parent / "theme"
+    for name in ("gui-icon.png", "gui-github.png", "gui-github-2x.png"):
+        assert (theme / name).is_file(), name
 
 
 def test_gui_self_test_checks_tk():

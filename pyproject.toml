@@ -66,6 +66,8 @@ epub2web = [
   "theme/assets/fonts/*",
   "theme/favicon.svg",
   "theme/gui-icon.png",
+  "theme/gui-github.png",
+  "theme/gui-github-2x.png",
   "py.typed",
 ]
 
