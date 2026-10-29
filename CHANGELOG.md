@@ -6,6 +6,8 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+## 0.5.0 - 2026-10-29
+
 ### Added
 
 - Add a **Change…** action next to the desktop app’s output path so you can choose where generated sites are saved. The app creates the `<book>-site` folder inside the selected location.
