@@ -587,6 +587,37 @@ kbd {
   font-variation-settings: normal;
 }
 
+/* Some print editions use an image as the chapter's ornamental drop cap.
+   Keep it in the text flow as a float instead of shrinking it like an inline
+   decoration. */
+.book-page p.has-dropcap-image::first-letter {
+  float: none;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  font-weight: inherit;
+  color: inherit;
+  padding: 0;
+  font-variation-settings: normal;
+}
+.book-page p img[data-dropcap] {
+  float: inline-start;
+  width: auto;
+  max-width: 6em;
+  max-height: 4.6em;
+  margin-block: 0.15em 0.1em;
+  margin-inline: 0 0.28em;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+[data-theme="light"] .book-page p img[data-dropcap] { mix-blend-mode: multiply; }
+[data-theme="dark"] .book-page p img[data-dropcap] {
+  filter: invert(1);
+  mix-blend-mode: screen;
+}
+
 .book-page p {
   margin: 0 0 1.12em;
   hanging-punctuation: first last;
@@ -882,6 +913,38 @@ ol.book-list li::marker { font-family: var(--font-ui); font-size: 0.85em; font-w
   text-decoration: none;
 }
 .toc-sections a:hover { color: var(--accent); }
+
+/* ------------------------------------------------------------------
+   Reference pages
+   ------------------------------------------------------------------ */
+
+.book-page .hanging {
+  margin-block: 0 0.85em;
+  padding-inline-start: 1.8em;
+  text-indent: -1.8em;
+}
+
+.book-page > p.index-entry {
+  margin: 0.9em 0 0.12em;
+  font-weight: 600;
+}
+.book-page > p.index-subentry {
+  margin: 0 0 0.12em;
+  padding-inline-start: 1.8em;
+  font-size: 0.93em;
+  line-height: 1.5;
+  color: var(--ink-2);
+}
+
+@media (min-width: 1100px) {
+  .book-page:has(> p.index-entry) {
+    column-count: 2;
+    column-gap: 4rem;
+    column-rule: 1px solid var(--rule);
+  }
+  .book-page:has(> p.index-entry) > .chapter-header { column-span: all; }
+  .book-page:has(> p.index-entry) > p { break-inside: avoid; }
+}
 
 /* ------------------------------------------------------------------
    Home
@@ -1721,9 +1784,10 @@ dialog.lightbox figcaption b { color: #f4eadb; }
 }
 .home-more a:hover { color: var(--accent); }
 
-/* Front-matter pages in the generic profile are usually short documents;
-   keep their titles from competing with the cover. */
-.page-type-frontmatter .chapter-title {
+/* Front- and back-matter titles are usually reference headings, not chapter
+   openers; keep them from competing with the main reading flow. */
+.page-type-frontmatter .chapter-title,
+.page-type-backmatter .chapter-title {
   font-size: clamp(1.75rem, 1.35rem + 1.4vw, 2.9rem);
   line-height: 1.04;
   letter-spacing: -0.02em;

@@ -151,6 +151,76 @@ def test_article_wrappers_pre_and_definition_lists_are_kept(epub_factory, tmp_pa
     assert "Definition" in html
 
 
+def test_section_title_paragraphs_become_the_page_header(epub_factory, tmp_path: Path):
+    variant = epub_factory(
+        "title-paragraph.epub",
+        replacements={
+            CH1: [
+                (
+                    b'<h1 id="ch1">Chapter One</h1>',
+                    b'<p class="fmtitleq" id="ch1"><span>CHAPTER ONE</span></p>',
+                )
+            ]
+        },
+    )
+    site = tmp_path / "site"
+    assert _build(variant, site) == 0
+
+    soup = BeautifulSoup((site / "read" / "1" / "index.html").read_text(encoding="utf-8"), "lxml")
+    main = soup.find("main")
+    assert main is not None
+    assert main.get_text(" ", strip=True).count("CHAPTER ONE") == 1
+    header = soup.find("header", class_="chapter-header")
+    assert header is not None
+    assert not header.has_attr("data-chrome")
+    assert header.find("h1", class_="chapter-title").get_text(strip=True) == "CHAPTER ONE"
+    assert soup.find("h2", class_="section-title", string="CHAPTER ONE") is None
+
+
+def test_dropcap_image_keeps_its_ornamental_float(epub_factory, tmp_path: Path):
+    variant = epub_factory(
+        "dropcap.epub",
+        replacements={
+            CH1: [
+                (
+                    b"<p>Hello <em>world</em>.</p>",
+                    b'<p><span class="dropcap"><img src="images/cover.png" alt=""/></span>'
+                    b" Hello world.</p>",
+                )
+            ]
+        },
+    )
+    site = tmp_path / "site"
+    assert _build(variant, site) == 0
+
+    html = (site / "read" / "1" / "index.html").read_text(encoding="utf-8")
+    assert 'class="lede has-dropcap-image"' in html
+    assert 'data-dropcap="true"' in html
+    assert 'src="/images/cover.png"' in html
+
+
+def test_index_and_reference_classes_survive(epub_factory, tmp_path: Path):
+    variant = epub_factory(
+        "reference-classes.epub",
+        replacements={
+            CH1: [
+                (
+                    b"<p>Hello <em>world</em>.</p>",
+                    b'<p class="index">Alpha</p><p class="indexsub">Beta</p>'
+                    b'<p class="hangs">Citation</p>',
+                )
+            ]
+        },
+    )
+    site = tmp_path / "site"
+    assert _build(variant, site) == 0
+
+    html = (site / "read" / "1" / "index.html").read_text(encoding="utf-8")
+    assert 'class="lede index-entry"' in html
+    assert 'class="index-subentry"' in html
+    assert 'class="hanging"' in html
+
+
 def test_figure_caption_anchors_point_to_the_figure(epub_factory, tmp_path: Path):
     variant = epub_factory(
         "figure-anchor.epub",

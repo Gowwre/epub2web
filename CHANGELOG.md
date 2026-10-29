@@ -19,9 +19,12 @@ All notable, user-facing changes are documented here. The format follows
 
 - Slightly increase the default reading size on phones, make sidebar section links easier to tap, and keep the active chapter visible in long contents lists.
 - Page-turn arrow keys now ignore text selections, modifier keys, tables, and code blocks so they do not interrupt horizontal scrolling.
+- Use the EPUB’s own title text for front- and back-matter headings, avoiding a duplicate title line beneath the page heading.
+- Give index entries and reference lists their proper layout: nested index entries, hanging indents for citations, and a two-column index on wide screens.
 
 ### Fixed
 
+- Restore image-based chapter drop caps as floated ornaments that blend with the paper instead of shrinking to a tiny inline mark.
 - Prevent long chapter titles and URLs from running past the edge of the page, especially on phones.
 - Make figure references such as “Figure 1.2” jump to the image instead of scrolling past it to the caption.
 - Stop repeating a chapter title twice in the previous/next cards.

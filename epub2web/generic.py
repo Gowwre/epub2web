@@ -464,6 +464,11 @@ def clean_doc(soup: BeautifulSoup) -> BeautifulSoup:
             else:
                 a.decompose()
 
+    for span in body.find_all("span"):
+        if "dropcap" in class_names(span):
+            for img in span.find_all("img"):
+                img["data-dropcap"] = "true"
+
     while True:
         span = body.find("span", id=False)
         if span is None:
@@ -1183,6 +1188,22 @@ class GenericExtractor:
             used_ids.add(hid)
             return hid
 
+        def paragraph_classes(el: Tag, cls: str) -> str:
+            nonlocal first_para
+            classes: list[str] = []
+            if page["type"] == "chapter" and first_para and "right" not in cls:
+                classes.append("lede")
+                first_para = False
+            if el.find("img", attrs={"data-dropcap": "true"}):
+                classes.append("has-dropcap-image")
+            if "indexsub" in cls:
+                classes.append("index-subentry")
+            elif "index" in cls:
+                classes.append("index-entry")
+            if "hangs" in cls:
+                classes.append("hanging")
+            return f' class="{" ".join(classes)}"' if classes else ""
+
         def header_for(elements: list[Tag]) -> str:
             text = " ".join(heading_text(e) for e in elements).strip()
             anchors_parts: list[str] = []
@@ -1204,10 +1225,16 @@ class GenericExtractor:
                 tag.attrs.pop("id", None)
             inner_html = " ".join(self._inline(e, source_path).strip() for e in elements)
             _, number_label, title = parse_label(text)
+            plain_title = any("fmtitleq" in class_names(e) for e in elements)
             # Keep the source wording exactly; the split is only layout. If
             # the heading contains a footnote/link marker, keep the whole
             # heading as the title so the marker is not duplicated or lost.
-            if has_content_link:
+            # Contents links around section titles are navigation, not prose,
+            # so use the plain heading text for those title paragraphs.
+            if plain_title and not has_content_link:
+                number_html = ""
+                title_html = html.escape(title)
+            elif has_content_link:
                 number_html = ""
                 title_html = inner_html or html.escape(text)
             elif number_label and title and title != number_label:
@@ -1231,13 +1258,18 @@ class GenericExtractor:
         # The first heading becomes the page header, preserving its text.
         if blocks:
             first = blocks[0]
-            if first.name in ("h1", "h2", "h3") or "chaptertitle" in class_names(first):
+            first_cls = class_names(first)
+            if (
+                first.name in ("h1", "h2", "h3")
+                or "chaptertitle" in first_cls
+                or "fmtitleq" in first_cls
+            ):
                 consumed = [first]
                 i = 1
                 # "CHAPTER ONE" + title as two adjacent paragraphs/headings.
                 if (
                     first.name == "p"
-                    and "chaptertitle" in class_names(first)
+                    and "chaptertitle" in first_cls
                     and i < len(blocks)
                     and (
                         blocks[i].name in ("h1", "h2", "h3")
@@ -1298,9 +1330,7 @@ class GenericExtractor:
 
             if "image" in cls or (name == "p" and el.find("img")):
                 if name == "p" and el.get_text(strip=True):
-                    pcls = ' class="lede"' if page["type"] == "chapter" and first_para else ""
-                    if pcls:
-                        first_para = False
+                    pcls = paragraph_classes(el, cls)
                     pid = f' id="{html.escape(el["id"])}"' if el.get("id") else ""
                     out.append(
                         f"<p{pid}{pcls}>{self._inline(el, page['source_files'][0]).strip()}</p>"
@@ -1464,13 +1494,7 @@ class GenericExtractor:
                 i += 1
                 continue
 
-            pcls = (
-                ' class="lede"'
-                if page["type"] == "chapter" and first_para and "right" not in cls
-                else ""
-            )
-            if pcls:
-                first_para = False
+            pcls = paragraph_classes(el, cls)
             pid = f' id="{html.escape(el["id"])}"' if el.get("id") else ""
             out.append(f"<p{pid}{pcls}>{self._inline(el, source_path).strip()}</p>")
             i += 1
