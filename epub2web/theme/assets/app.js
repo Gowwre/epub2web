@@ -382,11 +382,11 @@
 
   function openSearch() {
     openDialog(searchDialog);
+    if (searchInput) {
+      searchInput.focus();
+      searchInput.select();
+    }
     loadSearch().then(function () {
-      if (searchInput) {
-        searchInput.focus();
-        searchInput.select();
-      }
       renderSearch();
     });
   }
@@ -695,6 +695,24 @@
     if (location.hash) setActive(location.hash.slice(1));
   }
 
+  function revealSidebarCurrent() {
+    const sidebar = document.querySelector(".sidebar");
+    const current = sidebar
+      ? sidebar.querySelector('.sidebar-link[aria-current="page"]')
+      : null;
+    if (!sidebar || !current) return;
+    const sidebarRect = sidebar.getBoundingClientRect();
+    const currentRect = current.getBoundingClientRect();
+    if (currentRect.top >= sidebarRect.top && currentRect.bottom <= sidebarRect.bottom) return;
+    const top = current.offsetTop - sidebar.clientHeight / 3;
+    sidebar.scrollTop = Math.max(0, top);
+  }
+
+  if (document.querySelector(".sidebar")) {
+    revealSidebarCurrent();
+    window.addEventListener("resize", revealSidebarCurrent);
+  }
+
   /* ------------------------------------------------------------------
      Keyboard shortcuts
      ------------------------------------------------------------------ */
@@ -704,9 +722,19 @@
     return tag === "input" || tag === "textarea" || tag === "select" || target.isContentEditable;
   }
 
+  function isScrollableRegion(target) {
+    return Boolean(target && target.closest && target.closest(".table-wrap, .book-pre"));
+  }
+
+  function hasSelection() {
+    const selection = window.getSelection ? window.getSelection() : null;
+    return Boolean(selection && !selection.isCollapsed);
+  }
+
   document.addEventListener("keydown", function (event) {
     if (event.defaultPrevented) return;
-    if (event.key === "/" && !isTyping(event.target) && !event.metaKey && !event.ctrlKey && !event.altKey) {
+    if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
+    if (event.key === "/" && !isTyping(event.target)) {
       const openDialogEl = document.querySelector("dialog[open]");
       if (openDialogEl) return;
       event.preventDefault();
@@ -714,7 +742,14 @@
       return;
     }
     if (event.key === "ArrowLeft" || event.key === "ArrowRight") {
-      if (isTyping(event.target) || document.querySelector("dialog[open]")) return;
+      if (
+        isTyping(event.target) ||
+        isScrollableRegion(event.target) ||
+        hasSelection() ||
+        document.querySelector("dialog[open]")
+      ) {
+        return;
+      }
       const href = event.key === "ArrowLeft" ? body.getAttribute("data-prev") : body.getAttribute("data-next");
       if (href) {
         event.preventDefault();

@@ -15,14 +15,14 @@
       <a class="chapter-nav-card chapter-nav-prev" href="{{ prev.route }}">
         <span class="chapter-nav-kicker">{{ icon("arrow-left", 16) }} Previous</span>
         <span class="chapter-nav-title">{{ prev.short_title }}</span>
-        <span class="chapter-nav-sub">{{ prev.title }}</span>
+        {% if prev.title and prev.title != prev.short_title %}<span class="chapter-nav-sub">{{ prev.title }}</span>{% endif %}
       </a>
       {% else %}<span></span>{% endif %}
       {% if next %}
       <a class="chapter-nav-card chapter-nav-next" href="{{ next.route }}">
         <span class="chapter-nav-kicker">Next {{ icon("arrow-right", 16) }}</span>
         <span class="chapter-nav-title">{{ next.short_title }}</span>
-        <span class="chapter-nav-sub">{{ next.title }}</span>
+        {% if next.title and next.title != next.short_title %}<span class="chapter-nav-sub">{{ next.title }}</span>{% endif %}
       </a>
       {% endif %}
     </nav>

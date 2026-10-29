@@ -151,6 +151,41 @@ def test_article_wrappers_pre_and_definition_lists_are_kept(epub_factory, tmp_pa
     assert "Definition" in html
 
 
+def test_figure_caption_anchors_point_to_the_figure(epub_factory, tmp_path: Path):
+    variant = epub_factory(
+        "figure-anchor.epub",
+        replacements={
+            CH1: [
+                (
+                    b"<p>Hello <em>world</em>.</p>",
+                    b'<p>Hello <a href="#fig-one">figure</a>.</p>',
+                ),
+                (
+                    b"<figcaption>Figure one.</figcaption>",
+                    b'<figcaption><span id="fig-one"></span>Figure one.</figcaption>',
+                ),
+            ]
+        },
+    )
+    site = tmp_path / "site"
+    assert _build(variant, site) == 0
+
+    html = (site / "read" / "1" / "index.html").read_text(encoding="utf-8")
+    assert html.count('id="fig-one"') == 1
+    assert '<span id="fig-one"></span><figure' in html
+    assert '<a href="#fig-one">figure</a>' in html
+
+    soup = BeautifulSoup(html, "lxml")
+    figure = soup.find("figure")
+    assert figure is not None
+    anchor = figure.find_previous_sibling("span")
+    assert anchor is not None
+    assert anchor.get("id") == "fig-one"
+    caption = figure.find("figcaption")
+    assert caption is not None
+    assert caption.find("span", id="fig-one") is None
+
+
 def test_heading_images_and_empty_links_do_not_duplicate(epub_factory, tmp_path: Path):
     variant = epub_factory(
         "heading.epub",

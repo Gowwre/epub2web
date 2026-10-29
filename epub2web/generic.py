@@ -1084,7 +1084,7 @@ class GenericExtractor:
         self._prepare_html(el, doc_path)
         return str(el)
 
-    def _image_html(self, img: Tag, doc_path: str, has_caption: bool, caption_id: str) -> str:
+    def _image_html(self, img: Tag, doc_path: str, has_caption: bool) -> str:
         src = img.get("src") or ""
         info = image_info(self.book, self.images, doc_path, src)
         if not info:
@@ -1092,30 +1092,44 @@ class GenericExtractor:
         alt = img.get("alt") or ""
         if has_caption:
             alt = ""
-        described = (
-            f' aria-describedby="{html.escape(caption_id)}"' if has_caption and caption_id else ""
-        )
         name = html.escape(info["name"])
         w = info["width"]
         h = info["height"]
         attrs = f'width="{w}" height="{h}"' if w and h else ""
-        img_tag = f'<img src="/images/{name}" {attrs} alt="{html.escape(alt)}"{described} loading="lazy" decoding="async">'
+        img_tag = f'<img src="/images/{name}" {attrs} alt="{html.escape(alt)}" loading="lazy" decoding="async">'
         if info.get("webp"):
             picture = f'<picture><source srcset="/images/{html.escape(info["webp"])}" type="image/webp">{img_tag}</picture>'
         else:
             picture = img_tag
         return f'<a class="lightbox-link" href="/images/{name}" aria-label="View figure larger">{picture}</a>'
 
+    @staticmethod
+    def _take_caption_ids(caps: list[Tag]) -> list[str]:
+        """Move caption anchors to the figure so references reveal the image."""
+        ids: list[str] = []
+        for cap in caps:
+            nodes = [cap, *cap.find_all(id=True)]
+            for node in nodes:
+                node_id = node.get("id")
+                if not node_id or node_id in ids:
+                    continue
+                ids.append(node_id)
+                del node["id"]
+        return ids
+
     def _figure(self, imgs: list[Tag], caps: list[Tag], doc_path: str, index: int) -> str:
-        caption_html = "".join(f"<p>{self._inline(c, doc_path).strip()}</p>" for c in caps)
         caption_id = f"fig-{index}-caption"
-        has_caption = bool(caption_html)
-        body = "".join(self._image_html(img, doc_path, has_caption, caption_id) for img in imgs)
+        has_caption = bool(caps)
+        body = "".join(self._image_html(img, doc_path, has_caption) for img in imgs)
         if not body:
             return ""
+        anchor_ids = self._take_caption_ids(caps)
+        caption_html = "".join(f"<p>{self._inline(c, doc_path).strip()}</p>" for c in caps)
+        has_caption = bool(caption_html)
         cls = "figure figure-multi" if len(imgs) > 1 else "figure"
         figcap = f'<figcaption id="{caption_id}">{caption_html}</figcaption>' if has_caption else ""
-        return f'<figure class="{cls}" data-count="{len(imgs)}">{body}{figcap}</figure>'
+        anchors = "".join(f'<span id="{html.escape(node_id)}"></span>' for node_id in anchor_ids)
+        return f'{anchors}<figure class="{cls}" data-count="{len(imgs)}">{body}{figcap}</figure>'
 
     def _convert_page(self, page: dict, soup: BeautifulSoup) -> tuple[str, list[dict]]:
         body = soup.body
@@ -1378,7 +1392,8 @@ class GenericExtractor:
                         for candidate in el.find_all("p")
                         if candidate.get_text(strip=True) and not candidate.find("img")
                     ]
-                out.append(self._anchors(el) + self._figure(imgs, caps, source_path, fig_index[0]))
+                fig = self._figure(imgs, caps, source_path, fig_index[0])
+                out.append(self._anchors(el) + fig)
                 i += 1
                 continue
 

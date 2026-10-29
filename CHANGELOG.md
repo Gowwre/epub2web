@@ -15,6 +15,18 @@ All notable, user-facing changes are documented here. The format follows
 - Add right-to-left layout support for RTL book languages, including logical positioning and mirrored navigation arrows.
 - Count CJK and Thai reading length by characters for estimates and whole-book progress.
 
+### Changed
+
+- Slightly increase the default reading size on phones, make sidebar section links easier to tap, and keep the active chapter visible in long contents lists.
+- Page-turn arrow keys now ignore text selections, modifier keys, tables, and code blocks so they do not interrupt horizontal scrolling.
+
+### Fixed
+
+- Prevent long chapter titles and URLs from running past the edge of the page, especially on phones.
+- Make figure references such as “Figure 1.2” jump to the image instead of scrolling past it to the caption.
+- Stop repeating a chapter title twice in the previous/next cards.
+- Focus the search field immediately, and improve the accessible name of the header logo.
+
 ## 0.5.0 - 2026-10-29
 
 ### Added

@@ -76,7 +76,7 @@ body {
   margin: 0;
   min-height: 100vh;
   font-family: var(--font-body);
-  font-size: var(--reader-font-size, clamp(1.02rem, 0.96rem + 0.28vw, 1.18rem));
+  font-size: var(--reader-font-size, clamp(1.05rem, 1.05rem + 0.165vw, 1.18rem));
   line-height: var(--reader-line-height, 1.7);
   color: var(--ink);
   background:
@@ -397,7 +397,7 @@ kbd {
 }
 .sidebar-sections a {
   display: block;
-  padding-block: 0.22rem;
+  padding-block: 0.34rem;
   padding-inline: 0.8rem 0;
   font-family: var(--font-ui);
   font-size: 0.69rem;
@@ -518,7 +518,10 @@ kbd {
    Chapter header and body
    ------------------------------------------------------------------ */
 
-.book-page { position: relative; }
+.book-page {
+  position: relative;
+  overflow-wrap: break-word;
+}
 
 .chapter-header {
   position: relative;
@@ -544,6 +547,7 @@ kbd {
   letter-spacing: -0.028em;
   font-weight: 600;
   font-variation-settings: "opsz" 90, "SOFT" 40, "WONK" 0;
+  overflow-wrap: break-word;
 }
 
 .chapter-meta {
@@ -722,6 +726,7 @@ ol.book-list li::marker { font-family: var(--font-ui); font-size: 0.85em; font-w
 
 .figure {
   margin: clamp(2rem, 4vw, 3.2rem) 0;
+  scroll-margin-top: calc(var(--header-h) + 24px);
 }
 .figure .lightbox-link {
   display: block;
@@ -932,6 +937,7 @@ ol.book-list li::marker { font-family: var(--font-ui); font-size: 0.85em; font-w
   letter-spacing: -0.045em;
   font-weight: 600;
   font-variation-settings: "opsz" 100, "SOFT" 35, "WONK" 0;
+  overflow-wrap: break-word;
 }
 .hero-title .line { display: block; }
 .hero-title .accent-line { color: var(--accent); }
@@ -1315,7 +1321,7 @@ dialog.sheet[open] { animation: sheet-in 0.18s ease-out; }
   padding-inline: 1.25rem 0;
 }
 .menu-sections a {
-  padding: 0.18rem 0;
+  padding: 0.32rem 0;
   font-family: var(--font-ui);
   font-size: 0.68rem;
   line-height: 1.4;
@@ -1568,10 +1574,10 @@ dialog.lightbox figcaption b { color: #f4eadb; }
   .brand-text { display: none; }
   .nav-link { display: none; }
   .header-inner { padding: 0 0.9rem; }
-  .page-main { padding-top: 2.2rem; padding-inline: 1.15rem; }
+  .page-main { padding-top: 2.2rem; padding-inline: 1rem; }
   .page-main-wide { padding-inline: 1rem; }
   .chapter-header { margin-bottom: 2.2rem; }
-  .chapter-title { font-size: clamp(2.1rem, 1.5rem + 4.4vw, 3rem); }
+  .chapter-title { font-size: clamp(1.62rem, 8.5vw, 3rem); line-height: 1.02; }
   .lede::first-letter { font-size: 3.4em; }
   .figure-multi .lightbox-link,
   .figure[data-count="3"] .lightbox-link,
