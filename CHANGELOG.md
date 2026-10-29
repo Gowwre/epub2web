@@ -6,6 +6,8 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+## 0.6.0 - 2026-10-29
+
 ### Added
 
 - Add reading settings for text size and line spacing, remembered locally in the browser.
