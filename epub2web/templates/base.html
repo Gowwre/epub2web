@@ -35,6 +35,20 @@
         document.documentElement.dataset.theme = theme;
       } catch (e) {}
     })();
+    (function () {
+      try {
+        var raw = localStorage.getItem("epub2web-reader:v1");
+        if (!raw) return;
+        var saved = JSON.parse(raw);
+        if (!saved) return;
+        if (["small", "large", "x-large"].indexOf(saved.size) !== -1) {
+          document.documentElement.dataset.readerSize = saved.size;
+        }
+        if (["compact", "relaxed"].indexOf(saved.spacing) !== -1) {
+          document.documentElement.dataset.readerSpacing = saved.spacing;
+        }
+      } catch (e) {}
+    })();
   </script>
   {% block head %}{% endblock %}
 </head>
@@ -59,6 +73,9 @@
         <a class="nav-link" href="/contents/">Contents</a>
         <button class="icon-btn search-btn" type="button" data-search-open aria-label="Search the book">
           {% from "macros.html" import icon %}{{ icon("search") }}
+        </button>
+        <button class="icon-btn reader-btn" type="button" data-reader-open aria-label="Reading settings" title="Reading settings">
+          <span aria-hidden="true">Aa</span>
         </button>
         <button class="icon-btn theme-btn" type="button" data-theme-toggle aria-label="Switch color theme">
           <span class="theme-icon theme-icon-sun">{{ icon("sun") }}</span>

@@ -9,32 +9,69 @@
   </div>
   <div class="sheet-body menu-toc">
     {% for entry in sidebar.before %}
-    <a class="menu-entry" href="{{ entry.href }}">
+    {% set is_current = entry.id == page.id %}
+    <a class="menu-entry{% if is_current %} is-current{% endif %}" href="{{ entry.href }}"{% if is_current %} aria-current="page" data-menu-current{% endif %}>
       <span>{{ entry.label }}</span>
       <span class="menu-arrow" aria-hidden="true">→</span>
     </a>
     {% endfor %}
     {% for chapter in sidebar.chapters %}
-    <div class="menu-chapter">
-      <a class="menu-entry menu-chapter-link" href="{{ chapter.href }}">
+    {% set is_current = chapter.id == page.id %}
+    <div class="menu-chapter{% if is_current %} is-current{% endif %}"{% if is_current %} data-menu-current{% endif %}>
+      <a class="menu-entry menu-chapter-link" href="{{ chapter.href }}"{% if is_current %} aria-current="page"{% endif %}>
         <span><span class="menu-num">{{ chapter.number }}</span>{{ chapter.label }}</span>
         <span class="menu-arrow" aria-hidden="true">→</span>
       </a>
       {% if chapter.sections %}
-      <div class="menu-sections">
-        {% for section in chapter.sections %}
-        <a href="{{ section.href }}">{{ section.label }}</a>
-        {% endfor %}
-      </div>
+      <details class="menu-sections-details">
+        <summary class="menu-sections-summary">Sections <span class="menu-sections-count">({{ chapter.sections|length }})</span></summary>
+        <div class="menu-sections">
+          {% for section in chapter.sections %}
+          <a href="{{ section.href }}">{{ section.label }}</a>
+          {% endfor %}
+        </div>
+      </details>
       {% endif %}
     </div>
     {% endfor %}
     {% for entry in sidebar.after %}
-    <a class="menu-entry" href="{{ entry.href }}">
+    {% set is_current = entry.id == page.id %}
+    <a class="menu-entry{% if is_current %} is-current{% endif %}" href="{{ entry.href }}"{% if is_current %} aria-current="page" data-menu-current{% endif %}>
       <span>{{ entry.label }}</span>
       <span class="menu-arrow" aria-hidden="true">→</span>
     </a>
     {% endfor %}
+  </div>
+</dialog>
+
+<dialog id="epub2web-reader-dialog" class="sheet reader-sheet" aria-labelledby="epub2web-reader-title">
+  <div class="sheet-head">
+    <div>
+      <p class="sheet-eyebrow">Reading</p>
+      <h2 class="sheet-title" id="epub2web-reader-title">Reading settings</h2>
+    </div>
+    <button class="icon-btn" type="button" data-close aria-label="Close reading settings">{{ icon("close") }}</button>
+  </div>
+  <div class="sheet-body reader-settings">
+    <fieldset class="reader-group">
+      <legend>Text size</legend>
+      <div class="reader-options">
+        <label class="reader-option"><input type="radio" name="reader-size" value="small"><span>Small</span></label>
+        <label class="reader-option"><input type="radio" name="reader-size" value="default" checked><span>Default</span></label>
+        <label class="reader-option"><input type="radio" name="reader-size" value="large"><span>Large</span></label>
+        <label class="reader-option"><input type="radio" name="reader-size" value="x-large"><span>Extra large</span></label>
+      </div>
+    </fieldset>
+    <fieldset class="reader-group">
+      <legend>Line spacing</legend>
+      <div class="reader-options">
+        <label class="reader-option"><input type="radio" name="reader-spacing" value="compact"><span>Compact</span></label>
+        <label class="reader-option"><input type="radio" name="reader-spacing" value="default" checked><span>Default</span></label>
+        <label class="reader-option"><input type="radio" name="reader-spacing" value="relaxed"><span>Relaxed</span></label>
+      </div>
+    </fieldset>
+    <p class="reader-note">These settings apply only to this browser. Your book is unchanged.</p>
+    <button class="reader-reset" type="button" data-reader-reset>Reset to defaults</button>
   </div>
 </dialog>
 
@@ -53,7 +90,7 @@
     </label>
     <p class="search-status" id="epub2web-search-status">Type a word or phrase.</p>
     <div id="epub2web-search-results" class="search-results" aria-live="polite"></div>
-    <p class="search-hint">Press <kbd>/</kbd> anywhere to open search, <kbd>Esc</kbd> to close.</p>
+    <p class="search-hint">Press <kbd>/</kbd> anywhere to open search, <kbd>↑</kbd><kbd>↓</kbd> to choose a result, <kbd>Enter</kbd> to open it, <kbd>Esc</kbd> to close.</p>
   </div>
 </dialog>
 

@@ -92,13 +92,15 @@
      ------------------------------------------------------------------ */
   const menuDialog = document.getElementById("epub2web-menu-dialog");
   const searchDialog = document.getElementById("epub2web-search-dialog");
+  const readerDialog = document.getElementById("epub2web-reader-dialog");
   const lightbox = document.getElementById("epub2web-lightbox");
   let lastFocus = null;
 
   function openDialog(dialog) {
     if (!dialog) return;
-    if (menuDialog && menuDialog !== dialog && menuDialog.open) menuDialog.close();
-    if (searchDialog && searchDialog !== dialog && searchDialog.open) searchDialog.close();
+    document.querySelectorAll("dialog[open]").forEach(function (open) {
+      if (open !== dialog) open.close();
+    });
     lastFocus = document.activeElement;
     if (!dialog.open) dialog.showModal();
   }
@@ -107,8 +109,26 @@
     if (dialog && dialog.open) dialog.close();
   }
 
+  function scrollMenuToCurrent() {
+    if (!menuDialog) return;
+    const current = menuDialog.querySelector("[data-menu-current]");
+    const sheetBody = menuDialog.querySelector(".sheet-body");
+    if (!current || !sheetBody) return;
+    const bodyRect = sheetBody.getBoundingClientRect();
+    const currentRect = current.getBoundingClientRect();
+    const target =
+      sheetBody.scrollTop +
+      currentRect.top -
+      bodyRect.top -
+      (sheetBody.clientHeight - currentRect.height) / 2;
+    sheetBody.scrollTop = Math.max(0, target);
+  }
+
   document.querySelectorAll("[data-menu-open]").forEach(function (button) {
-    button.addEventListener("click", function () { openDialog(menuDialog); });
+    button.addEventListener("click", function () {
+      openDialog(menuDialog);
+      window.requestAnimationFrame(scrollMenuToCurrent);
+    });
   });
   document.querySelectorAll("[data-search-open]").forEach(function (button) {
     button.addEventListener("click", function () {
@@ -128,6 +148,105 @@
       if (lastFocus && typeof lastFocus.focus === "function") lastFocus.focus();
       lastFocus = null;
     });
+  });
+
+  /* ------------------------------------------------------------------
+     Reading settings
+     ------------------------------------------------------------------ */
+  const readerKey = "epub2web-reader:v1";
+  const readerSizes = ["small", "default", "large", "x-large"];
+  const readerSpacings = ["compact", "default", "relaxed"];
+  const readerInputs = readerDialog
+    ? readerDialog.querySelectorAll('input[name="reader-size"], input[name="reader-spacing"]')
+    : [];
+  const readerReset = readerDialog ? readerDialog.querySelector("[data-reader-reset]") : null;
+
+  function defaultReaderSettings() {
+    return { size: "default", spacing: "default" };
+  }
+
+  function readReaderSettings() {
+    const settings = defaultReaderSettings();
+    let raw;
+    try {
+      raw = localStorage.getItem(readerKey);
+    } catch (e) {
+      return settings;
+    }
+    if (!raw) return settings;
+    try {
+      const saved = JSON.parse(raw);
+      if (!saved || typeof saved !== "object") return settings;
+      if (readerSizes.indexOf(saved.size) !== -1) settings.size = saved.size;
+      if (readerSpacings.indexOf(saved.spacing) !== -1) settings.spacing = saved.spacing;
+    } catch (e) {
+      try { localStorage.removeItem(readerKey); } catch (e2) {}
+    }
+    return settings;
+  }
+
+  function applyReaderSettings(settings) {
+    if (settings.size === "default") root.removeAttribute("data-reader-size");
+    else root.setAttribute("data-reader-size", settings.size);
+    if (settings.spacing === "default") root.removeAttribute("data-reader-spacing");
+    else root.setAttribute("data-reader-spacing", settings.spacing);
+  }
+
+  function writeReaderSettings(settings) {
+    try { localStorage.setItem(readerKey, JSON.stringify(settings)); } catch (e) {}
+  }
+
+  function syncReaderInputs(settings) {
+    if (!readerDialog) return;
+    readerDialog.querySelectorAll('input[name="reader-size"]').forEach(function (input) {
+      input.checked = input.value === settings.size;
+    });
+    readerDialog.querySelectorAll('input[name="reader-spacing"]').forEach(function (input) {
+      input.checked = input.value === settings.spacing;
+    });
+  }
+
+  function currentReaderSettings() {
+    const settings = defaultReaderSettings();
+    if (!readerDialog) return settings;
+    const size = readerDialog.querySelector('input[name="reader-size"]:checked');
+    const spacing = readerDialog.querySelector('input[name="reader-spacing"]:checked');
+    if (size && readerSizes.indexOf(size.value) !== -1) settings.size = size.value;
+    if (spacing && readerSpacings.indexOf(spacing.value) !== -1) settings.spacing = spacing.value;
+    return settings;
+  }
+
+  applyReaderSettings(readReaderSettings());
+
+  document.querySelectorAll("[data-reader-open]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      syncReaderInputs(readReaderSettings());
+      openDialog(readerDialog);
+    });
+  });
+
+  readerInputs.forEach(function (input) {
+    input.addEventListener("change", function () {
+      const settings = currentReaderSettings();
+      writeReaderSettings(settings);
+      applyReaderSettings(settings);
+    });
+  });
+
+  if (readerReset) {
+    readerReset.addEventListener("click", function () {
+      try { localStorage.removeItem(readerKey); } catch (e) {}
+      const settings = defaultReaderSettings();
+      applyReaderSettings(settings);
+      syncReaderInputs(settings);
+    });
+  }
+
+  window.addEventListener("storage", function (event) {
+    if (event.key !== readerKey && event.key !== null) return;
+    const settings = readReaderSettings();
+    applyReaderSettings(settings);
+    if (readerDialog && readerDialog.open) syncReaderInputs(settings);
   });
 
   /* ------------------------------------------------------------------
@@ -231,6 +350,11 @@
     });
   }
 
+  function searchResultLinks() {
+    if (!searchResults) return [];
+    return Array.from(searchResults.querySelectorAll("a.search-result"));
+  }
+
   function loadSearch() {
     if (searchIndex) return Promise.resolve(searchIndex);
     if (searchPromise) return searchPromise;
@@ -272,10 +396,35 @@
       window.clearTimeout(searchTimer);
       searchTimer = window.setTimeout(renderSearch, 80);
     });
+    searchInput.addEventListener("keydown", function (event) {
+      if (event.key !== "ArrowDown" && event.key !== "Enter") return;
+      window.clearTimeout(searchTimer);
+      renderSearch();
+      const links = searchResultLinks();
+      if (!links.length) return;
+      event.preventDefault();
+      if (event.key === "Enter") links[0].click();
+      else links[0].focus();
+    });
   }
   if (searchResults) {
     searchResults.addEventListener("click", function (event) {
       if (event.target.closest("a") && searchDialog) searchDialog.close();
+    });
+    searchResults.addEventListener("keydown", function (event) {
+      if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+      const link = event.target.closest("a.search-result");
+      if (!link) return;
+      const links = searchResultLinks();
+      const index = links.indexOf(link);
+      if (index === -1) return;
+      event.preventDefault();
+      if (event.key === "ArrowUp" && index === 0) {
+        if (searchInput) searchInput.focus();
+        return;
+      }
+      const next = links[index + (event.key === "ArrowDown" ? 1 : -1)];
+      if (next) next.focus();
     });
   }
 

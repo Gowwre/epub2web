@@ -110,6 +110,46 @@ def test_rendered_pages_expose_reading_progress(tiny_epub, tmp_path: Path):
     assert end2 == 1.0
 
 
+def test_rendered_site_has_reading_controls(tiny_epub, tmp_path: Path):
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    site = tmp_path / "site"
+
+    GenericExtractor(tiny_epub, content, images).run()
+    render_site(content, site, site_url="http://localhost:8000")
+
+    home = BeautifulSoup((site / "index.html").read_text(encoding="utf-8"), "lxml")
+    assert home.find(attrs={"data-reader-open": True}) is not None
+    reader = home.find("dialog", id="epub2web-reader-dialog")
+    assert reader is not None
+    assert {input["value"] for input in reader.select('input[name="reader-size"]')} == {
+        "small",
+        "default",
+        "large",
+        "x-large",
+    }
+    assert {input["value"] for input in reader.select('input[name="reader-spacing"]')} == {
+        "compact",
+        "default",
+        "relaxed",
+    }
+
+    page = BeautifulSoup((site / "read" / "1" / "index.html").read_text(encoding="utf-8"), "lxml")
+    menu = page.find("dialog", id="epub2web-menu-dialog")
+    assert menu is not None
+    current = menu.find("a", attrs={"aria-current": "page"})
+    assert current is not None
+    assert menu.find(attrs={"data-menu-current": True}) is not None
+    details = menu.find("details", class_="menu-sections-details")
+    assert details is not None
+    assert not details.has_attr("open")
+    assert details.find("summary").get_text(" ", strip=True).startswith("Sections")
+
+    search_hint = page.find("p", class_="search-hint").get_text(" ", strip=True)
+    assert "to choose a result" in search_hint
+    assert "Enter" in search_hint
+
+
 def test_base_path_build(tiny_epub, tmp_path: Path):
     content = tmp_path / "content"
     images = tmp_path / "images"
