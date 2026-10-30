@@ -32,6 +32,13 @@ def _build(epub: Path, site: Path) -> int:
     return main([str(epub), "-o", str(site), "--force"])
 
 
+def _rewrite_epub(source: Path, target: Path, files: dict[str, bytes]) -> Path:
+    with zipfile.ZipFile(source) as src, zipfile.ZipFile(target, "w") as dest:
+        for item in src.infolist():
+            dest.writestr(item, files.get(item.filename, src.read(item.filename)))
+    return target
+
+
 def test_png_cover_keeps_its_real_extension(tiny_epub, tmp_path: Path):
     site = tmp_path / "site"
     assert _build(tiny_epub, site) == 0
@@ -346,12 +353,200 @@ def test_body_level_toc_anchors_survive(epub_factory, tmp_path: Path):
     )
 
 
+def test_toc_entries_inside_one_spine_file_become_pages(tiny_epub, tmp_path: Path):
+    ncx = """<?xml version="1.0" encoding="UTF-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+  <head><meta name="dtb:uid" content="urn:uuid:test-book"/></head>
+  <docTitle><text>A Tiny Book</text></docTitle>
+  <navMap>
+    <navPoint id="n1" playOrder="1">
+      <navLabel><text>Title Page</text></navLabel>
+      <content src="ch1.xhtml#title"/>
+    </navPoint>
+    <navPoint id="n2" playOrder="2">
+      <navLabel><text>One</text></navLabel>
+      <content src="ch1.xhtml#one"/>
+    </navPoint>
+    <navPoint id="n3" playOrder="3">
+      <navLabel><text>Two</text></navLabel>
+      <content src="ch1.xhtml#two"/>
+    </navPoint>
+    <navPoint id="n4" playOrder="4">
+      <navLabel><text>Three</text></navLabel>
+      <content src="ch2.xhtml#three"/>
+    </navPoint>
+  </navMap>
+</ncx>
+"""
+    ch1 = """<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head><title>One</title></head>
+<body>
+  <p><a id="title"></a>Title Page</p>
+  <p>Opening text with a <a href="#two">jump to two</a>.</p>
+  <p><a id="one"></a><b>ONE</b></p>
+  <p>One text.</p>
+  <p><a id="two"></a><b>TWO</b></p>
+  <p>Two text with a <a href="#one">back to one</a>.</p>
+</body>
+</html>
+"""
+    ch2 = """<?xml version="1.0" encoding="utf-8"?>
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+<head><title>Two</title></head>
+<body>
+  <p>Tail of two.</p>
+  <h2 id="three">THREE</h2>
+  <p>Three text.</p>
+</body>
+</html>
+"""
+    variant = _rewrite_epub(
+        tiny_epub,
+        tmp_path / "split-toc.epub",
+        {
+            "OEBPS/toc.ncx": ncx.encode(),
+            CH1: ch1.encode(),
+            CH2: ch2.encode(),
+        },
+    )
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    site = tmp_path / "site"
+    book = GenericExtractor(variant, content, images).run()
+
+    assert [page["title"] for page in book["pages"]] == [
+        "Title Page",
+        "One",
+        "Two",
+        "Three",
+    ]
+    assert book["pages"][2]["source_files"] == [CH1, CH2]
+    assert [entry["label"] for entry in book["toc"]] == [
+        "Title Page",
+        "One",
+        "Two",
+        "Three",
+    ]
+
+    render_site(content, site, site_url="http://localhost:8000")
+    assert verify_site(content, site, verbose=False)["pass"]
+    links = check_site_links(site)
+    assert links["ok"], links
+
+    pages = [
+        BeautifulSoup((site / "read" / str(number) / "index.html").read_text(), "lxml")
+        .find("main")
+        .get_text(" ", strip=True)
+        for number in range(1, 5)
+    ]
+    assert "Opening text" in pages[0] and "One text." not in pages[0]
+    assert "One text." in pages[1] and "Two text" not in pages[1]
+    assert "Two text" in pages[2] and "Tail of two." in pages[2]
+    assert "Three text." in pages[3] and "Two text" not in pages[3]
+    assert 'href="/read/3/#two"' in (site / "read" / "1" / "index.html").read_text(encoding="utf-8")
+    assert 'href="/read/2/#one"' in (site / "read" / "3" / "index.html").read_text(encoding="utf-8")
+
+
+def test_nested_lowercase_ncx_entries_form_a_tree(tiny_epub, tmp_path: Path):
+    ncx = """<?xml version="1.0" encoding="UTF-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+  <head><meta name="dtb:uid" content="urn:uuid:test-book"/></head>
+  <docTitle><text>A Tiny Book</text></docTitle>
+  <navmap>
+    <navpoint id="n1" playOrder="1">
+      <navlabel><text>Chapter One</text></navlabel>
+      <content src="ch1.xhtml#ch1"/>
+      <navpoint id="n2" playOrder="2">
+        <navlabel><text>A Section</text></navlabel>
+        <content src="ch1.xhtml#section-one"/>
+      </navpoint>
+    </navpoint>
+    <navpoint id="n3" playOrder="3">
+      <navlabel><text>Chapter Two</text></navlabel>
+      <content src="ch2.xhtml"/>
+    </navpoint>
+  </navmap>
+</ncx>
+"""
+    variant = _rewrite_epub(
+        tiny_epub,
+        tmp_path / "nested-ncx.epub",
+        {"OEBPS/toc.ncx": ncx.encode()},
+    )
+    with Epub(variant) as book:
+        assert [entry.label for entry in book.toc] == ["Chapter One", "Chapter Two"]
+        assert book.toc[0].depth == 0
+        assert [entry.label for entry in book.toc[0].children] == ["A Section"]
+        assert book.toc[0].children[0].depth == 1
+        assert book.toc[0].children[0].fragment == "section-one"
+        assert [entry.label for entry in book.toc_flat()] == [
+            "Chapter One",
+            "A Section",
+            "Chapter Two",
+        ]
+
+
+def test_toc_tree_drives_contents_and_hides_unlisted_pages(tiny_epub, tmp_path: Path):
+    ncx = """<?xml version="1.0" encoding="UTF-8"?>
+<ncx xmlns="http://www.daisy.org/z3986/2005/ncx/" version="2005-1">
+  <head><meta name="dtb:uid" content="urn:uuid:test-book"/></head>
+  <docTitle><text>A Tiny Book</text></docTitle>
+  <navMap>
+    <navPoint id="n1" playOrder="1">
+      <navLabel><text>Chapter One</text></navLabel>
+      <content src="ch1.xhtml#ch1"/>
+      <navPoint id="n2" playOrder="2">
+        <navLabel><text>A Section</text></navLabel>
+        <content src="ch1.xhtml#section-one"/>
+      </navPoint>
+    </navPoint>
+  </navMap>
+</ncx>
+"""
+    variant = _rewrite_epub(
+        tiny_epub,
+        tmp_path / "toc-tree.epub",
+        {"OEBPS/toc.ncx": ncx.encode()},
+    )
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    site = tmp_path / "site"
+    book = GenericExtractor(variant, content, images).run()
+
+    assert len(book["pages"]) == 2
+    assert [entry["label"] for entry in book["toc"]] == ["Chapter One", "A Section"]
+    assert book["toc_tree"][0]["children"][0]["kind"] == "section"
+    assert book["pages"][0]["in_toc"] is True
+    assert book["pages"][1]["in_toc"] is False
+    assert book["stats"]["chapters"] == 1
+
+    render_site(content, site, site_url="http://localhost:8000")
+    assert verify_site(content, site, verbose=False)["pass"]
+    links = check_site_links(site)
+    assert links["ok"], links
+
+    assert (site / "read" / "2" / "index.html").exists()
+    contents = BeautifulSoup((site / "contents" / "index.html").read_text(), "lxml")
+    assert contents.find("a", href="/read/2/") is None
+    assert "Chapter Two" not in contents.get_text(" ", strip=True)
+    section_link = contents.find("a", href="/read/1/#section-one")
+    assert section_link is not None
+    assert section_link.get_text(strip=True) == "A Section"
+    page1 = (site / "read" / "1" / "index.html").read_text(encoding="utf-8")
+    assert 'href="/read/1/#section-one"' in page1
+    home = BeautifulSoup((site / "index.html").read_text(), "lxml")
+    assert home.find("a", href="/read/2/") is None
+    assert "Chapter Two" not in home.get_text(" ", strip=True)
+
+
 def test_part_and_backmatter_label_detection():
     assert match_key("Man\u2019s Search for Meaning") == match_key("Man's Search for Meaning")
     assert marker_kind("I: Experiences in a Concentration Camp", "I") == "part"
     assert marker_kind("Chapter One", "Chapter One") == "chapter"
     assert marker_kind("II: Logotherapy in a Nutshell", "II") == "part"
     assert label_matches("Preface to the 1992 Edition", FRONT_LABELS)
+    assert label_matches("Prologue", FRONT_LABELS)
     assert label_matches("Postscript 1984", BACK_LABELS)
     assert label_matches("Copyright", BACK_LABELS)
     assert not label_matches("The Notebook", BACK_LABELS)

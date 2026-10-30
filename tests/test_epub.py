@@ -8,3 +8,10 @@ def test_reader(tiny_epub):
         assert len(book.html_spine()) == 2
         assert book.cover_item is not None
         assert [entry.label for entry in book.toc_flat()] == ["Chapter One", "Chapter Two"]
+
+
+def test_resolve_decodes_percent_encoded_fragments():
+    assert Epub._resolve("OEBPS/content.opf", "ch1.xhtml#A%20Section") == (
+        "OEBPS/ch1.xhtml",
+        "A Section",
+    )

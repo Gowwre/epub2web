@@ -12,6 +12,7 @@ from __future__ import annotations
 import base64
 import binascii
 import contextlib
+import copy
 import hashlib
 import html
 import io
@@ -21,7 +22,7 @@ import re
 import unicodedata
 import warnings
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import unquote, urlsplit
 
 from bs4 import BeautifulSoup, NavigableString, Tag, XMLParsedAsHTMLWarning
 from PIL import Image, ImageOps
@@ -56,6 +57,7 @@ FRONT_LABELS = {
     "preface",
     "foreword",
     "introduction",
+    "prologue",
     "translator's note",
     "editor's note",
     "author's note",
@@ -95,6 +97,27 @@ CHAPTER_RE = re.compile(
 )
 NUMBER_RE = re.compile(r"^(\d+)([.:)]?)\s+(.*)$")
 ROMAN_PART_RE = re.compile(r"^([IVXLCDM]+)\s*[:.\u2014\u2013-]\s*(\S.*)$", re.I)
+PAGE_BLOCK_TAGS = {
+    "p",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "table",
+    "ul",
+    "ol",
+    "blockquote",
+    "figure",
+    "img",
+    "picture",
+    "div",
+    "address",
+    "dl",
+    "pre",
+    "math",
+}
 
 DANGEROUS_TAGS = (
     "script",
@@ -638,27 +661,111 @@ def heading_text(el: Tag) -> str:
     return re.sub(r"\s+", " ", el.get_text(" ", strip=True)).strip()
 
 
-def first_heading(soup: BeautifulSoup) -> Tag | None:
-    body = soup.body
-    if body is None:
-        return None
-    # Chapter markers from print conversions take priority.
-    for p in body.find_all("p"):
-        cls = class_names(p)
-        if "chaptertitle" in cls:
-            return p
-    for tag in ("h1", "h2", "h3", "h4"):
-        el = body.find(tag)
-        if el is not None and el.get_text(strip=True):
-            return el
-    for p in body.find_all("p"):
-        cls = class_names(p)
+def direct_page_blocks(body: Tag) -> list[Tag]:
+    """Return the block-level children the page converter can render."""
+    return [
+        child for child in body.children if isinstance(child, Tag) and child.name in PAGE_BLOCK_TAGS
+    ]
+
+
+def first_heading_in_blocks(blocks: list[Tag]) -> Tag | None:
+    """Find the first heading-like element in an already split page."""
+    for block in blocks:
+        if block.name == "p" and "chaptertitle" in class_names(block):
+            return block
+    for name in ("h1", "h2", "h3", "h4"):
+        for block in blocks:
+            if block.name == name and block.get_text(strip=True):
+                return block
+            for element in block.find_all(name):
+                if element.get_text(strip=True):
+                    return element
+    for block in blocks:
+        if block.name != "p":
+            continue
+        cls = class_names(block)
         if (
-            any(k in cls for k in ("title", "heading", "subhead"))
-            and len(p.get_text(" ", strip=True)) < 140
+            any(key in cls for key in ("title", "heading", "subhead"))
+            and len(block.get_text(" ", strip=True)) < 140
         ):
-            return p
+            return block
     return None
+
+
+def has_visible_content(block: Tag) -> bool:
+    """Whether a block still contains text or a rendered object."""
+    if block.get_text(" ", strip=True):
+        return True
+    if block.name in ("img", "picture", "table", "figure", "math"):
+        return True
+    return block.find(["img", "picture", "table", "figure", "math"]) is not None
+
+
+def element_index_path(root: Tag, node: Tag) -> list[int]:
+    """Return child indexes from *root* down to *node*, or ``[]``."""
+    path: list[int] = []
+    current: Tag | None = node
+    while current is not root:
+        parent = current.parent if current is not None else None
+        if parent is None:
+            return []
+        path.append(list(parent.children).index(current))
+        current = parent
+    path.reverse()
+    return path
+
+
+def node_at_path(root: Tag, path: list[int]) -> Tag | None:
+    current = root
+    for index in path:
+        children = list(current.children)
+        if index >= len(children):
+            return None
+        child = children[index]
+        if not isinstance(child, Tag):
+            return None
+        current = child
+    return current
+
+
+def split_block_at(block: Tag, anchor: Tag) -> tuple[Tag, Tag] | None:
+    """Split a top-level block into content before and after an anchor."""
+    path = element_index_path(block, anchor)
+    if not path:
+        return None
+    before = copy.deepcopy(block)
+    after = copy.deepcopy(block)
+    before_anchor = node_at_path(before, path)
+    after_anchor = node_at_path(after, path)
+    if before_anchor is None or after_anchor is None:
+        return None
+
+    node = before_anchor
+    parent = node.parent
+    for sibling in list(node.next_siblings):
+        sibling.extract()
+    node.extract()
+    node = parent
+    while node is not None and node is not before:
+        parent = node.parent
+        for sibling in list(node.next_siblings):
+            sibling.extract()
+        node = parent
+
+    node = after_anchor
+    while node is not None and node is not after:
+        parent = node.parent
+        for sibling in list(node.previous_siblings):
+            sibling.extract()
+        node = parent
+
+    # Both halves keep the ancestors' attributes. Only the trailing half
+    # should keep an id so links do not resolve to the earlier half.
+    after_ids = {tag.get("id") for tag in [after, *after.find_all(id=True)] if tag.get("id")}
+    for tag in [before, *before.find_all(id=True)]:
+        if tag.get("id") in after_ids:
+            del tag["id"]
+    return before, after
 
 
 def image_info(epub: Epub, images: dict, doc_path: str, src: str) -> dict | None:
@@ -698,8 +805,11 @@ class GenericExtractor:
         self.pages: list[dict] = []
         self.page_by_path: dict[str, dict] = {}
         self.route_by_path: dict[str, str] = {}
+        self.route_by_target: dict[tuple[str, str], str] = {}
+        self.current_route = ""
         self.nav_labels: dict[str, str] = {}
         self.toc: list[dict] = []
+        self.toc_tree: list[dict] = []
         self.chapter_count = 0
         self.book_data: dict = {}
 
@@ -755,25 +865,27 @@ class GenericExtractor:
             logger.debug("pages planned", extra={"count": len(self.pages)})
             if not self.pages:
                 raise ValueError("no readable pages found in the EPUB spine")
-            self.route_by_path = {p["source_files"][0]: p["route"] for p in self.pages}
+            self._build_route_maps()
 
             fragments = {}
             source_text = {}
             total_pages = len(self.pages)
             self._report("extract-pages", "Laying out pages", 0, total_pages)
             for index, page in enumerate(self.pages, 1):
-                path = page["source_files"][0]
-                soup = self.cleaned[path]
-                page["images"] = len(soup.body.find_all("img")) if soup.body else 0
-                source_text[path] = normalize_text(text_of(soup.body))
-                fragment, sections = self._convert_page(page, soup)
+                page["images"] = sum(
+                    1
+                    for part in page["parts"]
+                    for block in part["blocks"]
+                    for img in ([block] if block.name == "img" else block.find_all("img"))
+                )
+                page_source = page["source_text"]
+                source_text[page["id"]] = page_source
+                fragment, sections = self._convert_page(page)
                 page["sections"] = sections
                 page["figure_count"] = fragment.count("<figure")
-                page["words"] = len(source_text[path].split())
-                page["characters"] = sum(
-                    1 for character in source_text[path] if not character.isspace()
-                )
-                page["reading_units"] = reading_units(source_text[path])
+                page["words"] = len(page_source.split())
+                page["characters"] = sum(1 for character in page_source if not character.isspace())
+                page["reading_units"] = reading_units(page_source)
                 fragments[page["id"]] = fragment
                 self._report("extract-pages", "Laying out pages", index, total_pages)
 
@@ -781,7 +893,7 @@ class GenericExtractor:
             if not self.pages:
                 raise ValueError("no readable pages found in the EPUB spine")
             self.page_by_path = {p["source_files"][0]: p for p in self.pages}
-            self.route_by_path = {p["source_files"][0]: p["route"] for p in self.pages}
+            self._build_route_maps()
 
             self._report("extract-write", "Saving book data", 0, 1)
             self._write_toc()
@@ -989,8 +1101,135 @@ class GenericExtractor:
     def _nav_label(self, path: str) -> str:
         return self.nav_labels.get(path, "")
 
+    def _split_entries(self, path: str) -> list:
+        """Top-level TOC entries that start a new page inside one spine file."""
+        result = []
+        seen: set[str] = set()
+        for entry in self.book.toc:
+            if entry.path != path or not entry.fragment or entry.fragment in seen:
+                continue
+            seen.add(entry.fragment)
+            result.append(entry)
+        return result
+
+    def _split_segments(self, item, soup: BeautifulSoup, entries: list) -> list[dict] | None:
+        """Cut a spine document into segments at its TOC anchor points.
+
+        A segment keeps the DOM blocks it owns. The leading segment (content
+        before the first anchor) is returned with ``entry=None`` so the caller
+        can append it to the previous reading page. The split is refused if it
+        would not account for all of the document's text.
+        """
+        body = soup.body
+        blocks = direct_page_blocks(body)
+        if not blocks:
+            return None
+        entry_by_id = {entry.fragment: entry for entry in entries}
+        segments: list[dict] = []
+        current_entry = None
+        current_blocks: list[Tag] = []
+
+        for block in blocks:
+            matched_entry = None
+            matched_anchor = None
+            for tag in [block, *block.find_all(id=True)]:
+                anchor_id = tag.get("id")
+                if anchor_id in entry_by_id:
+                    matched_entry = entry_by_id[anchor_id]
+                    matched_anchor = soup.find(id=anchor_id)
+                    break
+            if matched_entry is None or matched_anchor is None:
+                current_blocks.append(block)
+                continue
+
+            halves = split_block_at(block, matched_anchor)
+            if (
+                halves is not None
+                and has_visible_content(halves[0])
+                and has_visible_content(halves[1])
+            ):
+                before, after = halves
+                current_blocks.append(before)
+                if current_blocks:
+                    segments.append({"entry": current_entry, "blocks": current_blocks})
+                current_blocks = [after]
+                current_entry = matched_entry
+            else:
+                if current_blocks:
+                    segments.append({"entry": current_entry, "blocks": current_blocks})
+                current_blocks = [block]
+                current_entry = matched_entry
+
+        if current_blocks:
+            segments.append({"entry": current_entry, "blocks": current_blocks})
+
+        if not any(segment["entry"] is not None for segment in segments):
+            return None
+        full_text = normalize_text(text_of(body))
+        segment_text = normalize_text(
+            " ".join(text_of(block) for segment in segments for block in segment["blocks"])
+        )
+        if full_text != segment_text:
+            logger.warning(
+                "TOC split would lose text; keeping one page",
+                extra={"path": item.path},
+            )
+            return None
+        return segments
+
+    def _fallback_label(self, item, soup: BeautifulSoup, blocks: list[Tag]) -> str:
+        label = self._nav_label(item.path)
+        if label:
+            return label
+        heading = first_heading_in_blocks(blocks)
+        return (
+            (heading_text(heading) if heading else "")
+            or self.book._text(soup.find("title"))
+            or Path(item.path).stem
+        )
+
+    def _first_nav_entry(self, path: str):
+        return next(
+            (entry for entry in self.book.toc_flat() if entry.path == path),
+            None,
+        )
+
+    def _new_page(
+        self,
+        path: str,
+        label: str,
+        blocks: list[Tag],
+        toc_entry=None,
+    ) -> dict:
+        display, number_label, title = parse_label(label)
+        return {
+            "source_files": [path],
+            "parts": [{"path": path, "blocks": blocks}],
+            "label": label,
+            "display_title": display,
+            "title": title,
+            "number_label": number_label,
+            "number_short": number_short(number_label),
+            "marker": False,
+            "marker_kind": "",
+            "heading": "",
+            "words": 0,
+            "type": "chapter",
+            "id": "",
+            "route": "",
+            "toc_entry": toc_entry,
+            "toc_fragment": toc_entry.fragment if toc_entry else "",
+        }
+
+    @staticmethod
+    def _append_part(page: dict, path: str, blocks: list[Tag]) -> None:
+        page["parts"].append({"path": path, "blocks": blocks})
+        if path not in page["source_files"]:
+            page["source_files"].append(path)
+
     def _plan_pages(self) -> list[dict]:
-        pages = []
+        pages: list[dict] = []
+        previous_page = None
         for item in self.items:
             soup = self.cleaned.get(item.path)
             if soup is None or soup.body is None:
@@ -1005,31 +1244,64 @@ class GenericExtractor:
                 path, _ = self.book._resolve(item.path, src)
                 if self.book.cover_item and path == self.book.cover_item.path:
                     continue
-            label = self._nav_label(item.path)
-            heading = first_heading(soup)
-            htext = heading_text(heading) if heading else ""
-            if not label:
-                label = htext or self.book._text(soup.find("title")) or Path(item.path).stem
-            display, number_label, title = parse_label(label)
+
+            blocks = direct_page_blocks(soup.body)
+            if not blocks:
+                continue
+            entries = self._split_entries(item.path)
+            segments = self._split_segments(item, soup, entries) if entries else None
+            if segments is None:
+                page = self._new_page(
+                    item.path,
+                    self._fallback_label(item, soup, blocks),
+                    blocks,
+                    toc_entry=self._first_nav_entry(item.path),
+                )
+                pages.append(page)
+                previous_page = page
+                continue
+
+            pending_lead: list[Tag] = []
+            for segment in segments:
+                segment_blocks = segment["blocks"]
+                entry = segment["entry"]
+                if entry is None:
+                    if previous_page is not None:
+                        self._append_part(previous_page, item.path, segment_blocks)
+                    else:
+                        pending_lead.extend(segment_blocks)
+                    continue
+                if pending_lead:
+                    segment_blocks = [*pending_lead, *segment_blocks]
+                    pending_lead = []
+                page = self._new_page(item.path, entry.label, segment_blocks, toc_entry=entry)
+                pages.append(page)
+                previous_page = page
+            if pending_lead:
+                if previous_page is not None:
+                    self._append_part(previous_page, item.path, pending_lead)
+                else:
+                    fallback = (
+                        entries[0].label if entries else self._fallback_label(item, soup, blocks)
+                    )
+                    page = self._new_page(
+                        item.path,
+                        fallback,
+                        pending_lead,
+                        toc_entry=entries[0] if entries else self._first_nav_entry(item.path),
+                    )
+                    pages.append(page)
+                    previous_page = page
+
+        for page in pages:
+            page_blocks = [block for part in page["parts"] for block in part["blocks"]]
+            page["source_text"] = normalize_text(" ".join(text_of(block) for block in page_blocks))
+            heading = first_heading_in_blocks(page_blocks)
+            page["heading"] = heading_text(heading) if heading else ""
             heading_class = class_names(heading) if heading else ""
-            kind = marker_kind(label, htext, heading_class)
-            pages.append(
-                {
-                    "source_files": [item.path],
-                    "label": label,
-                    "display_title": display,
-                    "title": title,
-                    "number_label": number_label,
-                    "number_short": number_short(number_label),
-                    "marker": bool(kind),
-                    "marker_kind": kind,
-                    "heading": htext,
-                    "words": len(text.split()),
-                    "type": "chapter",
-                    "id": "",
-                    "route": "",
-                }
-            )
+            page["marker_kind"] = marker_kind(page["label"], page["heading"], heading_class)
+            page["marker"] = bool(page["marker_kind"])
+            page["words"] = len(page["source_text"].split())
 
         # Where do the chapters start?
         chapter_start = next((i for i, p in enumerate(pages) if p["marker"]), None)
@@ -1075,6 +1347,22 @@ class GenericExtractor:
                 page["type"] = "chapter"
         return pages
 
+    def _build_route_maps(self) -> None:
+        """Map source files and anchors to the page that now contains them."""
+        self.route_by_path = {}
+        self.route_by_target = {}
+        self.page_by_path = {}
+        for page in self.pages:
+            for part in page["parts"]:
+                path = part["path"]
+                self.route_by_path.setdefault(path, page["route"])
+                self.page_by_path.setdefault(path, page)
+                for block in part["blocks"]:
+                    for tag in [block, *block.find_all(id=True)]:
+                        anchor_id = tag.get("id")
+                        if anchor_id:
+                            self.route_by_target.setdefault((path, anchor_id), page["route"])
+
     # -- conversion -------------------------------------------------------
     def _href(self, doc_path: str, href: str) -> str:
         if not href:
@@ -1082,11 +1370,19 @@ class GenericExtractor:
         if href.startswith(("http:", "https:", "ftp:", "//", "mailto:", "tel:", "data:")):
             return href
         parts = urlsplit(href)
+        fragment = unquote(parts.fragment)
         if not parts.path:
-            return f"#{parts.fragment}" if parts.fragment else href
+            if fragment:
+                target_route = self.route_by_target.get((doc_path, fragment), "")
+                if target_route and target_route != self.current_route:
+                    return target_route + f"#{fragment}"
+                return f"#{fragment}"
+            return href
         target, _ = self.book._resolve(doc_path, href)
+        if fragment and (target, fragment) in self.route_by_target:
+            return self.route_by_target[(target, fragment)] + f"#{fragment}"
         if target in self.route_by_path:
-            return self.route_by_path[target] + (f"#{parts.fragment}" if parts.fragment else "")
+            return self.route_by_path[target] + (f"#{fragment}" if fragment else "")
         if target in self.images:
             return f"/images/{self.images[target]['name']}"
         return href
@@ -1169,40 +1465,17 @@ class GenericExtractor:
         anchors = "".join(f'<span id="{html.escape(node_id)}"></span>' for node_id in anchor_ids)
         return f'{anchors}<figure class="{cls}" data-count="{len(imgs)}">{body}{figcap}</figure>'
 
-    def _convert_page(self, page: dict, soup: BeautifulSoup) -> tuple[str, list[dict]]:
-        body = soup.body
-        source_path = page["source_files"][0]
-        blocks = [
-            el
-            for el in body.children
-            if isinstance(el, Tag)
-            and el.name
-            in (
-                "p",
-                "h1",
-                "h2",
-                "h3",
-                "h4",
-                "h5",
-                "h6",
-                "table",
-                "ul",
-                "ol",
-                "blockquote",
-                "figure",
-                "img",
-                "picture",
-                "div",
-                "address",
-                "dl",
-                "pre",
-                "math",
-            )
-        ]
+    def _convert_page(self, page: dict) -> tuple[str, list[dict]]:
+        self.current_route = page["route"]
+        blocks = [(block, part["path"]) for part in page["parts"] for block in part["blocks"]]
         # divs have been flattened in clean_doc; this is defensive.
         out: list[str] = []
         sections: list[dict] = []
-        source_ids = {tag["id"] for tag in body.find_all(id=True) if tag.get("id")}
+        source_ids: set[str] = set()
+        for block, _ in blocks:
+            for tag in [block, *block.find_all(id=True)]:
+                if tag.get("id"):
+                    source_ids.add(tag["id"])
         used_ids: set[str] = set()
         fig_index = [0]
         first_para = True
@@ -1251,12 +1524,12 @@ class GenericExtractor:
             index_anchors[letter] = anchor_id
             return f'<span id="{anchor_id}" class="index-anchor"></span>'
 
-        def header_for(elements: list[Tag]) -> str:
-            text = " ".join(heading_text(e) for e in elements).strip()
+        def header_for(elements: list[tuple[Tag, str]]) -> str:
+            text = " ".join(heading_text(e) for e, _ in elements).strip()
             anchors_parts: list[str] = []
             anchor_tags: list[Tag] = []
             has_content_link = False
-            for e in elements:
+            for e, _ in elements:
                 for tag in e.find_all(id=True):
                     if tag.get_text(strip=True):
                         # A real link in the heading (usually a footnote
@@ -1270,9 +1543,9 @@ class GenericExtractor:
             anchors = "".join(anchors_parts)
             for tag in anchor_tags:
                 tag.attrs.pop("id", None)
-            inner_html = " ".join(self._inline(e, source_path).strip() for e in elements)
+            inner_html = " ".join(self._inline(e, path).strip() for e, path in elements)
             _, number_label, title = parse_label(text)
-            plain_title = any("fmtitleq" in class_names(e) for e in elements)
+            plain_title = any("fmtitleq" in class_names(e) for e, _ in elements)
             # Keep the source wording exactly; the split is only layout. If
             # the heading contains a footnote/link marker, keep the whole
             # heading as the title so the marker is not duplicated or lost.
@@ -1290,7 +1563,7 @@ class GenericExtractor:
             else:
                 number_html = ""
                 title_html = inner_html or html.escape(text)
-            hid = next((e["id"] for e in elements if e.get("id")), "")
+            hid = next((e["id"] for e, _ in elements if e.get("id")), "")
             if not hid:
                 hid = f"ch-{slugify(page['title'])}"
             used_ids.add(hid)
@@ -1304,14 +1577,14 @@ class GenericExtractor:
         i = 0
         # The first heading becomes the page header, preserving its text.
         if blocks:
-            first = blocks[0]
+            first, first_path = blocks[0]
             first_cls = class_names(first)
             if (
                 first.name in ("h1", "h2", "h3")
                 or "chaptertitle" in first_cls
                 or "fmtitleq" in first_cls
             ):
-                consumed = [first]
+                consumed = [(first, first_path)]
                 i = 1
                 # "CHAPTER ONE" + title as two adjacent paragraphs/headings.
                 if (
@@ -1319,8 +1592,8 @@ class GenericExtractor:
                     and "chaptertitle" in first_cls
                     and i < len(blocks)
                     and (
-                        blocks[i].name in ("h1", "h2", "h3")
-                        or "chaptertitle" in class_names(blocks[i])
+                        blocks[i][0].name in ("h1", "h2", "h3")
+                        or "chaptertitle" in class_names(blocks[i][0])
                     )
                 ):
                     consumed.append(blocks[i])
@@ -1340,7 +1613,7 @@ class GenericExtractor:
             )
 
         while i < len(blocks):
-            el = blocks[i]
+            el, source_path = blocks[i]
             name = el.name
             cls = class_names(el)
 
@@ -1361,12 +1634,18 @@ class GenericExtractor:
             if name in ("img", "picture"):
                 imgs = [el] if name == "img" else el.find_all("img")
                 j = i + 1
-                while j < len(blocks) and blocks[j].name == "img":
-                    imgs.append(blocks[j])
+                while (
+                    j < len(blocks) and blocks[j][0].name == "img" and blocks[j][1] == source_path
+                ):
+                    imgs.append(blocks[j][0])
                     j += 1
                 caps = []
-                while j < len(blocks) and "caption" in class_names(blocks[j]):
-                    caps.append(blocks[j])
+                while (
+                    j < len(blocks)
+                    and blocks[j][1] == source_path
+                    and "caption" in class_names(blocks[j][0])
+                ):
+                    caps.append(blocks[j][0])
                     j += 1
                 fig_index[0] += 1
                 fig = self._figure(imgs, caps, source_path, fig_index[0])
@@ -1380,7 +1659,7 @@ class GenericExtractor:
                     pcls = paragraph_classes(el, cls)
                     pid = f' id="{html.escape(el["id"])}"' if el.get("id") else ""
                     out.append(
-                        f"{index_anchor(el, cls)}<p{pid}{pcls}>{self._inline(el, page['source_files'][0]).strip()}</p>"
+                        f"{index_anchor(el, cls)}<p{pid}{pcls}>{self._inline(el, source_path).strip()}</p>"
                     )
                     i += 1
                     continue
@@ -1388,21 +1667,27 @@ class GenericExtractor:
                 anchors = self._anchors(el)
                 j = i + 1
                 while j < len(blocks):
-                    nxt = blocks[j]
+                    nxt, nxt_path = blocks[j]
                     nxt_cls = class_names(nxt)
                     image_only = (
                         nxt.name == "p" and nxt.find("img") and not nxt.get_text(strip=True)
                     )
-                    if not (("image" in nxt_cls and not nxt.get_text(strip=True)) or image_only):
+                    if nxt_path != source_path or not (
+                        ("image" in nxt_cls and not nxt.get_text(strip=True)) or image_only
+                    ):
                         break
                     imgs.extend(nxt.find_all("img"))
                     anchors += self._anchors(nxt)
                     j += 1
                 caps = []
-                while j < len(blocks) and (
-                    "caption" in class_names(blocks[j]) or blocks[j].name == "figcaption"
+                while (
+                    j < len(blocks)
+                    and blocks[j][1] == source_path
+                    and (
+                        "caption" in class_names(blocks[j][0]) or blocks[j][0].name == "figcaption"
+                    )
                 ):
-                    caps.append(blocks[j])
+                    caps.append(blocks[j][0])
                     j += 1
                 fig_index[0] += 1
                 fig = self._figure(imgs, caps, source_path, fig_index[0])
@@ -1478,10 +1763,15 @@ class GenericExtractor:
             if "quote" in cls or "epigraph" in cls:
                 items = []
                 j = i
-                while j < len(blocks) and (
-                    "quote" in class_names(blocks[j]) or "epigraph" in class_names(blocks[j])
+                while (
+                    j < len(blocks)
+                    and blocks[j][1] == source_path
+                    and (
+                        "quote" in class_names(blocks[j][0])
+                        or "epigraph" in class_names(blocks[j][0])
+                    )
                 ):
-                    items.append(f"<p>{self._inline(blocks[j], source_path).strip()}</p>")
+                    items.append(f"<p>{self._inline(blocks[j][0], source_path).strip()}</p>")
                     j += 1
                 out.append(
                     '<blockquote class="book-quote quote-epigraph">'
@@ -1495,10 +1785,14 @@ class GenericExtractor:
                 items = []
                 j = i
                 start = 1
-                while j < len(blocks) and (
-                    "list" in class_names(blocks[j]) or "bullet" in class_names(blocks[j])
+                while (
+                    j < len(blocks)
+                    and blocks[j][1] == source_path
+                    and (
+                        "list" in class_names(blocks[j][0]) or "bullet" in class_names(blocks[j][0])
+                    )
                 ):
-                    item = blocks[j]
+                    item = blocks[j][0]
                     m = strip_leading(item, r"^\s*(?:[•·]|\d+\.)\s*")
                     if m and m.group(0).strip().endswith("."):
                         match = re.match(r"\d+", m.group(0))
@@ -1572,49 +1866,157 @@ class GenericExtractor:
             (self.pages_dir / f"{pid}.html").write_text(fragment, encoding="utf-8")
 
     def _write_toc(self) -> None:
-        toc = []
-        chapters = 0
-        for page in self.pages:
+        page_by_route = {page["route"]: page for page in self.pages}
+        page_by_id = {page["id"]: page for page in self.pages}
+
+        def page_for_entry(entry):
+            if entry.path and entry.fragment:
+                route = self.route_by_target.get((entry.path, entry.fragment))
+                return page_by_route.get(route) if route else None
+            route = self.route_by_path.get(entry.path) if entry.path else None
+            return page_by_route.get(route)
+
+        def page_item(page: dict) -> dict:
             if page["type"] == "chapter":
-                chapters += 1
-                toc.append(
-                    {
-                        "kind": "chapter",
-                        "number": page["number_short"] or str(chapters),
-                        "label": page["title"],
-                        "href": page["route"],
-                        "generated": False,
-                    }
-                )
+                kind = "chapter"
+                label = page["title"]
+                number = page["number_short"]
             elif page["type"] == "part":
-                toc.append(
-                    {
-                        "kind": "part",
-                        "label": page["display_title"],
-                        "href": page["route"],
-                        "generated": False,
-                    }
-                )
+                kind = "part"
+                label = page["display_title"]
+                number = ""
             else:
-                toc.append(
-                    {
-                        "kind": "entry",
-                        "label": page["display_title"],
-                        "href": page["route"],
-                        "generated": False,
-                    }
-                )
-            for section in page["sections"]:
-                toc.append(
+                kind = "entry"
+                label = page["display_title"]
+                number = ""
+            return {
+                "kind": kind,
+                "number": number,
+                "label": label,
+                "href": page["route"],
+                "page_id": page["id"],
+                "generated": False,
+                "children": [],
+            }
+
+        def fallback_tree() -> list[dict]:
+            result = []
+            for page in self.pages:
+                item = page_item(page)
+                item["children"] = [
                     {
                         "kind": "section",
+                        "number": "",
                         "label": section["title"],
                         "href": f"{page['route']}#{section['id']}",
+                        "page_id": page["id"],
                         "generated": False,
+                        "children": [],
                     }
+                    for section in page["sections"]
+                ]
+                result.append(item)
+            return result
+
+        claimed: set[str] = set()
+
+        def build(entries) -> list[dict]:
+            result = []
+            for entry in entries:
+                page = page_for_entry(entry)
+                if page is None:
+                    result.extend(build(entry.children))
+                    continue
+                if page["id"] not in claimed and page.get("toc_entry") is entry:
+                    claimed.add(page["id"])
+                    item = page_item(page)
+                else:
+                    item = {
+                        "kind": "section",
+                        "number": "",
+                        "label": entry.label,
+                        "href": page["route"] + (f"#{entry.fragment}" if entry.fragment else ""),
+                        "page_id": page["id"],
+                        "generated": False,
+                        "children": [],
+                    }
+                item["children"] = build(entry.children)
+                result.append(item)
+            return result
+
+        def has_chapter(items: list[dict]) -> bool:
+            return any(
+                item["kind"] in ("chapter", "part") or has_chapter(item["children"])
+                for item in items
+            )
+
+        tree = build(self.book.toc) if self.book.toc else []
+        if not has_chapter(tree):
+            tree = fallback_tree()
+
+        def add_heading_sections(items: list[dict]) -> None:
+            for item in items:
+                if not item["children"] and item["kind"] in ("chapter", "part"):
+                    page = page_by_id.get(item["page_id"])
+                    if page is not None:
+                        item["children"] = [
+                            {
+                                "kind": "section",
+                                "number": "",
+                                "label": section["title"],
+                                "href": f"{page['route']}#{section['id']}",
+                                "page_id": page["id"],
+                                "generated": False,
+                                "children": [],
+                            }
+                            for section in page["sections"]
+                        ]
+                add_heading_sections(item["children"])
+
+        add_heading_sections(tree)
+
+        chapter_counter = 0
+
+        def assign_chapter_numbers(items: list[dict]) -> None:
+            nonlocal chapter_counter
+            for item in items:
+                if item["kind"] == "chapter":
+                    chapter_counter += 1
+                    if not item["number"]:
+                        item["number"] = str(chapter_counter)
+                assign_chapter_numbers(item["children"])
+
+        assign_chapter_numbers(tree)
+
+        toc: list[dict] = []
+
+        def flatten(items: list[dict], depth: int = 0) -> None:
+            for item in items:
+                toc.append(
+                    {key: value for key, value in item.items() if key != "children"}
+                    | {"depth": depth}
                 )
+                flatten(item["children"], depth + 1)
+
+        flatten(tree)
         self.toc = toc
-        self.chapter_count = chapters
+        self.toc_tree = tree
+        chapter_items = [item for item in toc if item["kind"] == "chapter"]
+        if not chapter_items:
+            chapter_items = [item for item in toc if item["kind"] == "part"]
+        self.chapter_count = len(chapter_items)
+
+        in_toc: set[str] = set()
+
+        def mark(items: list[dict]) -> None:
+            for item in items:
+                if item.get("page_id"):
+                    in_toc.add(item["page_id"])
+                mark(item["children"])
+
+        mark(tree)
+        for page in self.pages:
+            page["in_toc"] = page["id"] in in_toc
 
     def _write_book(self, source_text: dict[str, str]) -> None:
         md = self.book.metadata
@@ -1641,6 +2043,7 @@ class GenericExtractor:
                     "number": page.get("number_short", ""),
                     "source_files": page["source_files"],
                     "sections": page["sections"],
+                    "in_toc": page.get("in_toc", True),
                     "words": page["words"],
                     "characters": page.get("characters", 0),
                     "reading_units": page.get("reading_units", page["words"]),
@@ -1682,6 +2085,7 @@ class GenericExtractor:
             },
             "pages": pages,
             "toc": self.toc,
+            "toc_tree": self.toc_tree,
             "reading_order": [p["id"] for p in pages],
             "stats": stats,
         }

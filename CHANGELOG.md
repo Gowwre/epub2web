@@ -6,6 +6,16 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+### Changed
+
+- Build the contents page and chapter navigation from the EPUB’s table-of-contents tree, including nested parts and sections. Spine pages that are not in the table of contents, such as generated document outlines, no longer appear as chapters.
+
+### Fixed
+
+- Split a spine document into separate reading pages at the EPUB table of contents anchors, so chapters that share one HTML file appear individually in the contents and chapter navigation.
+- Read nested NCX navigation entries as a tree instead of flattening them, and decode percent-encoded TOC fragments.
+- Treat a prologue as front matter and start reading there when a book has one.
+
 ## 0.7.0 - 2026-10-30
 
 ### Added

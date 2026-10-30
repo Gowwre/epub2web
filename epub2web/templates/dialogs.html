@@ -22,11 +22,11 @@
         <span><span class="menu-num">{{ chapter.number }}</span>{{ chapter.label }}</span>
         <span class="menu-arrow" aria-hidden="true">→</span>
       </a>
-      {% if chapter.sections %}
+      {% if chapter.children %}
       <details class="menu-sections-details">
-        <summary class="menu-sections-summary">Sections <span class="menu-sections-count">({{ chapter.sections|length }})</span></summary>
+        <summary class="menu-sections-summary">Sections <span class="menu-sections-count">({{ chapter.children|length }})</span></summary>
         <div class="menu-sections">
-          {% for section in chapter.sections %}
+          {% for section in chapter.children %}
           <a href="{{ section.href }}">{{ section.label }}</a>
           {% endfor %}
         </div>

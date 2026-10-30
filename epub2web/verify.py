@@ -68,7 +68,9 @@ def verify_site(
             report_progress(progress, "verify", "Checking every word", page_index, total_pages)
             continue
         path = route_to_file(dist, page["route"])
-        source = normalize_text(" ".join(source_text.get(f, "") for f in page["source_files"]))
+        source = source_text.get(page["id"])
+        if source is None:
+            source = normalize_text(" ".join(source_text.get(f, "") for f in page["source_files"]))
         soup = BeautifulSoup(path.read_text(encoding="utf-8"), "lxml") if path.exists() else None
         main = soup.find("main") if soup else None
         output = normalize_text(text_of(main)) if main else ""

@@ -117,7 +117,8 @@ more about portable builds and first-launch warnings.
 
 A complete website, ready to read:
 
-- a cover page and a clickable table of contents
+- a cover page and a clickable table of contents that follows the book’s own
+  structure
 - every chapter as a clean, readable web page
 - pictures, captions, tables, lists, notes, and cross-references
 - built-in search that works without an account or internet connection
@@ -478,7 +479,8 @@ for the tag-driven release and PyPI setup.
 - Audio, video, forms, and interactive widgets are not converted.
 - Unusual print-conversion markup may need a small converter rule. The fidelity
   gate stops a lossy conversion instead of guessing.
-- A spine document containing several chapters becomes one reading page.
+- A spine document is split at its table-of-contents anchors; chapters
+  without such anchors remain one reading page.
 - A single-file HTML mode is not available yet; the output is a static site
   folder.
 - Right-to-left layout follows the book’s main language. Books that mix writing

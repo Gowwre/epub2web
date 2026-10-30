@@ -202,6 +202,8 @@ class SiteRenderer:
         self._prepare_progress()
 
         self.toc = self.book.get("toc", [])
+        self.toc_tree = self.book.get("toc_tree") or self._tree_from_flat_toc()
+        self._decorate_toc_tree(self.toc_tree)
         self.stats = self.book.get("stats", {})
         self._build_navigation()
         self._build_home()
@@ -296,88 +298,53 @@ class SiteRenderer:
         route = href.split("#", 1)[0]
         return self.page_by_route.get(route)
 
+    def _tree_from_flat_toc(self) -> list[dict]:
+        """Rebuild a display tree from a flat TOC written by older versions."""
+        tree: list[dict] = []
+        for entry in self.toc:
+            item = dict(entry)
+            item["children"] = []
+            page = self._page_for_href(item.get("href", ""))
+            item["page_id"] = page["id"] if page else item.get("page_id", "")
+            if item.get("kind") == "section" and tree:
+                tree[-1]["children"].append(item)
+            else:
+                tree.append(item)
+        return tree
+
+    def _decorate_toc_tree(self, items: list[dict]) -> None:
+        for item in items:
+            page = self.page_by_id.get(item.get("page_id", ""))
+            item["id"] = item.get("page_id", "")
+            item["children"] = item.get("children") or []
+            item["reading_minutes"] = page.get("reading_minutes", 0) if page else 0
+            self._decorate_toc_tree(item["children"])
+
     def _build_navigation(self) -> None:
         before, chapters, after = [], [], []
-        chapter_entries = [e for e in self.toc if e.get("kind") in ("chapter", "part")]
-        if chapter_entries:
-            first = self.toc.index(chapter_entries[0])
-            last = len(self.toc) - 1 - list(reversed(self.toc)).index(chapter_entries[-1])
-        else:
-            first, last = len(self.toc), len(self.toc)
-        before_entries = self.toc[:first]
-        after_entries = self.toc[last + 1 :]
-
-        for entry in before_entries:
-            page = self._page_for_href(entry.get("href", ""))
-            before.append(
-                {
-                    "id": page["id"] if page else entry.get("href", "").strip("/"),
-                    "label": short_label(entry.get("label", "")),
-                    "href": entry.get("href", ""),
-                }
-            )
-
-        for entry in chapter_entries:
-            page = self._page_for_href(entry.get("href", ""))
-            chapters.append(
-                {
-                    "id": page["id"] if page else entry.get("href", "").strip("/"),
-                    "number": entry.get("number") or (page.get("number", "") if page else ""),
-                    "label": entry.get("label", ""),
-                    "href": entry.get("href", ""),
-                    "sections": [
-                        {"label": s.get("label", ""), "href": s.get("href", "")}
-                        for s in self.toc
-                        if s.get("kind") == "section"
-                        and s.get("href", "").split("#")[0] == entry.get("href", "").split("#")[0]
-                    ],
-                }
-            )
-
-        for entry in after_entries:
-            if entry.get("kind") == "section":
-                continue
-            page = self._page_for_href(entry.get("href", ""))
-            after.append(
-                {
-                    "id": page["id"] if page else entry.get("href", "").strip("/"),
-                    "label": short_label(entry.get("label", "")),
-                    "href": entry.get("href", ""),
-                }
-            )
-        self.sidebar = {"before": before, "chapters": chapters, "after": after}
-
-        # Contents page blocks.
-        blocks = []
-        current = None
-        for entry in self.toc:
-            if entry.get("kind") == "chapter":
-                page = self._page_for_href(entry.get("href", ""))
-                current = {
-                    "kind": "chapter",
-                    "number": entry.get("number") or (page.get("number", "") if page else ""),
-                    "label": entry.get("label", ""),
-                    "href": entry.get("href", ""),
-                    "sections": [],
-                    "reading_minutes": page.get("reading_minutes", 0) if page else 0,
-                    "generated": entry.get("generated", False),
-                }
-                blocks.append(current)
-            elif entry.get("kind") == "section" and current is not None:
-                current["sections"].append(
-                    {"label": entry.get("label", ""), "href": entry.get("href", "")}
-                )
-            else:
-                blocks.append(
+        for item in self.toc_tree:
+            page = self.page_by_id.get(item.get("page_id", ""))
+            kind = item.get("kind")
+            if kind in ("part", "chapter"):
+                chapters.append(item)
+            elif page is not None and page.get("type") == "frontmatter":
+                before.append(
                     {
-                        "kind": "entry",
-                        "label": entry.get("label", ""),
-                        "href": entry.get("href", ""),
-                        "generated": entry.get("generated", False),
+                        **item,
+                        "label": short_label(item.get("label", "")),
                     }
                 )
-                current = None
-        self.toc_blocks = blocks
+            elif (page is not None and page.get("type") == "backmatter") or kind == "entry":
+                after.append(
+                    {
+                        **item,
+                        "label": short_label(item.get("label", "")),
+                    }
+                )
+            else:
+                chapters.append(item)
+        self.sidebar = {"before": before, "chapters": chapters, "after": after}
+        self.toc_blocks = self.toc_tree
 
         links = [{"label": "Contents", "href": "/contents/"}]
         for page in self.pages:
@@ -398,24 +365,55 @@ class SiteRenderer:
             self.footer_links.append(link)
 
     def _build_home(self) -> None:
-        chapters = [p for p in self.pages if p.get("type") == "chapter"]
+        chapters: list[dict] = []
+
+        def collect(items: list[dict]) -> None:
+            for item in items:
+                if item.get("kind") in ("chapter", "part"):
+                    chapters.append(
+                        {
+                            "route": item.get("href", ""),
+                            "title": item.get("label", ""),
+                            "number": item.get("number", ""),
+                            "reading_minutes": item.get("reading_minutes", 0),
+                            "section_count": len(item.get("children", [])),
+                        }
+                    )
+                collect(item.get("children", []))
+
+        collect(self.toc_tree)
         if not chapters:
-            chapters = [p for p in self.pages if p.get("type") not in ("frontmatter", "backmatter")]
-        for i, page in enumerate(chapters):
-            number = page.get("number") or ""
+            pages = [p for p in self.pages if p.get("type") == "chapter" and p.get("in_toc", True)]
+            if not pages:
+                pages = [p for p in self.pages if p.get("type") == "chapter"]
+            if not pages:
+                pages = [
+                    p for p in self.pages if p.get("type") not in ("frontmatter", "backmatter")
+                ]
+            chapters = [
+                {
+                    "route": page["route"],
+                    "title": page["title"],
+                    "number": page.get("number", ""),
+                    "reading_minutes": page.get("reading_minutes", 0),
+                    "section_count": len(page.get("sections", [])),
+                }
+                for page in pages
+            ]
+        for i, chapter in enumerate(chapters):
+            number = str(chapter.get("number") or "")
             if number.isdigit():
                 display = f"{int(number):02d}"
             elif number:
                 display = number
             else:
                 display = f"{i + 1:02d}"
-            page["display_number"] = display
-            page["section_count"] = len(page.get("sections", []))
+            chapter["display_number"] = display
         self.home_chapters = chapters
         self.home_extras = [
             {"label": short_label(p["title"]), "href": p["route"]}
             for p in self.pages
-            if p.get("type") == "backmatter"
+            if p.get("type") == "backmatter" and p.get("in_toc", True)
         ]
         self.start_href = next(
             (
@@ -423,7 +421,7 @@ class SiteRenderer:
                 for p in self.pages
                 if any(
                     word in p.get("title", "").lower()
-                    for word in ("preface", "foreword", "introduction")
+                    for word in ("prologue", "preface", "foreword", "introduction")
                 )
             ),
             "",

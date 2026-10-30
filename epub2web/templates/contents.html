@@ -1,6 +1,26 @@
 {% extends "base.html" %}
 {% from "macros.html" import icon %}
 
+{% macro toc_items(items, level=0) %}
+<ol class="{% if level %}toc-sections{% else %}toc-list{% endif %}">
+  {% for block in items %}
+  {% set nested = level > 0 %}
+  <li class="{% if nested %}toc-subentry{% elif block.kind in ('chapter', 'part') %}toc-chapter{% else %}toc-entry{% endif %}{% if block.generated %} toc-generated{% endif %}"{% if block.generated %} data-generated="true"{% endif %}>
+    {% if block.kind in ("chapter", "part") and not nested %}
+    <a class="toc-chapter-row" href="{{ block.href }}">
+      <span class="toc-num">{{ block.number }}</span>
+      <span class="toc-chapter-title" dir="auto">{{ block.label }}</span>
+      {% if block.reading_minutes %}<span class="toc-readtime" data-chrome dir="auto">{{ block.reading_minutes }} min</span>{% endif %}
+    </a>
+    {% else %}
+    <a href="{{ block.href }}" dir="auto">{% if block.number %}<span class="toc-num">{{ block.number }}</span> {% endif %}{{ block.label }}</a>
+    {% endif %}
+    {% if block.children %}{{ toc_items(block.children, level + 1) }}{% endif %}
+  </li>
+  {% endfor %}
+</ol>
+{% endmacro %}
+
 {% block title %}Contents — {{ book.meta.short_title }}{% endblock %}
 
 {% block layout %}
@@ -16,29 +36,6 @@
     {% endif %}
   </header>
 
-  <ol class="toc-list">
-    {% for block in toc_blocks %}
-      {% if block.kind == "chapter" %}
-      <li class="toc-chapter">
-        <a class="toc-chapter-row" href="{{ block.href }}">
-          <span class="toc-num">{{ block.number }}</span>
-          <span class="toc-chapter-title" dir="auto">{{ block.label }}</span>
-          {% if block.reading_minutes %}<span class="toc-readtime" data-chrome dir="auto">{{ block.reading_minutes }} min</span>{% endif %}
-        </a>
-        {% if block.sections %}
-        <ol class="toc-sections">
-          {% for section in block.sections %}
-          <li><a href="{{ section.href }}" dir="auto">{{ section.label }}</a></li>
-          {% endfor %}
-        </ol>
-        {% endif %}
-      </li>
-      {% else %}
-      <li class="toc-entry{% if block.generated %} toc-generated{% endif %}"{% if block.generated %} data-generated="true"{% endif %}>
-        <a href="{{ block.href }}" dir="auto">{{ block.label }}</a>
-      </li>
-      {% endif %}
-    {% endfor %}
-  </ol>
+  {{ toc_items(toc_blocks) }}
 </main>
 {% endblock %}

@@ -1,3 +1,20 @@
+{% macro sidebar_items(items, current_page_id, level=0) %}
+<ol class="{% if level %}sidebar-sections{% else %}sidebar-chapters{% endif %}">
+  {% for item in items %}
+  {% set is_current = item.page_id == current_page_id %}
+  <li class="sidebar-chapter{% if is_current %} is-current{% endif %}">
+    <a class="sidebar-link" href="{{ item.href }}"{% if is_current %} aria-current="page"{% endif %}>
+      {% if item.number %}<span class="sidebar-num">{{ item.number }}</span>{% endif %}
+      <span class="sidebar-label">{{ item.label }}</span>
+    </a>
+    {% if item.children and (item.kind != "chapter" or is_current) %}
+      {{ sidebar_items(item.children, current_page_id, level + 1) }}
+    {% endif %}
+  </li>
+  {% endfor %}
+</ol>
+{% endmacro %}
+
 <aside class="sidebar" aria-label="Book contents" data-chrome>
   <div class="sidebar-inner">
     <div class="sidebar-head">
@@ -11,24 +28,7 @@
       </a>
       {% endfor %}
 
-      <ol class="sidebar-chapters">
-        {% for chapter in sidebar.chapters %}
-        {% set is_current = chapter.id == page.id %}
-        <li class="sidebar-chapter{% if is_current %} is-current{% endif %}">
-          <a class="sidebar-link" href="{{ chapter.href }}"{% if is_current %} aria-current="page"{% endif %}>
-            <span class="sidebar-num">{{ chapter.number }}</span>
-            <span class="sidebar-label">{{ chapter.label }}</span>
-          </a>
-          {% if is_current and chapter.sections %}
-          <ul class="sidebar-sections" aria-label="Sections in this chapter">
-            {% for section in chapter.sections %}
-            <li><a href="{{ section.href }}" data-section-link>{{ section.label }}</a></li>
-            {% endfor %}
-          </ul>
-          {% endif %}
-        </li>
-        {% endfor %}
-      </ol>
+      {{ sidebar_items(sidebar.chapters, page.id) }}
 
       {% for entry in sidebar.after %}
       <a class="sidebar-link{% if entry.id == page.id %} is-current{% endif %}" href="{{ entry.href }}"{% if entry.id == page.id %} aria-current="page"{% endif %}>

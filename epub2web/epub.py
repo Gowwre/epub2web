@@ -100,15 +100,16 @@ class Epub:
         if not href:
             return "", ""
         parts = urlsplit(href)
+        fragment = unquote(parts.fragment)
         if parts.scheme or href.startswith("//"):
-            return "", parts.fragment
+            return "", fragment
         path = unquote(parts.path).replace("\\", "/")
         if not path:
-            return base_path, parts.fragment
+            return base_path, fragment
         joined = posixpath.normpath(posixpath.join(posixpath.dirname(base_path), path))
         if joined == ".." or joined.startswith("../"):
-            return "", parts.fragment
-        return joined, parts.fragment
+            return "", fragment
+        return joined, fragment
 
     @staticmethod
     def _media_type(value: str) -> str:
@@ -322,19 +323,32 @@ class Epub:
             soup = BeautifulSoup(self.read(ncx_item.path), "xml")
         except Exception:
             return []
-        nav_map = soup.find("navMap")
+
+        def local_name(node) -> str:
+            return (getattr(node, "name", "") or "").split(":")[-1].lower()
+
+        def child(node, name):
+            return next(
+                (item for item in node.find_all(recursive=False) if local_name(item) == name),
+                None,
+            )
+
+        nav_map = next((node for node in soup.find_all() if local_name(node) == "navmap"), None)
         if nav_map is None:
             return []
-        entries: list[TocEntry] = []
 
         def walk(node, depth):
-            for point in node.find_all("navPoint", recursive=False):
-                label_node = point.find("navLabel")
-                text_node = label_node.find("text") if label_node else None
-                content = point.find("content")
+            entries: list[TocEntry] = []
+            for point in node.find_all(recursive=False):
+                if local_name(point) != "navpoint":
+                    continue
+                label_node = child(point, "navlabel")
+                text_node = child(label_node, "text") if label_node else None
+                content = child(point, "content")
                 label = self._text(text_node)
                 href = content.get("src") if content else ""
                 path, fragment = self._resolve(ncx_item.path, href)
+                children = walk(point, depth + 1)
                 if label:
                     entries.append(
                         TocEntry(
@@ -343,13 +357,14 @@ class Epub:
                             path=path,
                             fragment=fragment,
                             depth=depth,
-                            children=[],
+                            children=children,
                         )
                     )
-                walk(point, depth + 1)
+                else:
+                    entries.extend(children)
+            return entries
 
-        walk(nav_map, 0)
-        return entries
+        return walk(nav_map, 0)
 
     # -- cover ------------------------------------------------------------
     def _find_cover(self) -> ManifestItem | None:
