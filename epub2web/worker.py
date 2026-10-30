@@ -6,11 +6,21 @@ headless machine, or from the command line for diagnostics.
 
 from __future__ import annotations
 
+import contextlib
 import io
 import os
 import sys
 
 from .cli import main as cli_main
+
+
+def _force_line_buffering(stream) -> None:
+    """Flush each line, even in a frozen app that ignores PYTHONUNBUFFERED."""
+    reconfigure = getattr(stream, "reconfigure", None)
+    if reconfigure is None:
+        return
+    with contextlib.suppress(OSError, ValueError):
+        reconfigure(line_buffering=True)
 
 
 def _ensure_standard_streams() -> None:
@@ -20,6 +30,10 @@ def _ensure_standard_streams() -> None:
     ``None``. The GUI launches the worker with pipes, so the underlying file
     descriptors are still valid; attach text streams to them so the CLI can
     report progress back to the controller.
+
+    Frozen executables also ignore ``PYTHONUNBUFFERED``, and macOS may hand
+    the app a block-buffered stream. Force line buffering so a server that
+    blocks after printing its URL still publishes that line immediately.
     """
     if sys.stdout is None:
         try:
@@ -33,6 +47,8 @@ def _ensure_standard_streams() -> None:
             )
         except OSError:
             sys.stdout = io.StringIO()
+    else:
+        _force_line_buffering(sys.stdout)
     if sys.stderr is None:
         try:
             sys.stderr = os.fdopen(
@@ -45,6 +61,8 @@ def _ensure_standard_streams() -> None:
             )
         except OSError:
             sys.stderr = sys.stdout
+    else:
+        _force_line_buffering(sys.stderr)
 
 
 def main(argv: list[str] | None = None) -> int:

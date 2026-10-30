@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 import sys
 import time
@@ -15,6 +16,7 @@ from epub2web.controller import (
     worker_command,
 )
 from epub2web.gui import main as gui_main
+from epub2web.progress import EVENT_PREFIX
 from epub2web.updates import ReleaseInfo
 from epub2web.worker import main as worker_main
 
@@ -438,6 +440,20 @@ def test_controller_reports_link_gate_failure(epub_factory, tmp_path: Path):
     assert failure
     assert failure[0].message == "Build rejected by the internal-link gate."
     assert failure[0].data["links"] is False
+
+
+def test_controller_accepts_structured_preview_event():
+    events: list[BuildEvent] = []
+    controller = BuildController(events.append)
+
+    controller._handle_line(
+        EVENT_PREFIX + json.dumps({"kind": "preview", "url": "http://127.0.0.1:8123/"})
+    )
+
+    assert controller.preview_url == "http://127.0.0.1:8123/"
+    assert controller.state is BuildState.SUCCEEDED
+    assert [event.kind for event in events] == ["preview", "success"]
+    assert events[0].data["url"] == "http://127.0.0.1:8123/"
 
 
 def test_controller_starts_and_stops_preview(tiny_epub, tmp_path: Path):

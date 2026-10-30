@@ -572,11 +572,16 @@ def _run(
         if args.serve:
             if progress is not None:
                 progress("preview", "Starting preview", 1, 1)
+
+            def announce_preview(url: str) -> None:
+                emit_event("preview", url=url, site=str(output / "index.html"))
+
             serve_directory(
                 output,
                 port=args.port,
                 open_browser=not args.no_browser,
                 base_path=base_path,
+                on_ready=announce_preview if progress is not None else None,
             )
         else:
             print(f"Preview: epub2web {epub.name} --serve")

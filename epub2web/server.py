@@ -6,6 +6,7 @@ import http.server
 import logging
 import threading
 import webbrowser
+from collections.abc import Callable
 from functools import partial
 from pathlib import Path
 from typing import ClassVar
@@ -32,8 +33,15 @@ def serve_directory(
     port: int = 8000,
     open_browser: bool = True,
     base_path: str = "",
+    on_ready: Callable[[str], None] | None = None,
 ) -> None:
-    """Serve *directory* on 127.0.0.1 and block until Ctrl+C."""
+    """Serve *directory* on 127.0.0.1 and block until Ctrl+C.
+
+    ``on_ready`` is called with the final URL as soon as the server is bound,
+    before ``serve_forever`` blocks. The desktop app uses it to report the
+    preview URL over its structured event stream instead of relying on the
+    printed banner, which can sit in a buffered pipe in frozen builds.
+    """
     directory = Path(directory).resolve()
     if not (directory / "index.html").exists():
         raise FileNotFoundError(f"no index.html in {directory}")
@@ -82,24 +90,26 @@ def serve_directory(
     server = _make_server(handler, port)
     url = f"http://127.0.0.1:{server.server_address[1]}{base_url}/"
 
-    logger.info(
-        "preview server started",
-        extra={"url": url, "directory": str(directory), "base_path": base_path},
-    )
-    print()
-    print("  epub2web preview")
-    print("  " + "-" * 40)
-    print(f"  {url}")
-    print("  Listening on this computer only (127.0.0.1).")
-    print("  Press Ctrl+C to stop.")
-    print()
-    if open_browser:
-        timer = threading.Timer(0.4, lambda: webbrowser.open(url))
-        timer.daemon = True
-        timer.start()
     try:
+        if on_ready is not None:
+            on_ready(url)
+        logger.info(
+            "preview server started",
+            extra={"url": url, "directory": str(directory), "base_path": base_path},
+        )
+        print(flush=True)
+        print("  epub2web preview", flush=True)
+        print("  " + "-" * 40, flush=True)
+        print(f"  {url}", flush=True)
+        print("  Listening on this computer only (127.0.0.1).", flush=True)
+        print("  Press Ctrl+C to stop.", flush=True)
+        print(flush=True)
+        if open_browser:
+            timer = threading.Timer(0.4, lambda: webbrowser.open(url))
+            timer.daemon = True
+            timer.start()
         server.serve_forever()
     except KeyboardInterrupt:
-        print("\nStopped.")
+        print("\nStopped.", flush=True)
     finally:
         server.server_close()

@@ -1,8 +1,10 @@
+import json
 from pathlib import Path
 
 import pytest
 from epub2web.cli import main
 from epub2web.generic import GenericExtractor
+from epub2web.progress import EVENT_PREFIX
 from epub2web.render import SITE_MARKER
 
 
@@ -120,3 +122,46 @@ def test_cli_base_path(tiny_epub, tmp_path: Path):
     index = (site / "index.html").read_text(encoding="utf-8")
     assert 'data-base="/shelf"' in index
     assert 'href="/shelf/assets/styles.css"' in index
+
+
+def test_serve_progress_emits_structured_preview_url(
+    tiny_epub, tmp_path: Path, monkeypatch, capsys
+):
+    site = tmp_path / "site"
+    served: dict[str, object] = {}
+
+    def fake_serve_directory(
+        directory,
+        *,
+        port,
+        open_browser,
+        base_path,
+        on_ready,
+    ):
+        served["directory"] = directory
+        on_ready("http://127.0.0.1:8123/")
+
+    monkeypatch.setattr("epub2web.cli.serve_directory", fake_serve_directory)
+
+    code = main(
+        [
+            str(tiny_epub),
+            "-o",
+            str(site),
+            "--serve",
+            "--progress",
+            "--no-browser",
+        ]
+    )
+
+    assert code == 0
+    assert served["directory"] == site
+    events = [
+        json.loads(line.removeprefix(EVENT_PREFIX))
+        for line in capsys.readouterr().out.splitlines()
+        if line.startswith(EVENT_PREFIX)
+    ]
+    assert {event["kind"] for event in events} >= {"preview", "site", "time"}
+    preview = next(event for event in events if event["kind"] == "preview")
+    assert preview["url"] == "http://127.0.0.1:8123/"
+    assert preview["site"] == str(site / "index.html")

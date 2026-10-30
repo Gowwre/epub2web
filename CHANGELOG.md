@@ -11,6 +11,10 @@ All notable, user-facing changes are documented here. The format follows
 - Rewrite the landing site, download page, and README introduction in a plainer voice, focused on authors, translators, and small presses.
 - Use the Linux penguin logo for the Linux download card on the landing site instead of a terminal icon.
 
+### Fixed
+
+- Fix the desktop app stalling at “Starting preview…” without opening the browser, especially in macOS builds, by reporting the preview URL as a flushed structured event and flushing the server banner.
+
 ## 0.6.0 - 2026-10-29
 
 ### Added

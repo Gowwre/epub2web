@@ -429,16 +429,16 @@ class BuildController:
             return
 
         if PREVIEW_URL_RE.match(text) and not self._preview_url:
-            self._preview_url = text
-            self._state = BuildState.SUCCEEDED
-            self._success_emitted = True
-            data = self._summary_data()
-            self._emit(BuildEvent("preview", text, data))
-            self._emit(BuildEvent("success", "Preview running.", data))
+            self._record_preview(text)
+            return
 
     def _handle_status_event(self, payload: dict) -> None:
         kind = str(payload.get("kind") or "")
-        if kind == "site":
+        if kind == "preview":
+            url = str(payload.get("url") or "")
+            if url:
+                self._record_preview(url)
+        elif kind == "site":
             value = str(payload.get("site") or "")
             if value:
                 self._site_path = self._path_from_output(value)
@@ -463,6 +463,16 @@ class BuildController:
         elif kind == "time":
             with contextlib.suppress(TypeError, ValueError):
                 self._elapsed = float(payload["seconds"])
+
+    def _record_preview(self, url: str) -> None:
+        if not url or self._preview_url:
+            return
+        self._preview_url = url
+        self._state = BuildState.SUCCEEDED
+        self._success_emitted = True
+        data = self._summary_data()
+        self._emit(BuildEvent("preview", url, data))
+        self._emit(BuildEvent("success", "Preview running.", data))
 
     def _finish(self, code: int) -> None:
         with self._lock:
