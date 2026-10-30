@@ -13,6 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from .epub import TocEntry
+from .models import PagePlan
 
 
 @dataclass
@@ -61,7 +62,7 @@ class SiteTocBuilder:
     def __init__(
         self,
         toc_entries: list[TocEntry],
-        pages: list[dict],
+        pages: list[PagePlan],
         route_by_path: dict[str, str],
         route_by_target: dict[tuple[str, str], str],
     ):
@@ -69,8 +70,8 @@ class SiteTocBuilder:
         self.pages = pages
         self.route_by_path = route_by_path
         self.route_by_target = route_by_target
-        self.page_by_route = {page["route"]: page for page in pages}
-        self.page_by_id = {page["id"]: page for page in pages}
+        self.page_by_route = {page.route: page for page in pages}
+        self.page_by_id = {page.id: page for page in pages}
         self._claimed_pages: set[str] = set()
 
     def build(self) -> SiteToc:
@@ -105,8 +106,8 @@ class SiteTocBuilder:
                 result.extend(self._build_level(entry.children))
                 continue
 
-            if page["id"] not in self._claimed_pages and page.get("toc_entry") is entry:
-                self._claimed_pages.add(page["id"])
+            if page.id not in self._claimed_pages and page.toc_entry is entry:
+                self._claimed_pages.add(page.id)
                 item = self._page_item(page)
             else:
                 item = self._section_item(page, entry.label, entry.fragment)
@@ -114,7 +115,7 @@ class SiteTocBuilder:
             result.append(item)
         return result
 
-    def _page_for_entry(self, entry: TocEntry) -> dict | None:
+    def _page_for_entry(self, entry: TocEntry) -> PagePlan | None:
         if entry.path and entry.fragment:
             route = self.route_by_target.get((entry.path, entry.fragment))
             return self.page_by_route.get(route) if route else None
@@ -128,40 +129,40 @@ class SiteTocBuilder:
             item = self._page_item(page)
             item.children = [
                 self._section_item(page, section["title"], section["id"])
-                for section in page["sections"]
+                for section in page.sections
             ]
             result.append(item)
         return result
 
     # -- item construction ------------------------------------------------
-    def _page_item(self, page: dict) -> SiteTocItem:
-        if page["type"] == "chapter":
+    def _page_item(self, page: PagePlan) -> SiteTocItem:
+        if page.type == "chapter":
             kind = "chapter"
-            label = page["title"]
-            number = page["number_short"]
-        elif page["type"] == "part":
+            label = page.title
+            number = page.number_short
+        elif page.type == "part":
             kind = "part"
-            label = page["display_title"]
+            label = page.display_title
             number = ""
         else:
             kind = "entry"
-            label = page["display_title"]
+            label = page.display_title
             number = ""
         return SiteTocItem(
             kind=kind,
             label=label,
-            href=page["route"],
-            page_id=page["id"],
+            href=page.route,
+            page_id=page.id,
             number=number,
         )
 
-    def _section_item(self, page: dict, label: str, fragment: str) -> SiteTocItem:
-        href = f"{page['route']}#{fragment}" if fragment else page["route"]
+    def _section_item(self, page: PagePlan, label: str, fragment: str) -> SiteTocItem:
+        href = f"{page.route}#{fragment}" if fragment else page.route
         return SiteTocItem(
             kind="section",
             label=label,
             href=href,
-            page_id=page["id"],
+            page_id=page.id,
         )
 
     # -- post-processing --------------------------------------------------
@@ -180,7 +181,7 @@ class SiteTocBuilder:
                 if page is not None:
                     item.children = [
                         self._section_item(page, section["title"], section["id"])
-                        for section in page["sections"]
+                        for section in page.sections
                     ]
             self._add_heading_sections(item.children)
 
