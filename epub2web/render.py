@@ -320,7 +320,12 @@ class SiteRenderer:
             item["reading_minutes"] = page.get("reading_minutes", 0) if page else 0
             self._decorate_toc_tree(item["children"])
 
+    @staticmethod
+    def _sidebar_entry(item: dict) -> dict:
+        return {**item, "label": short_label(item.get("label", ""))}
+
     def _build_navigation(self) -> None:
+        """Split the TOC tree into front matter, chapters, and back matter."""
         before, chapters, after = [], [], []
         for item in self.toc_tree:
             page = self.page_by_id.get(item.get("page_id", ""))
@@ -328,19 +333,9 @@ class SiteRenderer:
             if kind in ("part", "chapter"):
                 chapters.append(item)
             elif page is not None and page.get("type") == "frontmatter":
-                before.append(
-                    {
-                        **item,
-                        "label": short_label(item.get("label", "")),
-                    }
-                )
+                before.append(self._sidebar_entry(item))
             elif (page is not None and page.get("type") == "backmatter") or kind == "entry":
-                after.append(
-                    {
-                        **item,
-                        "label": short_label(item.get("label", "")),
-                    }
-                )
+                after.append(self._sidebar_entry(item))
             else:
                 chapters.append(item)
         self.sidebar = {"before": before, "chapters": chapters, "after": after}
@@ -364,7 +359,8 @@ class SiteRenderer:
             seen.add(link["href"])
             self.footer_links.append(link)
 
-    def _build_home(self) -> None:
+    def _home_chapters_from_toc(self) -> list[dict]:
+        """Flatten page-level TOC entries into the rows shown on the home page."""
         chapters: list[dict] = []
 
         def collect(items: list[dict]) -> None:
@@ -382,33 +378,41 @@ class SiteRenderer:
                 collect(item.get("children", []))
 
         collect(self.toc_tree)
-        if not chapters:
-            pages = [p for p in self.pages if p.get("type") == "chapter" and p.get("in_toc", True)]
-            if not pages:
-                pages = [p for p in self.pages if p.get("type") == "chapter"]
-            if not pages:
-                pages = [
-                    p for p in self.pages if p.get("type") not in ("frontmatter", "backmatter")
-                ]
-            chapters = [
-                {
-                    "route": page["route"],
-                    "title": page["title"],
-                    "number": page.get("number", ""),
-                    "reading_minutes": page.get("reading_minutes", 0),
-                    "section_count": len(page.get("sections", [])),
-                }
-                for page in pages
-            ]
-        for i, chapter in enumerate(chapters):
+        return chapters
+
+    def _home_chapters_from_pages(self) -> list[dict]:
+        """Fallback for books without a usable TOC tree."""
+        pages = [p for p in self.pages if p.get("type") == "chapter" and p.get("in_toc", True)]
+        if not pages:
+            pages = [p for p in self.pages if p.get("type") == "chapter"]
+        if not pages:
+            pages = [p for p in self.pages if p.get("type") not in ("frontmatter", "backmatter")]
+        return [
+            {
+                "route": page["route"],
+                "title": page["title"],
+                "number": page.get("number", ""),
+                "reading_minutes": page.get("reading_minutes", 0),
+                "section_count": len(page.get("sections", [])),
+            }
+            for page in pages
+        ]
+
+    @staticmethod
+    def _add_home_display_numbers(chapters: list[dict]) -> None:
+        for index, chapter in enumerate(chapters):
             number = str(chapter.get("number") or "")
             if number.isdigit():
                 display = f"{int(number):02d}"
             elif number:
                 display = number
             else:
-                display = f"{i + 1:02d}"
+                display = f"{index + 1:02d}"
             chapter["display_number"] = display
+
+    def _build_home(self) -> None:
+        chapters = self._home_chapters_from_toc() or self._home_chapters_from_pages()
+        self._add_home_display_numbers(chapters)
         self.home_chapters = chapters
         self.home_extras = [
             {"label": short_label(p["title"]), "href": p["route"]}
