@@ -6,6 +6,8 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+## 0.7.0 - 2026-10-30
+
 ### Added
 
 - Add a first-launch popup to the download page that opens when a download starts and shows the selected platform’s installation steps.
