@@ -6,6 +6,10 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+### Added
+
+- Add a first-launch popup to the download page that opens when a download starts and shows the selected platform’s installation steps.
+
 ### Changed
 
 - Rewrite the landing site, download page, and README introduction in a plainer voice, focused on authors, translators, and small presses.

@@ -64,6 +64,11 @@ macOS when client hints expose the architecture. Phones, ChromeOS, ARM Linux,
 and unknown agents get a neutral “choose your platform” state. Without
 JavaScript, the page falls back to the same platform picker.
 
+Clicking any download button starts the file and opens a short first-launch
+guide for that platform, so the Windows SmartScreen and macOS Gatekeeper steps
+are visible without scrolling to the guide section. The native dialog closes
+with Escape, the close button, or a backdrop click.
+
 Refresh the committed fallback data locally with:
 
 ```bash

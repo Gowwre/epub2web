@@ -6,6 +6,7 @@ type IconName =
   | "arrow-up-right"
   | "download"
   | "check"
+  | "close"
   | "alert"
   | "sun"
   | "moon"
@@ -46,6 +47,9 @@ const icons: Record<IconName, { body: string; fill?: boolean }> = {
   },
   check: {
     body: '<path d="m4.5 12.25 4.8 4.8L19.5 6.8"/>',
+  },
+  close: {
+    body: '<path d="m6 6 12 12M18 6 6 18"/>',
   },
   alert: {
     body: '<path d="M12 3.25 2.6 20.2h18.8L12 3.25Z"/><path d="M12 9.25v4.5"/><path d="M12 17.25h.01"/>',
