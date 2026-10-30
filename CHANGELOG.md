@@ -6,6 +6,8 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+## 0.8.0 - 2026-10-30
+
 ### Changed
 
 - Build the contents page and chapter navigation from the EPUB’s table-of-contents tree, including nested parts and sections. Spine pages that are not in the table of contents, such as generated document outlines, no longer appear as chapters.
