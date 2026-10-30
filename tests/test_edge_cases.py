@@ -6,9 +6,10 @@ from pathlib import Path
 
 import pytest
 from bs4 import BeautifulSoup
+from epub2web.clean import sanitize_svg
 from epub2web.cli import main
 from epub2web.epub import Epub
-from epub2web.generic import GenericExtractor, sanitize_svg
+from epub2web.generic import GenericExtractor
 from epub2web.labels import BACK_LABELS, FRONT_LABELS, label_matches, marker_kind
 from epub2web.links import check_site_links
 from epub2web.render import SITE_MARKER, render_site

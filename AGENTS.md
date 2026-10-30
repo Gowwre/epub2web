@@ -67,9 +67,11 @@ renderer change.
 - `epub2web/models.py` — typed page plans, page parts, and serialized page data.
 - `epub2web/labels.py` — front/back matter labels and chapter title parsing.
 - `epub2web/dom.py` — cleaned-DOM block inspection and TOC anchor splitting.
+- `epub2web/clean.py` — sanitization, anchor repair, and document normalization.
 - `epub2web/planner.py` — spine document → reading page planning.
+- `epub2web/converter.py` — reading page → semantic HTML fragment.
 - `epub2web/navigation.py` — EPUB TOC → site contents/sidebar tree.
-- `epub2web/generic.py` — deterministic EPUB → semantic page extraction.
+- `epub2web/generic.py` — extraction orchestration, images, and output metadata.
 - `epub2web/text.py` — normalization, text extraction, tokenization, slugs,
   reading-length estimates. Changes here affect the fidelity gate; test them
   carefully.
