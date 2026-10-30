@@ -35,6 +35,7 @@ from .updates import (
 )
 
 APP_TITLE = "epub2web"
+VERSION_LABEL = f"v{__version__}"
 WEBSITE_URL = "https://gowwre.github.io/epub2web/"
 LOG_LINE_LIMIT = 2000
 
@@ -60,6 +61,11 @@ LOG_MUTED = "#9a9184"
 LOG_ERROR = "#ff9e8d"
 LOG_SUCCESS = "#8fd6a8"
 LOG_ACCENT = "#f2b38a"
+
+
+def window_title() -> str:
+    """Return the main window title with the application version."""
+    return f"{APP_TITLE} {__version__}"
 
 
 def _font_candidates() -> tuple[list[str], list[str], list[str]]:
@@ -91,7 +97,7 @@ class Epub2WebApp:
 
     def __init__(self, root: tk.Tk) -> None:
         self.root = root
-        self.root.title(APP_TITLE)
+        self.root.title(window_title())
         self.root.minsize(720, 600)
         self.root.configure(bg=BG)
         self.root.protocol("WM_DELETE_WINDOW", self._on_close)
@@ -376,6 +382,14 @@ class Epub2WebApp:
             fg=ACCENT,
             font=self.font_brand,
         ).pack(side="left", padx=(8, 0))
+        self.version_label = tk.Label(
+            brand_mark,
+            text=VERSION_LABEL,
+            bg=BG,
+            fg=MUTED,
+            font=self.font_small,
+        )
+        self.version_label.pack(side="left", padx=(6, 0), pady=(2, 0))
 
         brand_actions = tk.Frame(brand, bg=BG)
         brand_actions.pack(side="right")

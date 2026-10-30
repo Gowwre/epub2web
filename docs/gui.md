@@ -23,6 +23,8 @@ in the default browser.
   on Linux, `~/Library/Application Support/epub2web` on macOS, and
   `%LOCALAPPDATA%\epub2web` on Windows). Failure support ZIPs are written to
   the `reports` subdirectory.
+- The header shows the running version next to the wordmark, and the window
+  title includes it as well.
 - The header links to the [project website](https://gowwre.github.io/epub2web/)
   and the [GitHub repository](https://github.com/Gowwre/epub2web).
 - On startup the GUI checks GitHub Releases for a newer version. When one is

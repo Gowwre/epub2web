@@ -6,6 +6,10 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+### Added
+
+- Show the application version next to the wordmark and in the window title of the desktop app.
+
 ## 0.8.0 - 2026-10-30
 
 ### Changed

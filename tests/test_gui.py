@@ -8,6 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
+from epub2web import __version__
 from epub2web.controller import (
     BuildController,
     BuildEvent,
@@ -35,6 +36,14 @@ def _import_tk_app():
 
 def test_tk_app_imports_when_tk_is_available():
     assert _import_tk_app()
+
+
+def test_tk_app_displays_version():
+    tk_app = _import_tk_app()
+
+    assert tk_app.window_title() == f"epub2web {__version__}"
+    expected_label = f"v{__version__}"
+    assert expected_label == tk_app.VERSION_LABEL
 
 
 def test_tk_app_header_links_open_project_pages(monkeypatch):
