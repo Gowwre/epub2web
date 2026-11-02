@@ -15,8 +15,15 @@ import threading
 import tkinter as tk
 import tkinter.font as tkfont
 import webbrowser
+from collections.abc import Iterator
 from pathlib import Path
 from tkinter import filedialog, ttk
+
+try:
+    from tkinterdnd2 import DND_FILES, TkinterDnD
+except ImportError:  # pragma: no cover - the GUI falls back to the file picker
+    DND_FILES = None
+    TkinterDnD = None
 
 from . import __version__
 from .controller import (
@@ -66,6 +73,24 @@ LOG_ACCENT = "#f2b38a"
 def window_title() -> str:
     """Return the main window title with the application version."""
     return f"{APP_TITLE} {__version__}"
+
+
+def _enable_dnd(root: tk.Misc) -> bool:
+    """Load native file drag and drop for this Tk interpreter when possible."""
+    require = getattr(TkinterDnD, "require", None)
+    if require is None:
+        return False
+    try:
+        require(root)
+    except (RuntimeError, tk.TclError):
+        return False
+    return True
+
+
+def _dnd_unavailable_message() -> str:
+    if TkinterDnD is None:
+        return "Drag and drop is unavailable because tkinterdnd2 is not installed."
+    return "Drag and drop is unavailable because TkDND could not load on this system."
 
 
 def _font_candidates() -> tuple[list[str], list[str], list[str]]:
@@ -128,14 +153,22 @@ class Epub2WebApp:
         self._log_drag_start = 0
         self._log_drag_first = 0.0
         self._log_dragging = False
+        self._dnd_enabled = _enable_dnd(root)
+        self._source_card: tk.Frame | None = None
+        self._drop_highlighted = False
 
         self._configure_fonts()
         self._configure_styles()
         self._build_ui()
         self._refresh_controls()
-        self._set_status("Choose an EPUB to begin.", "muted")
+        start_hint = (
+            "Choose or drop an EPUB to begin." if self._dnd_enabled else "Choose an EPUB to begin."
+        )
+        self._set_status(start_hint, "muted")
         self._set_log_hint("Fidelity and link checks appear here.")
-        self._append_log("Choose an EPUB to begin.", tag="muted")
+        self._append_log(start_hint, tag="muted")
+        if not self._dnd_enabled:
+            self._append_log(f"{_dnd_unavailable_message()} Use Choose EPUB… instead.", tag="muted")
         self._poll()
         self._check_for_updates()
 
@@ -442,6 +475,7 @@ class Epub2WebApp:
         card = tk.Frame(outer, bg=SURFACE, highlightbackground=RULE, highlightthickness=1)
         card.grid(row=1, column=0, sticky="ew", pady=(26, 10))
         card.columnconfigure(0, weight=1)
+        self._source_card = card
 
         inner = tk.Frame(card, bg=SURFACE, padx=20, pady=16)
         inner.grid(row=0, column=0, sticky="ew")
@@ -471,7 +505,10 @@ class Epub2WebApp:
         self._draw_book_icon(icon)
 
         self.file_name_var = tk.StringVar(value="No EPUB selected")
-        self.file_path_var = tk.StringVar(value="Choose a reflowable EPUB 2/3 file to begin.")
+        empty_hint = "Choose a reflowable EPUB 2/3 file to begin."
+        if self._dnd_enabled:
+            empty_hint = "Choose a reflowable EPUB 2/3 file, or drag and drop it here."
+        self.file_path_var = tk.StringVar(value=empty_hint)
         tk.Label(
             inner,
             textvariable=self.file_name_var,
@@ -501,6 +538,79 @@ class Epub2WebApp:
             command=self._choose_epub,
         )
         self.choose_button.grid(row=1, column=2, rowspan=2, sticky="e", padx=(16, 0))
+        self._register_drop_targets()
+
+    def _register_drop_targets(self) -> None:
+        """Let the source card, and everything in it, accept dropped files."""
+        if not self._dnd_enabled or DND_FILES is None or self._source_card is None:
+            return
+        for widget in self._drop_widgets(self._source_card):
+            with contextlib.suppress(tk.TclError):
+                widget.drop_target_register(DND_FILES)
+                widget.dnd_bind("<<Drop>>", self._handle_drop)
+                widget.dnd_bind("<<DropEnter>>", self._handle_drop_enter)
+                widget.dnd_bind("<<DropLeave>>", self._handle_drop_leave)
+
+    @classmethod
+    def _drop_widgets(cls, widget: tk.Misc) -> Iterator[tk.Misc]:
+        """Yield a widget and all of its descendants for drop registration."""
+        yield widget
+        for child in widget.winfo_children():
+            yield from cls._drop_widgets(child)
+
+    def _handle_drop_enter(self, _event: object) -> None:
+        self._set_drop_highlight(True)
+
+    def _handle_drop_leave(self, _event: object) -> None:
+        self._set_drop_highlight(False)
+
+    def _handle_drop(self, event: object) -> None:
+        self._set_drop_highlight(False)
+        paths = self._drop_paths(getattr(event, "data", ""))
+        if self._building or self._preview_running:
+            self._reject_drop("Stop the current preview before choosing another EPUB.")
+            return
+        if not paths:
+            self._reject_drop("Drop one EPUB 2 or 3 file to select it.")
+            return
+        if len(paths) > 1:
+            self._reject_drop("Drop one EPUB at a time.")
+            return
+        path = paths[0]
+        if path.is_dir():
+            self._reject_drop("Drop an EPUB file, not a folder.")
+            return
+        if path.suffix.lower() != ".epub":
+            self._reject_drop("That file is not an EPUB. Drop a .epub file.")
+            return
+        self._select_epub(path)
+
+    def _drop_paths(self, data: object) -> list[Path]:
+        """Turn TkDND's Tcl-list payload into filesystem paths."""
+        if isinstance(data, (tuple, list)):
+            values = data
+        elif not data:
+            return []
+        else:
+            try:
+                values = self.root.tk.splitlist(str(data))
+            except (tk.TclError, ValueError):
+                values = (str(data),)
+        return [Path(value) for value in values if value]
+
+    def _set_drop_highlight(self, active: bool) -> None:
+        if self._source_card is None or active == self._drop_highlighted:
+            return
+        self._drop_highlighted = active
+        with contextlib.suppress(tk.TclError):
+            self._source_card.configure(
+                highlightbackground=ACCENT if active else RULE,
+                highlightcolor=ACCENT if active else RULE,
+            )
+
+    def _reject_drop(self, message: str) -> None:
+        self._set_status(message, "error")
+        self._append_log(message, tag="error")
 
     @staticmethod
     def _draw_book_icon(canvas: tk.Canvas) -> None:
@@ -698,6 +808,8 @@ class Epub2WebApp:
 
     # -- user actions -----------------------------------------------------
     def _choose_epub(self) -> None:
+        if self._building or self._preview_running:
+            return
         filename = filedialog.askopenfilename(
             parent=self.root,
             title="Choose an EPUB",
@@ -706,14 +818,27 @@ class Epub2WebApp:
         )
         if not filename:
             return
-        path = Path(filename)
+        self._select_epub(Path(filename))
+
+    def _select_epub(self, path: Path) -> bool:
+        """Apply a chosen or dropped EPUB to the form."""
+        if self._building or self._preview_running:
+            self._set_status("Stop the current preview before choosing another EPUB.", "error")
+            return False
         if not path.is_file():
             self._show_error(
                 "File not found",
                 "The selected EPUB is no longer available.",
                 str(path),
             )
-            return
+            return False
+        if path.suffix.lower() != ".epub":
+            self._show_error(
+                "Not an EPUB",
+                "Choose a reflowable EPUB 2 or 3 file.",
+                str(path),
+            )
+            return False
 
         self.epub = path
         self._last_dir = path.parent
@@ -734,6 +859,7 @@ class Epub2WebApp:
             daemon=True,
             name="epub2web-metadata",
         ).start()
+        return True
 
     @staticmethod
     def _friendly_filename(path: Path) -> str:

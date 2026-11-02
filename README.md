@@ -38,7 +38,7 @@ Download from the [latest release](https://github.com/Gowwre/epub2web/releases/l
 Then:
 
 1. Open the app.
-2. Choose an EPUB file.
+2. Choose or drag in an EPUB file.
 3. Click **Convert**.
 
 The finished website opens in your browser. It is saved under

@@ -34,6 +34,29 @@ def _import_tk_app():
     return tk_app
 
 
+def _make_drop_app(tk_app):
+    """Build a bare app object for drop-handler tests without a display."""
+    import tkinter
+
+    selected: list[Path] = []
+    messages: list[str] = []
+    app = object.__new__(tk_app.Epub2WebApp)
+    app.root = SimpleNamespace(tk=tkinter.Tcl())
+    app._source_card = None
+    app._drop_highlighted = False
+    app._building = False
+    app._preview_running = False
+    app._select_epub = selected.append
+    app._set_status = lambda text, _tone="muted": messages.append(text)
+    app._append_log = lambda *_args, **_kwargs: None
+    return app, selected, messages
+
+
+def _drop_payload(*paths: Path) -> str:
+    """Build the braced Tcl list that TkDND supplies for dropped files."""
+    return " ".join(f"{{{path}}}" for path in paths)
+
+
 def test_tk_app_imports_when_tk_is_available():
     assert _import_tk_app()
 
@@ -117,12 +140,254 @@ def test_tk_app_assets_exist():
         assert (theme / name).is_file(), name
 
 
+def test_tk_app_enables_dnd_when_the_extension_loads(monkeypatch):
+    tk_app = _import_tk_app()
+    loaded = []
+
+    class FakeTkinterDnD:
+        @staticmethod
+        def require(root):
+            loaded.append(root)
+
+    monkeypatch.setattr(tk_app, "TkinterDnD", FakeTkinterDnD)
+    root = object()
+
+    assert tk_app._enable_dnd(root) is True
+    assert loaded == [root]
+
+
+def test_tk_app_falls_back_when_dnd_cannot_load(monkeypatch):
+    tk_app = _import_tk_app()
+
+    class BrokenTkinterDnD:
+        @staticmethod
+        def require(_root):
+            raise RuntimeError("no tkdnd binary")
+
+    monkeypatch.setattr(tk_app, "TkinterDnD", BrokenTkinterDnD)
+    assert tk_app._enable_dnd(object()) is False
+    assert "could not load" in tk_app._dnd_unavailable_message()
+
+    monkeypatch.setattr(tk_app, "TkinterDnD", None)
+    assert tk_app._enable_dnd(object()) is False
+    assert "tkinterdnd2 is not installed" in tk_app._dnd_unavailable_message()
+
+
+def test_tk_app_parses_tkdnd_file_list(tmp_path: Path):
+    tk_app = _import_tk_app()
+    app, _selected, _messages = _make_drop_app(tk_app)
+    first = tmp_path / "My Book.epub"
+    second = tmp_path / "Other Book.epub"
+    payload = _drop_payload(first, second)
+
+    assert app._drop_paths(payload) == [first, second]
+    assert app._drop_paths([str(first), str(second)]) == [first, second]
+    assert app._drop_paths("") == []
+
+
+def test_tk_app_drop_selects_one_epub(tmp_path: Path):
+    tk_app = _import_tk_app()
+    app, selected, messages = _make_drop_app(tk_app)
+    path = tmp_path / "BOOK.EPUB"
+    path.write_bytes(b"")
+
+    app._handle_drop(SimpleNamespace(data=_drop_payload(path)))
+
+    assert selected == [path]
+    assert messages == []
+
+
+def test_tk_app_drop_rejects_multiple_files(tmp_path: Path):
+    tk_app = _import_tk_app()
+    app, selected, messages = _make_drop_app(tk_app)
+    payload = _drop_payload(tmp_path / "one.epub", tmp_path / "two.epub")
+
+    app._handle_drop(SimpleNamespace(data=payload))
+
+    assert selected == []
+    assert messages == ["Drop one EPUB at a time."]
+
+
+def test_tk_app_drop_rejects_non_epub(tmp_path: Path):
+    tk_app = _import_tk_app()
+    app, selected, messages = _make_drop_app(tk_app)
+    path = tmp_path / "notes.txt"
+    path.write_text("not a book", encoding="utf-8")
+
+    app._handle_drop(SimpleNamespace(data=_drop_payload(path)))
+
+    assert selected == []
+    assert messages == ["That file is not an EPUB. Drop a .epub file."]
+
+
+def test_tk_app_drop_rejects_folders(tmp_path: Path):
+    tk_app = _import_tk_app()
+    app, selected, messages = _make_drop_app(tk_app)
+
+    app._handle_drop(SimpleNamespace(data=_drop_payload(tmp_path)))
+
+    assert selected == []
+    assert messages == ["Drop an EPUB file, not a folder."]
+
+
+def test_tk_app_drop_ignores_locked_app(tmp_path: Path):
+    tk_app = _import_tk_app()
+    app, selected, messages = _make_drop_app(tk_app)
+    app._building = True
+    path = tmp_path / "book.epub"
+    path.write_bytes(b"")
+
+    app._handle_drop(SimpleNamespace(data=_drop_payload(path)))
+
+    assert selected == []
+    assert messages == ["Stop the current preview before choosing another EPUB."]
+
+
+def test_tk_app_drop_rejects_empty_payload():
+    tk_app = _import_tk_app()
+    app, selected, messages = _make_drop_app(tk_app)
+
+    app._handle_drop(SimpleNamespace(data=""))
+
+    assert selected == []
+    assert messages == ["Drop one EPUB 2 or 3 file to select it."]
+
+
+def test_tk_app_drop_highlight_tracks_drag_state():
+    tk_app = _import_tk_app()
+    app = object.__new__(tk_app.Epub2WebApp)
+    calls = []
+    app._source_card = SimpleNamespace(configure=lambda **kwargs: calls.append(kwargs))
+    app._drop_highlighted = False
+
+    app._set_drop_highlight(True)
+    app._set_drop_highlight(True)
+    app._set_drop_highlight(False)
+
+    assert calls == [
+        {"highlightbackground": tk_app.ACCENT, "highlightcolor": tk_app.ACCENT},
+        {"highlightbackground": tk_app.RULE, "highlightcolor": tk_app.RULE},
+    ]
+
+
+def test_tk_app_registers_every_source_card_widget(monkeypatch):
+    tk_app = _import_tk_app()
+
+    class FakeWidget:
+        def __init__(self, *children):
+            self._children = list(children)
+            self.registered = []
+            self.bound = []
+
+        def winfo_children(self):
+            return self._children
+
+        def drop_target_register(self, *types):
+            self.registered.append(types)
+
+        def dnd_bind(self, sequence, func):
+            self.bound.append((sequence, func))
+
+    child = FakeWidget()
+    card = FakeWidget(child)
+    app = object.__new__(tk_app.Epub2WebApp)
+    app._dnd_enabled = True
+    app._source_card = card
+
+    app._register_drop_targets()
+
+    for widget in (card, child):
+        assert widget.registered == [(tk_app.DND_FILES,)]
+        assert [sequence for sequence, _func in widget.bound] == [
+            "<<Drop>>",
+            "<<DropEnter>>",
+            "<<DropLeave>>",
+        ]
+
+
+def test_tk_app_disabled_dnd_skips_registration(monkeypatch):
+    tk_app = _import_tk_app()
+    app = object.__new__(tk_app.Epub2WebApp)
+    app._dnd_enabled = False
+    app._source_card = SimpleNamespace(
+        winfo_children=lambda: pytest.fail("should not inspect widgets"),
+        drop_target_register=lambda *_args: pytest.fail("should not register"),
+    )
+
+    app._register_drop_targets()
+
+
+def test_tk_app_select_epub_rejects_non_epub(tmp_path: Path):
+    tk_app = _import_tk_app()
+    path = tmp_path / "notes.txt"
+    path.write_text("not a book", encoding="utf-8")
+    errors = []
+    app = object.__new__(tk_app.Epub2WebApp)
+    app._building = False
+    app._preview_running = False
+    app._show_error = lambda *args: errors.append(args)
+
+    assert app._select_epub(path) is False
+    assert errors == [("Not an EPUB", "Choose a reflowable EPUB 2 or 3 file.", str(path))]
+
+
+def test_tk_app_select_epub_resets_previous_state(tmp_path: Path, monkeypatch):
+    tk_app = _import_tk_app()
+    path = tmp_path / "My_Book.epub"
+    path.write_bytes(b"")
+    names = []
+    shown_paths = []
+    started = []
+    app = object.__new__(tk_app.Epub2WebApp)
+    app._building = False
+    app._preview_running = False
+    app.controller = object()
+    app.preview_url = "http://127.0.0.1:8000/"
+    app._book_title = "Old title"
+    app._last_dir = tmp_path
+    app._output_parent = None
+    app.output = None
+    app.output_var = SimpleNamespace(set=lambda _value: None)
+    app.file_name_var = SimpleNamespace(set=names.append)
+    app.file_path_var = SimpleNamespace(set=shown_paths.append)
+    app._reset_log = lambda: None
+    app._append_log = lambda *_args, **_kwargs: None
+    app._set_status = lambda *_args, **_kwargs: None
+    app._set_log_hint = lambda *_args, **_kwargs: None
+    app._refresh_controls = lambda: None
+    monkeypatch.setattr(
+        tk_app.threading,
+        "Thread",
+        lambda **kwargs: SimpleNamespace(start=lambda: started.append(kwargs)),
+    )
+
+    assert app._select_epub(path) is True
+
+    assert app.epub == path
+    assert app._last_dir == path.parent
+    assert app.controller is None
+    assert app.preview_url is None
+    assert app._book_title == ""
+    assert names == ["My Book"]
+    assert shown_paths == [tk_app.Epub2WebApp._display_path(path)]
+    assert len(started) == 1
+    assert started[0]["args"] == (path,)
+
+
 def test_gui_self_test_checks_tk():
     try:
         import tkinter  # noqa: F401
     except ImportError as exc:
         pytest.skip(f"Tkinter is not available: {exc}")
     assert gui_main(["--self-test"]) == 0
+
+
+def test_gui_self_test_reports_missing_dnd(monkeypatch, capsys):
+    tk_app = _import_tk_app()
+    monkeypatch.setattr(tk_app, "DND_FILES", None)
+
+    assert gui_main(["--self-test"]) == 2
+    assert "tkinterdnd2" in capsys.readouterr().err
 
 
 def test_gui_worker_flag_routes_to_cli(tiny_epub, tmp_path: Path):

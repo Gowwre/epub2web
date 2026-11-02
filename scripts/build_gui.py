@@ -44,6 +44,7 @@ BUNDLED_DISTRIBUTIONS = (
     "soupsieve",
     "MarkupSafe",
     "typing_extensions",
+    "tkinterdnd2",
     "pyinstaller",
 )
 LICENSE_NAMES = {
@@ -170,6 +171,12 @@ def _ensure_build_dependencies() -> None:
         raise BuildError(
             "Tkinter is not available in this Python. Install the Tk package for "
             "your distribution, then try again."
+        ) from exc
+    try:
+        import tkinterdnd2  # noqa: F401
+    except ImportError as exc:
+        raise BuildError(
+            "tkinterdnd2 is not installed. Run: pip install -e '.[gui-build]'"
         ) from exc
 
 

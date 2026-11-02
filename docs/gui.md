@@ -7,9 +7,9 @@ pip install -e .
 epub2web-gui
 ```
 
-Choose a reflowable EPUB 2/3 file and click **Convert**. The site is built with
-the same extractor, fidelity gate, link gate, and theme as the CLI, then opens
-in the default browser.
+Choose a reflowable EPUB 2/3 file, or drag one onto the source card, and click
+**Convert**. The site is built with the same extractor, fidelity gate, link
+gate, and theme as the CLI, then opens in the default browser.
 
 - Output defaults to `~/Documents/epub2web/<book>-site`, or
   `~/epub2web/<book>-site` when there is no `Documents` folder. Use
@@ -47,6 +47,14 @@ Windows and macOS installers from [python.org](https://www.python.org/) include
 Tk. If Tk is missing, the GUI prints installation instructions and the CLI
 continues to work normally.
 
+The GUI uses [tkinterdnd2](https://github.com/Eliav2/tkinterdnd2) for native
+file drag and drop on Windows, macOS, and Linux. It is installed with the
+package and included in portable builds. If TkDND cannot load on a system, the
+app still works through **Choose EPUB…** and writes a note to the build log.
+Start the GUI from the same Python environment where you installed
+`epub2web`; running it under a different interpreter can leave the package
+behind.
+
 ## Architecture
 
 - `epub2web/gui.py` — launcher and hidden `--worker` routing.
@@ -64,6 +72,11 @@ The view sends user actions to `BuildController`; the controller spawns a
 worker and emits `BuildEvent` objects. The Tk app puts those events on a queue
 and applies them on the Tk main thread. Replacing Tkinter with Qt or a local web
 view should not require changes to the controller or worker.
+
+The Tk view registers the source card and its children as TkDND drop targets.
+Dropping a single `.epub` file selects it exactly like the file picker;
+dragging over the card highlights it, and unsupported drops are reported in the
+status line and build log instead of opening a dialog.
 
 Progress is reported for reading, per-image optimization, page conversion,
 rendering, fidelity verification, link checking, and publishing. The GUI turns
@@ -109,10 +122,11 @@ Every artifact is written to `dist/portable/`, together with a platform-specific
 
 The build command uses `--collect-data epub2web` for templates, CSS, JavaScript,
 and fonts, and `--collect-submodules epub2web` so the hidden `--worker` mode and
-Tk modules survive freezing. Before packaging, it runs two smoke tests against
-the frozen executable: `--self-test` confirms Tk can be imported, then a
-generated one-page EPUB is converted through the worker to exercise the real
-pipeline and package data.
+Tk modules survive freezing. PyInstaller discovers `tkinterdnd2`'s own hook,
+which bundles only the TkDND binary for the build platform. Before packaging, it
+runs two smoke tests against the frozen executable: `--self-test` confirms Tk
+and the drag-and-drop module can be imported, then a generated one-page EPUB is
+converted through the worker to exercise the real pipeline and package data.
 
 For Linux AppImages, `appimagetool` is not bundled. Install it from
 [AppImageKit](https://github.com/AppImage/appimagetool) or set `APPIMAGETOOL`:

@@ -6,6 +6,10 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+### Added
+
+- Drag an EPUB file onto the desktop app to select it. The source card highlights while a file is over it, and unsupported drops are reported without interrupting an existing selection.
+
 ## 0.9.0 - 2026-10-30
 
 ### Added

@@ -22,6 +22,14 @@ macOS/Windows:
 The command-line version still works: epub2web book.epub --serve
 """
 
+DND_HELP = """\
+The epub2web desktop GUI needs tkinterdnd2 for native drag and drop.
+
+Install it with: pip install tkinterdnd2
+
+The command-line version still works: epub2web book.epub --serve
+"""
+
 
 def _print_error(text: str) -> None:
     stream = sys.stderr or sys.__stderr__
@@ -39,14 +47,18 @@ def main(argv: list[str] | None = None) -> int:
 
         return worker_main(args[1:])
 
-    # Packaging smoke tests use this to confirm that Tk and the view modules
-    # were bundled. Import only; creating a root window needs a display.
+    # Packaging smoke tests use this to confirm that Tk, the view modules, and
+    # the drag-and-drop wrapper were bundled. Import only; creating a root
+    # window needs a display.
     if args and args[0] == "--self-test":
         try:
-            from . import tk_app  # noqa: F401
+            from . import tk_app
         except ImportError as exc:
             _print_error(TK_HELP)
             _print_error(f"Details: {exc}")
+            return 2
+        if getattr(tk_app, "DND_FILES", None) is None:
+            _print_error(DND_HELP)
             return 2
         return 0
 

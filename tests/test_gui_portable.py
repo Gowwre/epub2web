@@ -40,6 +40,10 @@ def test_appimage_arch_uses_appimage_names(build_gui):
     assert build_gui.appimage_arch("armv7l") == "armhf"
 
 
+def test_license_scan_includes_drag_and_drop_dependency(build_gui):
+    assert "tkinterdnd2" in build_gui.BUNDLED_DISTRIBUTIONS
+
+
 @pytest.mark.parametrize(
     ("name", "extra"),
     [
