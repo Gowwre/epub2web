@@ -6,6 +6,14 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+### Added
+
+- Add a **Check for updates** button to the desktop app header that reports when the app is current or when the check fails.
+
+### Changed
+
+- Re-check GitHub Releases about once an hour while the desktop app stays open, instead of only at startup.
+
 ## 0.10.0 - 2026-11-02
 
 ### Added

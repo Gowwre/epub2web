@@ -27,11 +27,14 @@ gate, and theme as the CLI, then opens in the default browser.
   title includes it as well.
 - The header links to the [project website](https://gowwre.github.io/epub2web/)
   and the [GitHub repository](https://github.com/Gowwre/epub2web).
-- On startup the GUI checks GitHub Releases for a newer version. When one is
-  available, an **Update** button shows its release notes and a link to the
-  download page. The check runs in the background, fails silently when offline,
-  and does not affect book conversion. Set `EPUB2WEB_NO_UPDATE_CHECK=1` to skip
-  it.
+- On startup, and about once an hour while the window stays open, the GUI
+  checks GitHub Releases for a newer version. When one is available, an
+  **Update** button shows its release notes and a link to the download page.
+  Automatic checks run in the background and fail silently when offline, so
+  they never affect book conversion. **Check for updates** in the header runs
+  the same check on demand and reports when the app is current or when the
+  check fails. Set `EPUB2WEB_NO_UPDATE_CHECK=1` to skip both automatic and
+  manual checks.
 - The GUI is a thin front end. For automation, use the CLI.
 
 ## Requirements

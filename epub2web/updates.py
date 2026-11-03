@@ -1,8 +1,9 @@
 """Best-effort update checks for the desktop GUI.
 
-The converter itself never uses the network. The GUI may check GitHub Releases
-once at startup so it can offer a newer desktop build; failures are ignored and
-book builds continue to work offline.
+The converter itself never uses the network. The GUI checks GitHub Releases
+shortly after launch and then periodically while it stays open, so it can offer
+a newer desktop build; failures are ignored and book builds continue to work
+offline.
 """
 
 from __future__ import annotations

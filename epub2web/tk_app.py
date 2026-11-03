@@ -12,6 +12,7 @@ import os
 import queue
 import sys
 import threading
+import time
 import tkinter as tk
 import tkinter.font as tkfont
 import webbrowser
@@ -68,6 +69,10 @@ LOG_MUTED = "#9a9184"
 LOG_ERROR = "#ff9e8d"
 LOG_SUCCESS = "#8fd6a8"
 LOG_ACCENT = "#f2b38a"
+
+UPDATE_CHECK_STARTUP_DELAY = 3.0
+UPDATE_CHECK_INTERVAL = 60 * 60
+UPDATE_CHECK_LABEL = "Check for updates"
 
 
 def window_title() -> str:
@@ -156,6 +161,10 @@ class Epub2WebApp:
         self._dnd_enabled = _enable_dnd(root)
         self._source_card: tk.Frame | None = None
         self._drop_highlighted = False
+        self._updates_enabled = not bool(os.environ.get("EPUB2WEB_NO_UPDATE_CHECK"))
+        self._update_checking = False
+        self._update_check_manual = False
+        self._next_update_check = time.monotonic() + UPDATE_CHECK_STARTUP_DELAY
 
         self._configure_fonts()
         self._configure_styles()
@@ -170,7 +179,6 @@ class Epub2WebApp:
         if not self._dnd_enabled:
             self._append_log(f"{_dnd_unavailable_message()} Use Choose EPUB… instead.", tag="muted")
         self._poll()
-        self._check_for_updates()
 
     @staticmethod
     def _default_open_dir() -> Path:
@@ -453,6 +461,15 @@ class Epub2WebApp:
         if self._github_icon is not None:
             self.github_button.configure(image=self._github_icon, compound="none")
         self.github_button.pack(side="right", padx=(0, 8))
+
+        self.update_check_button = ttk.Button(
+            brand_actions,
+            text=UPDATE_CHECK_LABEL,
+            style="Ghost.TButton",
+            command=self._manual_update_check,
+        )
+        if self._updates_enabled:
+            self.update_check_button.pack(side="right", padx=(0, 8))
 
         tk.Label(
             header,
@@ -1045,14 +1062,44 @@ class Epub2WebApp:
         ).start()
 
     # -- update checks ----------------------------------------------------
-    def _check_for_updates(self) -> None:
+    def _manual_update_check(self) -> None:
+        self._check_for_updates(manual=True)
+
+    def _check_for_updates(self, *, manual: bool = False) -> None:
         if os.environ.get("EPUB2WEB_NO_UPDATE_CHECK"):
             return
+        if self._update_checking:
+            if manual:
+                # An automatic check is already in flight; keep its result and
+                # show the explicit feedback the user asked for.
+                self._update_check_manual = True
+                self._set_update_check_busy(True)
+            return
+        self._update_checking = True
+        self._update_check_manual = manual
+        if manual:
+            self._set_update_check_busy(True)
         threading.Thread(
             target=self._fetch_update,
             daemon=True,
             name="epub2web-update",
         ).start()
+
+    def _update_check_due(self, now: float | None = None) -> bool:
+        if not self._updates_enabled or self._update_checking:
+            return False
+        moment = time.monotonic() if now is None else now
+        return moment >= self._next_update_check
+
+    def _set_update_check_busy(self, busy: bool) -> None:
+        button = getattr(self, "update_check_button", None)
+        if button is None:
+            return
+        with contextlib.suppress(tk.TclError):
+            button.configure(
+                text="Checking…" if busy else UPDATE_CHECK_LABEL,
+                state="disabled" if busy else "normal",
+            )
 
     def _fetch_update(self) -> None:
         try:
@@ -1061,13 +1108,44 @@ class Epub2WebApp:
             release = None
         self.update_queue.put(release)
 
+    def _finish_update_check(self) -> None:
+        self._update_checking = False
+        self._update_check_manual = False
+        self._next_update_check = time.monotonic() + UPDATE_CHECK_INTERVAL
+        self._set_update_check_busy(False)
+
     def _apply_update(self, release: ReleaseInfo | None) -> None:
-        if release is None or self.update_info is not None:
+        manual = getattr(self, "_update_check_manual", False)
+        self._finish_update_check()
+
+        if release is None:
+            if manual:
+                self._show_error(
+                    "Could not check for updates",
+                    "The update server could not be reached. "
+                    "Check your internet connection and try again.",
+                )
             return
+
+        if self.update_info is not None:
+            if is_newer(release.version, self.update_info.version):
+                self.update_info = release
+            if manual:
+                self._show_update_dialog()
+            return
+
         if not is_newer(release.version):
+            if manual:
+                self._show_info(
+                    "No updates available",
+                    f"You are running epub2web {__version__}, the latest version.",
+                )
             return
+
         self.update_info = release
         self.update_button.pack(side="right", padx=(0, 8))
+        if manual:
+            self._show_update_dialog()
 
     # -- event handling ---------------------------------------------------
     def _poll(self) -> None:
@@ -1089,6 +1167,8 @@ class Epub2WebApp:
             pass
         finally:
             self._poll_id = self.root.after(100, self._poll)
+            if self._update_check_due():
+                self._check_for_updates()
 
     def _handle_event(self, event: BuildEvent) -> None:
         if event.kind == "log":

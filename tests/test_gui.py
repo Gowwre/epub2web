@@ -112,6 +112,162 @@ def test_tk_app_update_check_can_be_disabled(monkeypatch):
     )
 
     app._check_for_updates()
+    app._check_for_updates(manual=True)
+
+
+def _make_update_app(tk_app):
+    """Build a bare app object for update-check tests without a display."""
+    app = object.__new__(tk_app.Epub2WebApp)
+    app.update_info = None
+    app.update_button = SimpleNamespace(pack=lambda **_kwargs: None)
+    app.update_check_button = SimpleNamespace(configure=lambda **_kwargs: None)
+    app._updates_enabled = True
+    app._update_checking = False
+    app._update_check_manual = False
+    app._next_update_check = 0.0
+    return app
+
+
+def test_tk_app_reschedules_update_check_after_completion(monkeypatch):
+    tk_app = _import_tk_app()
+    app = _make_update_app(tk_app)
+    app._update_checking = True
+    monkeypatch.setattr(tk_app.time, "monotonic", lambda: 1000.0)
+
+    app._apply_update(None)
+
+    assert app._update_checking is False
+    assert app._next_update_check == 1000.0 + tk_app.UPDATE_CHECK_INTERVAL
+
+
+def test_tk_app_update_check_is_due_only_when_idle():
+    tk_app = _import_tk_app()
+    app = _make_update_app(tk_app)
+    app._next_update_check = 10.0
+
+    assert app._update_check_due(9.9) is False
+    assert app._update_check_due(10.0) is True
+
+    app._update_checking = True
+    assert app._update_check_due(20.0) is False
+
+    app._update_checking = False
+    app._updates_enabled = False
+    assert app._update_check_due(20.0) is False
+
+
+def test_tk_app_update_check_button_shows_busy_state():
+    tk_app = _import_tk_app()
+    app = _make_update_app(tk_app)
+    calls = []
+    app.update_check_button = SimpleNamespace(configure=lambda **kwargs: calls.append(kwargs))
+
+    app._set_update_check_busy(True)
+    app._set_update_check_busy(False)
+
+    assert calls == [
+        {"text": "Checking…", "state": "disabled"},
+        {"text": tk_app.UPDATE_CHECK_LABEL, "state": "normal"},
+    ]
+
+
+def test_tk_app_update_check_reuses_inflight_check(monkeypatch):
+    tk_app = _import_tk_app()
+    app = _make_update_app(tk_app)
+    app._update_checking = True
+    monkeypatch.setattr(
+        tk_app.threading,
+        "Thread",
+        lambda **_kwargs: pytest.fail("should reuse the in-flight check"),
+    )
+
+    app._check_for_updates(manual=True)
+
+    assert app._update_check_manual is True
+
+
+def test_tk_app_update_check_starts_background_thread(monkeypatch):
+    tk_app = _import_tk_app()
+    app = _make_update_app(tk_app)
+    started = []
+
+    class FakeThread:
+        def __init__(self, **kwargs):
+            started.append(kwargs)
+
+        def start(self):
+            started[-1]["started"] = True
+
+    monkeypatch.setattr(tk_app.threading, "Thread", FakeThread)
+
+    app._check_for_updates(manual=True)
+
+    assert app._update_checking is True
+    assert app._update_check_manual is True
+    assert started == [
+        {
+            "target": app._fetch_update,
+            "daemon": True,
+            "name": "epub2web-update",
+            "started": True,
+        }
+    ]
+
+
+def test_tk_app_manual_check_reports_when_current():
+    tk_app = _import_tk_app()
+    app = _make_update_app(tk_app)
+    messages = []
+    app._show_info = lambda title, message, *_args: messages.append((title, message))
+    app._show_error = lambda *_args, **_kwargs: pytest.fail("unexpected error")
+    app._update_check_manual = True
+
+    app._apply_update(ReleaseInfo("0.0.1", ""))
+
+    assert messages == [
+        (
+            "No updates available",
+            f"You are running epub2web {__version__}, the latest version.",
+        )
+    ]
+
+
+def test_tk_app_manual_check_reports_failure():
+    tk_app = _import_tk_app()
+    app = _make_update_app(tk_app)
+    errors = []
+    app._show_error = lambda title, message, *_args: errors.append((title, message))
+    app._show_info = lambda *_args, **_kwargs: pytest.fail("unexpected info")
+    app._update_check_manual = True
+
+    app._apply_update(None)
+
+    assert errors[0][0] == "Could not check for updates"
+    assert "could not be reached" in errors[0][1]
+
+
+def test_tk_app_automatic_check_failure_is_silent():
+    tk_app = _import_tk_app()
+    app = _make_update_app(tk_app)
+    app._show_error = lambda *_args, **_kwargs: pytest.fail("automatic failures are silent")
+    app._show_info = lambda *_args, **_kwargs: pytest.fail("automatic failures are silent")
+
+    app._apply_update(None)
+
+
+def test_tk_app_manual_check_opens_available_update():
+    tk_app = _import_tk_app()
+    app = _make_update_app(tk_app)
+    packed = []
+    app.update_button = SimpleNamespace(pack=lambda **kwargs: packed.append(kwargs))
+    app._show_update_dialog = lambda: packed.append("dialog")
+    app._update_check_manual = True
+    release = ReleaseInfo("999.0.0", "notes")
+
+    app._apply_update(release)
+
+    assert app.update_info is release
+    assert packed == [{"side": "right", "padx": (0, 8)}, "dialog"]
 
 
 def test_tk_app_shows_update_button_only_for_newer_release():
