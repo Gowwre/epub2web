@@ -6,6 +6,8 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+## 0.11.0 - 2026-11-03
+
 ### Added
 
 - Add a **Check for updates** button to the desktop app header that reports when the app is current or when the check fails.
