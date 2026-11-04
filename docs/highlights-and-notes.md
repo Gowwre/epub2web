@@ -570,7 +570,8 @@ different id. Do not change that behavior for reading progress. Add
 - Treat notes as untrusted text. Render with `textContent`, never `innerHTML`.
   If Markdown is supported later, sanitize it with an allowlist.
 - Do not include annotation text in search indexes, page metadata, logs, or
-  support ZIPs.
+  support ZIPs. The annotation panel's search is in-memory and never writes an
+  index.
 - Private browsing and storage eviction can remove the store; **Export** is the
   current backup. A future app-data copy could add durability.
 
@@ -908,8 +909,9 @@ builds, no automatic import on page load, and no automatic import banner.
   also export a backup on every change?
 - **Round-trip expectations:** do users need calibre to see epub2web highlights,
   or only the reverse? Regenerating a correct CFI is the hard part.
-- **Search:** should annotation text be searchable locally? If yes, keep it out
-  of the published search index.
+- **Search:** annotation search is local and in-memory over quotes, notes, and
+  chapter names. It is not added to the published search index and is not stored
+  on disk.
 - **Sharing:** public annotations are a separate product decision with privacy
   and moderation implications.
 

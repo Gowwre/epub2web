@@ -237,6 +237,30 @@ def test_reader_offers_markdown_export_and_copy_all(tiny_epub, tmp_path: Path):
     assert "text/markdown;charset=utf-8" in script
 
 
+def test_reader_has_local_annotation_search(tiny_epub, tmp_path: Path):
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    site = tmp_path / "site"
+
+    GenericExtractor(tiny_epub, content, images).run()
+    render_site(content, site, site_url="http://localhost:8000")
+    page = BeautifulSoup((site / "read" / "1" / "index.html").read_text(encoding="utf-8"), "lxml")
+    panel = page.find(id="epub2web-annotations-dialog")
+
+    search = panel.find("input", attrs={"data-annotations-search": True})
+    assert search is not None
+    assert search["type"] == "search"
+    assert search["aria-controls"] == "epub2web-annotations-list"
+    assert panel.find(id="epub2web-annotations-list") is not None
+    status = panel.find(attrs={"data-annotations-search-status": True})
+    assert status is not None
+    assert status.has_attr("hidden")
+
+    script = (site / "assets" / "annotations.js").read_text(encoding="utf-8")
+    assert "function annotationMatchesQuery" in script
+    assert "function normalizeSearch" in script
+
+
 def test_rendered_pages_expose_reading_progress(tiny_epub, tmp_path: Path):
     content = tmp_path / "content"
     images = tmp_path / "images"

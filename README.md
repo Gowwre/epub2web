@@ -122,9 +122,9 @@ A complete website, ready to read:
 - every chapter as a clean, readable web page
 - pictures, captions, tables, lists, notes, and cross-references
 - built-in search that works without an account or internet connection
-- highlight passages and add private notes, review them in a panel, copy them
-  all as Markdown, export them as Markdown or JSON, and import JSON backups;
-  they stay in your browser and never enter the generated site
+- highlight passages and add private notes, review and search them in a panel,
+  copy them all as Markdown, export them as Markdown or JSON, and import JSON
+  backups; they stay in your browser and never enter the generated site
 - light, dark, and automatic reading modes
 - adjustable text size, line spacing, paragraph style, and page width, remembered in your browser
 - self-hosted fonts for Latin, Greek, Cyrillic, Arabic, Hebrew, Devanagari, Thai, and CJK text

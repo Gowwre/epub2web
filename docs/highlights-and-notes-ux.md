@@ -347,6 +347,11 @@ control if users ask.
 - Reuse `dialog.sheet` so it feels native to epub2web.
 - Header: “Highlights & notes” and total count.
 - Filter chips: All, Highlights, Notes. One active filter at a time.
+- Search field beneath the filters. It matches quotes, notes, and chapter names
+  locally, is case- and accent-insensitive, and requires every entered word to
+  match. Search and filters combine.
+- A small live status reports “3 matches for ‘design’” while searching, and
+  search is cleared with `Esc` before closing the panel.
 - Optional “This chapter” toggle can come later; default is whole book.
 - Group headings are chapter titles, sticky inside the scrolling body.
 - Each row:
@@ -362,6 +367,8 @@ control if users ask.
 ### 6.3 Empty and error states
 
 - Empty: short explanation plus a “Select text to highlight” hint. No tour.
+- Search empty: “No annotations match ‘design’.” The query remains selected so it
+  can be edited or cleared.
 - Needs review: “3 annotations need review” with a short reason on each item.
 - Storage failure: an inline banner with “Export annotations” and a retry.
 - Import is always available in the panel footer. Never show an unsolicited
@@ -393,7 +400,7 @@ control if users ask.
 | `H` | Highlight the current selection with the last-used color. |
 | `N` | Add a note to the current selection. |
 | `Shift+A` | Open or close the annotation panel. |
-| `Esc` | Close toolbar, card, composer, or panel. |
+| `Esc` | Clear an annotation search first, then close a toolbar, card, composer, or panel. |
 | `Cmd/Ctrl+Enter` | Save the note composer. |
 | `Tab` / `Shift+Tab` | Move through toolbar, card, and panel controls. |
 
@@ -557,6 +564,9 @@ than reusing the light values.
 | Copy all | **Copy all** → **Copied 12 annotations to the clipboard.** |
 | Export menu | **Export** → **Markdown (.md)** / **JSON backup (.json)** |
 | Export empty | **No annotations to export.** |
+| Search placeholder | **Search highlights and notes…** |
+| Search matches | **3 matches for “design”** |
+| Search empty | **No annotations match “design”.** |
 | Storage note | **Highlights and notes stay in this browser and are never uploaded.** Keep on this device |
 | Storage dialog | **Keep highlights on this device** — explains local storage, eviction, and the possible browser prompt. |
 | Storage denied | **The browser did not grant persistent storage. Export a backup to keep a copy.** |
@@ -594,6 +604,8 @@ A first implementation is successful when:
 - Users can copy all active annotations as Markdown or download them as a
   chapter-grouped Markdown file.
 - JSON remains available as a complete, re-importable backup.
+- Searching filters quotes, notes, and chapter names locally and combines with
+  the All/Highlights/Notes filters.
 - Highlights and notes survive reload, rebuild, and the documented origin/path
   changes described in the storage design.
 

@@ -49,6 +49,8 @@
   const panelEmpty = document.querySelector("[data-annotations-empty]");
   const panelStatus = document.querySelector("[data-annotations-status]");
   const panelTotal = document.querySelector("[data-annotations-total]");
+  const panelSearch = document.querySelector("[data-annotations-search]");
+  const panelSearchStatus = document.querySelector("[data-annotations-search-status]");
   const fileInput = document.querySelector("[data-annotations-file]");
   const storageDialog = document.getElementById("epub2web-storage-dialog");
   const storageState = document.querySelector("[data-storage-state]");
@@ -66,6 +68,7 @@
     cardId: "",
     cardPoint: null,
     filter: "all",
+    query: "",
     lastColor: "yellow",
     db: null,
     mode: "",
@@ -1676,21 +1679,59 @@
     return wrapper;
   }
 
+  function normalizeSearch(value) {
+    return String(value || "")
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase();
+  }
+
+  function annotationMatchesQuery(annotation, terms) {
+    if (!terms.length) return true;
+    const haystack = normalizeSearch(
+      [annotation.quote, annotation.note, chapterLabel(annotation)].join("\n")
+    );
+    return terms.every(function (term) {
+      return haystack.indexOf(term) !== -1;
+    });
+  }
+
+  function updateSearchStatus(count) {
+    if (!panelSearchStatus) return;
+    const query = state.query.trim();
+    if (!query) {
+      panelSearchStatus.hidden = true;
+      panelSearchStatus.textContent = "";
+      return;
+    }
+    panelSearchStatus.hidden = false;
+    panelSearchStatus.textContent = count
+      ? count + (count === 1 ? " match" : " matches") + " for “" + query + "”"
+      : "No matches for “" + query + "”";
+  }
+
   function renderPanel() {
     if (!panelList) return;
     panelList.replaceChildren();
     const all = sortAnnotations(activeAnnotations());
+    const terms = normalizeSearch(state.query).split(/\s+/).filter(Boolean);
     const filtered = all.filter(function (annotation) {
-      if (state.filter === "note") return Boolean(annotation.note);
-      if (state.filter === "highlight") return !annotation.note;
-      return true;
+      if (state.filter === "note" && !annotation.note) return false;
+      if (state.filter === "highlight" && annotation.note) return false;
+      return annotationMatchesQuery(annotation, terms);
     });
 
+    updateSearchStatus(filtered.length);
     panelEmpty.hidden = filtered.length > 0;
     if (!filtered.length) {
-      panelEmpty.textContent = all.length
-        ? "No annotations match this filter."
-        : "No highlights or notes yet. Select text and press H to highlight, or use the selection toolbar.";
+      if (!all.length) {
+        panelEmpty.textContent =
+          "No highlights or notes yet. Select text and press H to highlight, or use the selection toolbar.";
+      } else if (state.query.trim()) {
+        panelEmpty.textContent = "No annotations match “" + state.query.trim() + "”.";
+      } else {
+        panelEmpty.textContent = "No annotations match this filter.";
+      }
     }
 
     const groups = new Map();
@@ -2179,6 +2220,12 @@
     panel.querySelector("[data-annotations-location]").addEventListener("click", function () {
       startLocationNote();
     });
+    if (panelSearch) {
+      panelSearch.addEventListener("input", function () {
+        state.query = panelSearch.value;
+        renderPanel();
+      });
+    }
     panel.querySelector("[data-annotations-export]").addEventListener("click", function () {
       exportAnnotations();
       closeExportMenu();
@@ -2204,6 +2251,13 @@
       if (menu && menu.open) {
         event.preventDefault();
         menu.open = false;
+        return;
+      }
+      if (state.query) {
+        event.preventDefault();
+        state.query = "";
+        if (panelSearch) panelSearch.value = "";
+        renderPanel();
       }
     });
     fileInput.addEventListener("change", function () {
@@ -2241,6 +2295,12 @@
     });
     panel.addEventListener("close", function () {
       closeExportMenu();
+      state.query = "";
+      if (panelSearch) panelSearch.value = "";
+      if (panelSearchStatus) {
+        panelSearchStatus.hidden = true;
+        panelSearchStatus.textContent = "";
+      }
       if (state.panelReturnFocus) {
         const target = state.panelReturnFocus;
         state.panelReturnFocus = null;

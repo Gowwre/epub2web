@@ -211,9 +211,14 @@
       </div>
       <button type="button" class="annotations-location" data-annotations-location>{{ icon("note", 14) }}<span>Note at current page</span></button>
     </div>
+    <label class="annotations-search">
+      <span class="sr-only">Search highlights and notes</span>
+      <input id="epub2web-annotations-search" type="search" data-annotations-search placeholder="Search highlights and notes…" autocomplete="off" aria-controls="epub2web-annotations-list">
+    </label>
+    <p class="annotations-search-status" data-annotations-search-status role="status" aria-live="polite" hidden></p>
     <p class="annotations-status" data-annotations-status role="status" aria-live="polite"></p>
     <p class="annotations-shortcuts"><kbd>H</kbd> highlight · <kbd>N</kbd> note · <kbd>?</kbd> all shortcuts</p>
-    <div class="annotations-list" data-annotations-list></div>
+    <div class="annotations-list" id="epub2web-annotations-list" data-annotations-list></div>
     <p class="annotations-empty" data-annotations-empty hidden>No highlights or notes yet. Select text and press H to highlight, or use the selection toolbar.</p>
     <div class="annotations-footer">
       <div class="annotations-privacy">
