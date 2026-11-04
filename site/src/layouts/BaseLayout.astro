@@ -6,7 +6,7 @@ import frauncesVietnamese from "../assets/fonts/fraunces-vietnamese.woff2?url";
 import interLatin from "../assets/fonts/inter-latin.woff2?url";
 import interVietnamese from "../assets/fonts/inter-vietnamese.woff2?url";
 import literataVietnamese from "../assets/fonts/literata-vietnamese.woff2?url";
-import { alternateLocalePath, getCopy, localePath, type Locale } from "../i18n";
+import { getCopy, localePath, type Locale } from "../i18n";
 import { withBase } from "../consts";
 import "../styles/global.css";
 
@@ -35,7 +35,6 @@ const socialImage = Astro.site
 
 const englishPath = localePath("en", path);
 const vietnamesePath = localePath("vi", path);
-const alternatePath = alternateLocalePath(locale, path);
 const ogLocale = locale === "vi" ? "vi_VN" : "en_US";
 const ogLocaleAlternate = locale === "vi" ? "en_US" : "vi_VN";
 
@@ -49,7 +48,13 @@ const socialImageAlt =
 ---
 
 <!doctype html>
-<html lang={locale} data-locale={locale} data-theme="light">
+<html
+  lang={locale}
+  data-locale={locale}
+  data-locale-href-en={englishPath}
+  data-locale-href-vi={vietnamesePath}
+  data-theme="light"
+>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -117,6 +122,45 @@ const socialImageAlt =
         />
       </>
     )}
+
+    <script is:inline>
+      (function () {
+        var root = document.documentElement;
+        var current = root.dataset.locale;
+        var stored = "";
+        try {
+          stored = localStorage.getItem("epub2web-ui-lang") || "";
+        } catch (error) {}
+        if (stored !== "en" && stored !== "vi") stored = "";
+
+        function systemLanguage() {
+          var candidate = "";
+          try {
+            if (navigator.languages && navigator.languages.length) {
+              candidate = navigator.languages[0];
+            }
+          } catch (error) {}
+          if (!candidate) {
+            try {
+              candidate = navigator.language || "";
+            } catch (error) {}
+          }
+          if (!candidate) {
+            try {
+              candidate = Intl.DateTimeFormat().resolvedOptions().locale || "";
+            } catch (error) {}
+          }
+          var tag = String(candidate).trim().toLowerCase().replace(/_/g, "-");
+          return tag === "vi" || tag.indexOf("vi-") === 0 ? "vi" : "en";
+        }
+
+        var preferred = stored || systemLanguage();
+        if (preferred !== "vi" || current !== "en") return;
+        var target = root.dataset.localeHrefVi;
+        if (!target || target === window.location.pathname) return;
+        window.location.replace(target + window.location.search + window.location.hash);
+      })();
+    </script>
 
     <script is:inline>
       (function () {

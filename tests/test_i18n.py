@@ -100,6 +100,26 @@ def test_rendered_site_embeds_both_languages(tiny_epub, tmp_path: Path):
     assert 'data-i18n="notFound.title"' in not_found
 
 
+def test_rendered_site_detects_the_system_language(tiny_epub, tmp_path: Path):
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    site = tmp_path / "site"
+    GenericExtractor(tiny_epub, content, images).run()
+    render_site(content, site, site_url="http://localhost:8000")
+
+    home = (site / "index.html").read_text(encoding="utf-8")
+    assert "navigator.languages" in home
+    assert "navigator.language" in home
+    assert "Intl.DateTimeFormat" in home
+    assert "dataset.uiLang" in home
+
+    i18n_js = (site / "assets" / "i18n.js").read_text(encoding="utf-8")
+    assert "navigator.languages" in i18n_js
+    assert "navigator.language" in i18n_js
+    assert "Intl.DateTimeFormat" in i18n_js
+    assert "systemLanguage" in i18n_js
+
+
 def test_vietnamese_font_subsets_are_always_available(tiny_epub, tmp_path: Path):
     content = tmp_path / "content"
     images = tmp_path / "images"

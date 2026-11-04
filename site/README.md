@@ -16,6 +16,14 @@ The site ships in English at `/` and Vietnamese at `/vi/`. The header language
 button swaps to the same page in the other language, and every page declares
 `hreflang` alternates.
 
+On a first visit to an English page, the site checks the system or browser
+language. A preferred Vietnamese locale opens the same page under `/vi/`; every
+other language stays in English. The redirect preserves the query string and
+hash. Clicking the language switch stores the choice in `localStorage` under
+`epub2web-ui-lang`, the same preference the generated reader uses, so an
+explicit English or Vietnamese choice is not overridden by later detection.
+Vietnamese pages remain reachable directly at `/vi/`.
+
 ## Development
 
 ```bash

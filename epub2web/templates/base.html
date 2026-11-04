@@ -57,14 +57,34 @@
       } catch (e) {}
     })();
     (function () {
+      function systemLanguage() {
+        var candidate = "";
+        try {
+          if (navigator.languages && navigator.languages.length) {
+            candidate = navigator.languages[0];
+          }
+        } catch (e) {}
+        if (!candidate) {
+          try {
+            candidate = navigator.language || "";
+          } catch (e) {}
+        }
+        if (!candidate) {
+          try {
+            candidate = Intl.DateTimeFormat().resolvedOptions().locale || "";
+          } catch (e) {}
+        }
+        var tag = String(candidate).trim().toLowerCase().replace(/_/g, "-");
+        return tag === "vi" || tag.indexOf("vi-") === 0 ? "vi" : "en";
+      }
+      var language = "en";
       try {
         var stored = localStorage.getItem("epub2web-ui-lang");
-        if (stored === "en" || stored === "vi") {
-          document.documentElement.dataset.uiLang = stored;
-        } else if ((navigator.language || "").toLowerCase().indexOf("vi") === 0) {
-          document.documentElement.dataset.uiLang = "vi";
-        }
-      } catch (e) {}
+        language = stored === "en" || stored === "vi" ? stored : systemLanguage();
+      } catch (e) {
+        language = systemLanguage();
+      }
+      document.documentElement.dataset.uiLang = language;
     })();
   </script>
   {% block head %}{% endblock %}

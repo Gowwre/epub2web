@@ -14,6 +14,10 @@ All notable, user-facing changes are documented here. The format follows
 - Translate published release notes into Vietnamese in `CHANGELOG.vi.md`. The changelog page uses a translation only when its version and date match the canonical English release, and falls back to English per release while translations catch up.
 - Add an English/Vietnamese language switch to the desktop app. The header button changes the interface immediately and remembers the choice; GUI status messages, errors, progress labels, file pickers, and the update dialog are localized. Build logs and GitHub release notes remain in English.
 
+### Changed
+
+- Detect the system or browser language on first visit. The landing site sends Vietnamese-language visitors to the Vietnamese edition, and the generated reader opens in Vietnamese when Vietnamese is the preferred system language. Every other language gets English, and an explicit language choice is still remembered.
+
 ## 0.12.0 - 2026-11-04
 
 ### Added

@@ -53,6 +53,7 @@ const navLinks = [
         href={otherPath}
         hreflang={otherLocale}
         lang={otherLocale}
+        data-language-switch={otherLocale}
         aria-label={copy.common.switchLanguage}
         title={copy.common.switchLanguage}
       >
@@ -115,5 +116,25 @@ const navLinks = [
       }
       syncThemeState();
     });
+  });
+
+  const languageKey = "epub2web-ui-lang";
+  const languageLinks =
+    document.querySelectorAll<HTMLAnchorElement>("[data-language-switch]");
+
+  const rememberLanguage = (event: Event) => {
+    const link = event.currentTarget as HTMLAnchorElement | null;
+    const language = link?.dataset.languageSwitch;
+    if (language !== "en" && language !== "vi") return;
+    try {
+      localStorage.setItem(languageKey, language);
+    } catch {
+      // A language preference is not worth breaking the page over.
+    }
+  };
+
+  languageLinks.forEach((link) => {
+    link.addEventListener("click", rememberLanguage);
+    link.addEventListener("auxclick", rememberLanguage);
   });
 </script>

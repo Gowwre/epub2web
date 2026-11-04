@@ -58,11 +58,33 @@
     }
   }
 
+  function systemLanguage() {
+    let candidate = "";
+    try {
+      if (navigator.languages && navigator.languages.length) {
+        candidate = navigator.languages[0];
+      }
+    } catch (error) {}
+    if (!candidate) {
+      try {
+        candidate = navigator.language || "";
+      } catch (error) {}
+    }
+    if (!candidate) {
+      try {
+        candidate = Intl.DateTimeFormat().resolvedOptions().locale || "";
+      } catch (error) {}
+    }
+    const tag = String(candidate).trim().toLowerCase().replace(/_/g, "-");
+    return tag === "vi" || tag.indexOf("vi-") === 0 ? "vi" : "en";
+  }
+
   function preferredLanguage() {
     const stored = storedLanguage();
     if (stored) return stored;
-    const browser = normalize(navigator.language || "");
-    return browser || (supported.indexOf(FALLBACK) !== -1 ? FALLBACK : supported[0]);
+    const system = systemLanguage();
+    if (supported.indexOf(system) !== -1) return system;
+    return supported.indexOf(FALLBACK) !== -1 ? FALLBACK : supported[0];
   }
 
   let language = preferredLanguage();

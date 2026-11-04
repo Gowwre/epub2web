@@ -18,6 +18,10 @@ web sẽ hiển thị ghi chú tiếng Anh của phiên bản đó.
 - Dịch ghi chú phát hành sang tiếng Việt trong `CHANGELOG.vi.md`. Trang nhật ký thay đổi dùng bản dịch khi phiên bản và ngày khớp với changelog gốc, và tự động quay về ghi chú tiếng Anh khi bản dịch chưa có.
 - Thêm nút chuyển giao diện Anh/Việt vào ứng dụng desktop. Nút trên thanh đầu trang đổi giao diện ngay và ghi nhớ lựa chọn; trạng thái, lỗi, nhãn tiến trình, hộp chọn tệp và hộp thoại cập nhật đều được dịch. Nhật ký dựng và ghi chú phát hành trên GitHub vẫn bằng tiếng Anh.
 
+### Thay đổi
+
+- Tự nhận diện ngôn ngữ hệ thống hoặc trình duyệt trong lần truy cập đầu. Trang giới thiệu đưa khách dùng tiếng Việt sang bản tiếng Việt, và trình đọc được tạo sẽ mở bằng tiếng Việt khi tiếng Việt là ngôn ngữ hệ thống ưu tiên. Mọi ngôn ngữ khác dùng tiếng Anh, và lựa chọn ngôn ngữ thủ công vẫn được ghi nhớ.
+
 ## 0.12.0 - 2026-11-04
 
 ### Thêm mới
