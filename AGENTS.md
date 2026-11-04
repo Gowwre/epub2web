@@ -186,10 +186,33 @@ pip install -e ".[gui-build]"
 - Keep package data in sync with `pyproject.toml`, `MANIFEST.in`, and
   `scripts/build_gui.py`.
 
+## Commits
+
+Use [Scoped Commits](https://scopedcommits.com/):
+
+```text
+<scope>: <description>
+
+[optional body]
+
+[optional trailer(s)]
+```
+
+- The scope names the subsystem or area touched, such as `gui`, `reader`,
+  `landing`, `annotations`, `fonts`, `release`, `docs`, or `tests`. Use a more
+  general scope for a cross-cutting change, comma-separated scopes when a commit
+  spans a few areas, or `treewide` for repository-wide changes.
+- Keep the description short and specific, for example
+  `gui: add English/Vietnamese interface switching`.
+- Reverts and merges may use Git's standard format.
+- Do not generate the changelog from commit messages; `CHANGELOG.md` remains
+  written for users.
+
 ## Definition of done
 
 - `make test` passes.
 - Behavior changes include a regression test.
 - User-facing changes have a `CHANGELOG.md` entry.
 - Documentation is updated when commands, files, or architecture change.
+- Commits follow Scoped Commits.
 - No books, generated sites, build outputs, or secrets are committed.
