@@ -6,6 +6,8 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+## 0.12.0 - 2026-11-04
+
 ### Added
 
 - Highlight passages and add optional notes while reading. Select text to highlight it in one action, click a highlight to edit its note or color, and open **Highlights & notes** in the header to review annotations by chapter, jump back to a passage, or remove one with Undo.
