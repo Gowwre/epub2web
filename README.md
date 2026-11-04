@@ -126,8 +126,11 @@ A complete website, ready to read:
 - highlights and private notes, with chapter review, search, Markdown export,
   and JSON backup; they stay in your browser and never enter the generated site
 - light, dark, and automatic reading modes
+- an English or Vietnamese interface, with a language button in the header
+  (and the same option in Reading settings); the book’s own text and metadata
+  are never translated
 - adjustable text size, line spacing, paragraph style, and page width, remembered in your browser
-- self-hosted fonts for Latin, Greek, Cyrillic, Arabic, Hebrew, Devanagari, Thai, and CJK text
+- self-hosted fonts for Latin (including Vietnamese), Greek, Cyrillic, Arabic, Hebrew, Devanagari, Thai, and CJK text
 - remembers your place and shows progress through the whole book
 - a layout that works on phones, tablets, and desktops
 - keyboard navigation through chapters and search results, with a visible
@@ -513,7 +516,8 @@ for the tag-driven release and PyPI setup.
   folder.
 - Right-to-left layout follows the book’s main language. Books that mix writing
   directions should mark inline runs with `lang` and `dir` in the EPUB.
-- Interface labels remain in English.
+- The reader interface is available in English and Vietnamese. The book’s own
+  text is never translated.
 - PDF input is out of scope.
 
 If a book fails, open an issue with the command, the failing page, and a minimal

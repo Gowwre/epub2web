@@ -3,9 +3,9 @@
   <div class="sheet-head">
     <div>
       <p class="sheet-eyebrow">{{ book.meta.short_title }}</p>
-      <h2 class="sheet-title" id="epub2web-menu-title">Contents</h2>
+      <h2 class="sheet-title" id="epub2web-menu-title" data-i18n="nav.contents">Contents</h2>
     </div>
-    <button class="icon-btn" type="button" data-close aria-label="Close contents">{{ icon("close") }}</button>
+    <button class="icon-btn" type="button" data-close aria-label="Close contents" data-i18n-aria-label="menu.close">{{ icon("close") }}</button>
   </div>
   <div class="sheet-body menu-toc">
     {% for entry in sidebar.before %}
@@ -24,7 +24,7 @@
       </a>
       {% if chapter.children %}
       <details class="menu-sections-details">
-        <summary class="menu-sections-summary">Sections <span class="menu-sections-count">({{ chapter.children|length }})</span></summary>
+        <summary class="menu-sections-summary"><span data-i18n="menu.sections">Sections</span> <span class="menu-sections-count">({{ chapter.children|length }})</span></summary>
         <div class="menu-sections">
           {% for section in chapter.children %}
           <a href="{{ section.href }}">{{ section.label }}</a>
@@ -42,7 +42,7 @@
     </a>
     {% endfor %}
     <div class="menu-shortcuts-row">
-      <button class="menu-shortcuts" type="button" data-shortcuts-open>Keyboard shortcuts <kbd>?</kbd></button>
+      <button class="menu-shortcuts" type="button" data-shortcuts-open><span data-i18n="shortcuts.title">Keyboard shortcuts</span> <kbd>?</kbd></button>
     </div>
   </div>
 </dialog>
@@ -50,56 +50,63 @@
 <dialog id="epub2web-reader-dialog" class="sheet reader-sheet" aria-labelledby="epub2web-reader-title">
   <div class="sheet-head">
     <div>
-      <p class="sheet-eyebrow">Reading</p>
-      <h2 class="sheet-title" id="epub2web-reader-title">Reading settings</h2>
+      <p class="sheet-eyebrow" data-i18n="reader.eyebrow">Reading</p>
+      <h2 class="sheet-title" id="epub2web-reader-title" data-i18n="reader.title">Reading settings</h2>
     </div>
-    <button class="icon-btn" type="button" data-close aria-label="Close reading settings">{{ icon("close") }}</button>
+    <button class="icon-btn" type="button" data-close aria-label="Close reading settings" data-i18n-aria-label="reader.close">{{ icon("close") }}</button>
   </div>
   <div class="sheet-body reader-settings">
     <fieldset class="reader-group">
-      <legend>Text size</legend>
+      <legend data-i18n="reader.textSize">Text size</legend>
       <div class="reader-options">
-        <label class="reader-option"><input type="radio" name="reader-size" value="small"><span>Small</span></label>
-        <label class="reader-option"><input type="radio" name="reader-size" value="default" checked><span>Default</span></label>
-        <label class="reader-option"><input type="radio" name="reader-size" value="large"><span>Large</span></label>
-        <label class="reader-option"><input type="radio" name="reader-size" value="x-large"><span>Extra large</span></label>
+        <label class="reader-option"><input type="radio" name="reader-size" value="small"><span data-i18n="reader.small">Small</span></label>
+        <label class="reader-option"><input type="radio" name="reader-size" value="default" checked><span data-i18n="reader.default">Default</span></label>
+        <label class="reader-option"><input type="radio" name="reader-size" value="large"><span data-i18n="reader.large">Large</span></label>
+        <label class="reader-option"><input type="radio" name="reader-size" value="x-large"><span data-i18n="reader.extraLarge">Extra large</span></label>
       </div>
     </fieldset>
     <fieldset class="reader-group">
-      <legend>Line spacing</legend>
+      <legend data-i18n="reader.lineSpacing">Line spacing</legend>
       <div class="reader-options">
-        <label class="reader-option"><input type="radio" name="reader-spacing" value="compact"><span>Compact</span></label>
-        <label class="reader-option"><input type="radio" name="reader-spacing" value="default" checked><span>Default</span></label>
-        <label class="reader-option"><input type="radio" name="reader-spacing" value="relaxed"><span>Relaxed</span></label>
+        <label class="reader-option"><input type="radio" name="reader-spacing" value="compact"><span data-i18n="reader.compact">Compact</span></label>
+        <label class="reader-option"><input type="radio" name="reader-spacing" value="default" checked><span data-i18n="reader.default">Default</span></label>
+        <label class="reader-option"><input type="radio" name="reader-spacing" value="relaxed"><span data-i18n="reader.relaxed">Relaxed</span></label>
       </div>
     </fieldset>
     <fieldset class="reader-group">
-      <legend>Paragraphs</legend>
+      <legend data-i18n="reader.paragraphs">Paragraphs</legend>
       <div class="reader-options">
-        <label class="reader-option"><input type="radio" name="reader-paragraphs" value="spaced" checked><span>Spaced</span></label>
-        <label class="reader-option"><input type="radio" name="reader-paragraphs" value="indented"><span>Indented</span></label>
+        <label class="reader-option"><input type="radio" name="reader-paragraphs" value="spaced" checked><span data-i18n="reader.spaced">Spaced</span></label>
+        <label class="reader-option"><input type="radio" name="reader-paragraphs" value="indented"><span data-i18n="reader.indented">Indented</span></label>
       </div>
     </fieldset>
     <fieldset class="reader-group">
-      <legend>Page width</legend>
+      <legend data-i18n="reader.pageWidth">Page width</legend>
       <div class="reader-options">
-        <label class="reader-option"><input type="radio" name="reader-width" value="narrow"><span>Narrow</span></label>
-        <label class="reader-option"><input type="radio" name="reader-width" value="standard" checked><span>Standard</span></label>
-        <label class="reader-option"><input type="radio" name="reader-width" value="wide"><span>Wide</span></label>
+        <label class="reader-option"><input type="radio" name="reader-width" value="narrow"><span data-i18n="reader.narrow">Narrow</span></label>
+        <label class="reader-option"><input type="radio" name="reader-width" value="standard" checked><span data-i18n="reader.standard">Standard</span></label>
+        <label class="reader-option"><input type="radio" name="reader-width" value="wide"><span data-i18n="reader.wide">Wide</span></label>
       </div>
     </fieldset>
     <fieldset class="reader-group">
-      <legend>Theme</legend>
+      <legend data-i18n="reader.theme">Theme</legend>
       <div class="reader-options">
-        <label class="reader-option"><input type="radio" name="reader-theme" value="auto" checked><span>Auto</span></label>
-        <label class="reader-option"><input type="radio" name="reader-theme" value="light"><span>Light</span></label>
-        <label class="reader-option"><input type="radio" name="reader-theme" value="dark"><span>Dark</span></label>
+        <label class="reader-option"><input type="radio" name="reader-theme" value="auto" checked><span data-i18n="reader.auto">Auto</span></label>
+        <label class="reader-option"><input type="radio" name="reader-theme" value="light"><span data-i18n="reader.light">Light</span></label>
+        <label class="reader-option"><input type="radio" name="reader-theme" value="dark"><span data-i18n="reader.dark">Dark</span></label>
       </div>
     </fieldset>
-    <p class="reader-note">These settings apply only to this browser. Auto follows your device theme. Your book is unchanged.</p>
+    <fieldset class="reader-group">
+      <legend data-i18n="reader.language">Interface language</legend>
+      <div class="reader-options">
+        <label class="reader-option"><input type="radio" name="reader-language" value="en"><span lang="en">English</span></label>
+        <label class="reader-option"><input type="radio" name="reader-language" value="vi"><span lang="vi">Tiếng Việt</span></label>
+      </div>
+    </fieldset>
+    <p class="reader-note" data-i18n="reader.note">These settings apply only to this browser. Auto follows your device theme. Your book is unchanged.</p>
     <div class="reader-actions">
-      <button class="reader-reset" type="button" data-reader-reset>Reset to defaults</button>
-      <button class="reader-shortcuts" type="button" data-shortcuts-open>Keyboard shortcuts <kbd>?</kbd></button>
+      <button class="reader-reset" type="button" data-reader-reset data-i18n="reader.reset">Reset to defaults</button>
+      <button class="reader-shortcuts" type="button" data-shortcuts-open><span data-i18n="shortcuts.title">Keyboard shortcuts</span> <kbd>?</kbd></button>
     </div>
   </div>
 </dialog>
@@ -107,89 +114,89 @@
 <dialog id="epub2web-search-dialog" class="sheet search-sheet" aria-labelledby="epub2web-search-title">
   <div class="sheet-head">
     <div>
-      <p class="sheet-eyebrow">Full text</p>
-      <h2 class="sheet-title" id="epub2web-search-title">Search the book</h2>
+      <p class="sheet-eyebrow" data-i18n="search.eyebrow">Full text</p>
+      <h2 class="sheet-title" id="epub2web-search-title" data-i18n="search.title">Search the book</h2>
     </div>
-    <button class="icon-btn" type="button" data-close aria-label="Close search">{{ icon("close") }}</button>
+    <button class="icon-btn" type="button" data-close aria-label="Close search" data-i18n-aria-label="search.close">{{ icon("close") }}</button>
   </div>
   <div class="sheet-body search-body">
     <label class="book-search">
-      <span class="sr-only">Search the book</span>
-      <input id="epub2web-book-search" type="search" placeholder="Search the book…" autocomplete="off">
+      <span class="sr-only" data-i18n="search.inputLabel">Search the book</span>
+      <input id="epub2web-book-search" type="search" placeholder="Search the book…" autocomplete="off" data-i18n-placeholder="search.placeholder">
     </label>
-    <p class="search-status" id="epub2web-search-status">Type a word or phrase.</p>
+    <p class="search-status" id="epub2web-search-status" data-i18n="search.prompt">Type a word or phrase.</p>
     <div id="epub2web-search-results" class="search-results" aria-live="polite"></div>
-    <p class="search-hint">Press <kbd>/</kbd> anywhere to open search, <kbd>↑</kbd><kbd>↓</kbd> to choose a result, <kbd>Enter</kbd> to open it, <kbd>Esc</kbd> to close.</p>
+    <p class="search-hint"><span data-i18n-html="search.hint">Press <kbd>/</kbd> anywhere to open search, <kbd>↑</kbd><kbd>↓</kbd> to choose a result, <kbd>Enter</kbd> to open it, <kbd>Esc</kbd> to close.</span></p>
   </div>
 </dialog>
 
 <dialog id="epub2web-shortcuts-dialog" class="sheet shortcuts-sheet" aria-labelledby="epub2web-shortcuts-title">
   <div class="sheet-head">
     <div>
-      <p class="sheet-eyebrow">Reader</p>
-      <h2 class="sheet-title" id="epub2web-shortcuts-title">Keyboard shortcuts</h2>
+      <p class="sheet-eyebrow" data-i18n="shortcuts.eyebrow">Reader</p>
+      <h2 class="sheet-title" id="epub2web-shortcuts-title" data-i18n="shortcuts.title">Keyboard shortcuts</h2>
     </div>
-    <button class="icon-btn" type="button" data-close aria-label="Close keyboard shortcuts">{{ icon("close") }}</button>
+    <button class="icon-btn" type="button" data-close aria-label="Close keyboard shortcuts" data-i18n-aria-label="shortcuts.close">{{ icon("close") }}</button>
   </div>
   <div class="sheet-body shortcuts-body">
     {% if is_reading %}
     <section class="shortcut-group" aria-labelledby="shortcuts-reading">
-      <h3 id="shortcuts-reading">Reading</h3>
+      <h3 id="shortcuts-reading" data-i18n="shortcuts.reading">Reading</h3>
       <ul class="shortcut-list">
-        <li><span class="shortcut-keys" aria-hidden="true"><kbd>H</kbd></span><span><span class="sr-only">Shortcut H: </span>Highlight the selected text</span></li>
-        <li><span class="shortcut-keys" aria-hidden="true"><kbd>N</kbd></span><span><span class="sr-only">Shortcut N: </span>Add a note to the selected text</span></li>
-        <li><span class="shortcut-keys" aria-hidden="true"><kbd>Shift</kbd><span class="shortcut-plus">+</span><kbd>A</kbd></span><span><span class="sr-only">Shortcut Shift plus A: </span>Open or close highlights and notes</span></li>
-        <li><span class="shortcut-keys" aria-hidden="true"><kbd>←</kbd><kbd>→</kbd></span><span><span class="sr-only">Shortcut Left arrow or Right arrow: </span>Previous or next chapter</span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>H</kbd></span><span><span class="sr-only" data-i18n="shortcuts.srH">Shortcut H: </span><span data-i18n="shortcuts.h">Highlight the selected text</span></span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>N</kbd></span><span><span class="sr-only" data-i18n="shortcuts.srN">Shortcut N: </span><span data-i18n="shortcuts.n">Add a note to the selected text</span></span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>Shift</kbd><span class="shortcut-plus">+</span><kbd>A</kbd></span><span><span class="sr-only" data-i18n="shortcuts.srShiftA">Shortcut Shift plus A: </span><span data-i18n="shortcuts.shiftA">Open or close highlights and notes</span></span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>←</kbd><kbd>→</kbd></span><span><span class="sr-only" data-i18n="shortcuts.srArrows">Shortcut Left arrow or Right arrow: </span><span data-i18n="shortcuts.arrows">Previous or next chapter</span></span></li>
       </ul>
     </section>
     {% endif %}
     <section class="shortcut-group" aria-labelledby="shortcuts-anywhere">
-      <h3 id="shortcuts-anywhere">Anywhere</h3>
+      <h3 id="shortcuts-anywhere" data-i18n="shortcuts.anywhere">Anywhere</h3>
       <ul class="shortcut-list">
-        <li><span class="shortcut-keys" aria-hidden="true"><kbd>/</kbd></span><span><span class="sr-only">Shortcut slash: </span>Search the book</span></li>
-        <li><span class="shortcut-keys" aria-hidden="true"><kbd>?</kbd></span><span><span class="sr-only">Shortcut question mark: </span>Show this shortcut list</span></li>
-        <li><span class="shortcut-keys" aria-hidden="true"><kbd>Esc</kbd></span><span><span class="sr-only">Shortcut Escape: </span>Close a toolbar, card, composer, or panel</span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>/</kbd></span><span><span class="sr-only" data-i18n="shortcuts.srSlash">Shortcut slash: </span><span data-i18n="shortcuts.slash">Search the book</span></span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>?</kbd></span><span><span class="sr-only" data-i18n="shortcuts.srQuestion">Shortcut question mark: </span><span data-i18n="shortcuts.question">Show this shortcut list</span></span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>Esc</kbd></span><span><span class="sr-only" data-i18n="shortcuts.srEscape">Shortcut Escape: </span><span data-i18n="shortcuts.escape">Close a toolbar, card, composer, or panel</span></span></li>
       </ul>
     </section>
     <section class="shortcut-group" aria-labelledby="shortcuts-search">
-      <h3 id="shortcuts-search">Search results</h3>
+      <h3 id="shortcuts-search" data-i18n="shortcuts.searchResults">Search results</h3>
       <ul class="shortcut-list">
-        <li><span class="shortcut-keys" aria-hidden="true"><kbd>↑</kbd><kbd>↓</kbd></span><span><span class="sr-only">Shortcut Up arrow or Down arrow: </span>Choose a result</span></li>
-        <li><span class="shortcut-keys" aria-hidden="true"><kbd>Enter</kbd></span><span><span class="sr-only">Shortcut Enter: </span>Open the chosen result</span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>↑</kbd><kbd>↓</kbd></span><span><span class="sr-only" data-i18n="shortcuts.srUpDown">Shortcut Up arrow or Down arrow: </span><span data-i18n="shortcuts.upDown">Choose a result</span></span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>Enter</kbd></span><span><span class="sr-only" data-i18n="shortcuts.srEnter">Shortcut Enter: </span><span data-i18n="shortcuts.enter">Open the chosen result</span></span></li>
       </ul>
     </section>
     {% if is_reading %}
     <section class="shortcut-group" aria-labelledby="shortcuts-notes">
-      <h3 id="shortcuts-notes">Note composer</h3>
+      <h3 id="shortcuts-notes" data-i18n="shortcuts.noteComposer">Note composer</h3>
       <ul class="shortcut-list">
-        <li><span class="shortcut-keys" aria-hidden="true"><kbd>Ctrl</kbd><span class="shortcut-plus">/</span><kbd>⌘</kbd><span class="shortcut-plus">+</span><kbd>Enter</kbd></span><span><span class="sr-only">Shortcut Control or Command plus Enter: </span>Save the note</span></li>
-        <li><span class="shortcut-keys" aria-hidden="true"><kbd>Esc</kbd></span><span><span class="sr-only">Shortcut Escape: </span>Cancel and close</span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>Ctrl</kbd><span class="shortcut-plus">/</span><kbd>⌘</kbd><span class="shortcut-plus">+</span><kbd>Enter</kbd></span><span><span class="sr-only" data-i18n="shortcuts.srCtrlEnter">Shortcut Control or Command plus Enter: </span><span data-i18n="shortcuts.ctrlEnter">Save the note</span></span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>Esc</kbd></span><span><span class="sr-only" data-i18n="shortcuts.srEscape">Shortcut Escape: </span><span data-i18n="shortcuts.escapeCancel">Cancel and close</span></span></li>
       </ul>
     </section>
     {% endif %}
-    <p class="shortcut-note">Shortcuts are ignored while you are typing in a field. On a touch device, use the header buttons and the selection toolbar.</p>
+    <p class="shortcut-note" data-i18n="shortcuts.note">Shortcuts are ignored while you are typing in a field. On a touch device, use the header buttons and the selection toolbar.</p>
   </div>
 </dialog>
 
 <dialog id="epub2web-note-dialog" class="sheet note-sheet" aria-labelledby="epub2web-note-title">
   <div class="sheet-head">
     <div>
-      <p class="sheet-eyebrow">Highlight</p>
-      <h2 class="sheet-title" id="epub2web-note-title">Add a note</h2>
+      <p class="sheet-eyebrow" data-i18n="toolbar.cardLabel">Highlight</p>
+      <h2 class="sheet-title" id="epub2web-note-title" data-i18n="note.addTitle">Add a note</h2>
     </div>
-    <button class="icon-btn" type="button" data-note-cancel aria-label="Close note">{{ icon("close") }}</button>
+    <button class="icon-btn" type="button" data-note-cancel aria-label="Close note" data-i18n-aria-label="note.close">{{ icon("close") }}</button>
   </div>
   <div class="sheet-body note-body">
     <blockquote class="note-quote" data-note-quote></blockquote>
-    <label class="note-label" for="epub2web-note-text">Your note</label>
-    <textarea id="epub2web-note-text" class="note-text" rows="5" placeholder="Write a note…"></textarea>
-    <p class="note-hint" aria-label="Press Control or Command plus Enter to save. Escape to cancel."><span aria-hidden="true">Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd> to save. <kbd>Esc</kbd> to cancel.</span></p>
+    <label class="note-label" for="epub2web-note-text" data-i18n="note.label">Your note</label>
+    <textarea id="epub2web-note-text" class="note-text" rows="5" placeholder="Write a note…" data-i18n-placeholder="note.placeholder"></textarea>
+    <p class="note-hint" aria-label="Press Control or Command plus Enter to save. Escape to cancel." data-i18n-aria-label="note.hintLabel"><span aria-hidden="true" data-i18n-html="note.hint">Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd> to save. <kbd>Esc</kbd> to cancel.</span></p>
     <p class="note-error" data-note-error role="alert" hidden></p>
     <div class="note-actions">
-      <button class="note-remove" type="button" data-note-remove hidden>Remove note</button>
+      <button class="note-remove" type="button" data-note-remove hidden data-i18n="note.remove">Remove note</button>
       <span class="note-actions-spacer"></span>
-      <button class="btn btn-quiet" type="button" data-note-cancel>Cancel</button>
-      <button class="btn btn-primary" type="button" data-note-save aria-keyshortcuts="Control+Enter Meta+Enter" disabled>Done</button>
+      <button class="btn btn-quiet" type="button" data-note-cancel data-i18n="note.cancel">Cancel</button>
+      <button class="btn btn-primary" type="button" data-note-save aria-keyshortcuts="Control+Enter Meta+Enter" disabled data-i18n="note.save">Done</button>
     </div>
   </div>
 </dialog>
@@ -197,44 +204,44 @@
 <dialog id="epub2web-annotations-dialog" class="sheet annotations-sheet" aria-labelledby="epub2web-annotations-title">
   <div class="sheet-head">
     <div>
-      <p class="sheet-eyebrow">Reading</p>
-      <h2 class="sheet-title" id="epub2web-annotations-title">Highlights &amp; notes <span class="annotations-total" data-annotations-total></span></h2>
+      <p class="sheet-eyebrow" data-i18n="annotations.eyebrow">Reading</p>
+      <h2 class="sheet-title" id="epub2web-annotations-title"><span data-i18n="annotations.title">Highlights &amp; notes</span> <span class="annotations-total" data-annotations-total></span></h2>
     </div>
-    <button class="icon-btn" type="button" data-close aria-label="Close highlights and notes">{{ icon("close") }}</button>
+    <button class="icon-btn" type="button" data-close aria-label="Close highlights and notes" data-i18n-aria-label="annotations.close">{{ icon("close") }}</button>
   </div>
   <div class="sheet-body annotations-body">
     <div class="annotations-toolbar">
-      <div class="annotations-filters" role="group" aria-label="Filter annotations">
-        <button type="button" class="annotations-filter is-active" data-annotations-filter="all" aria-pressed="true">All</button>
-        <button type="button" class="annotations-filter" data-annotations-filter="highlight" aria-pressed="false">Highlights</button>
-        <button type="button" class="annotations-filter" data-annotations-filter="note" aria-pressed="false">Notes</button>
+      <div class="annotations-filters" role="group" aria-label="Filter annotations" data-i18n-aria-label="annotations.filter">
+        <button type="button" class="annotations-filter is-active" data-annotations-filter="all" aria-pressed="true" data-i18n="annotations.all">All</button>
+        <button type="button" class="annotations-filter" data-annotations-filter="highlight" aria-pressed="false" data-i18n="annotations.highlights">Highlights</button>
+        <button type="button" class="annotations-filter" data-annotations-filter="note" aria-pressed="false" data-i18n="annotations.notes">Notes</button>
       </div>
-      <button type="button" class="annotations-location" data-annotations-location>{{ icon("note", 14) }}<span>Note at current page</span></button>
+      <button type="button" class="annotations-location" data-annotations-location>{{ icon("note", 14) }}<span data-i18n="annotations.locationNote">Note at current page</span></button>
     </div>
     <label class="annotations-search">
-      <span class="sr-only">Search highlights and notes</span>
-      <input id="epub2web-annotations-search" type="search" data-annotations-search placeholder="Search highlights and notes…" autocomplete="off" aria-controls="epub2web-annotations-list">
+      <span class="sr-only" data-i18n="annotations.searchLabel">Search highlights and notes</span>
+      <input id="epub2web-annotations-search" type="search" data-annotations-search placeholder="Search highlights and notes…" autocomplete="off" aria-controls="epub2web-annotations-list" data-i18n-placeholder="annotations.searchPlaceholder">
     </label>
     <p class="annotations-search-status" data-annotations-search-status role="status" aria-live="polite" hidden></p>
     <p class="annotations-status" data-annotations-status role="status" aria-live="polite"></p>
-    <p class="annotations-shortcuts"><kbd>H</kbd> highlight · <kbd>N</kbd> note · <kbd>?</kbd> all shortcuts</p>
+    <p class="annotations-shortcuts" data-i18n-html="annotations.shortcuts"><kbd>H</kbd> highlight · <kbd>N</kbd> note · <kbd>?</kbd> all shortcuts</p>
     <div class="annotations-list" id="epub2web-annotations-list" data-annotations-list></div>
-    <p class="annotations-empty" data-annotations-empty hidden>No highlights or notes yet. Select text and press H to highlight, or use the selection toolbar.</p>
+    <p class="annotations-empty" data-annotations-empty hidden data-i18n="annotations.empty">No highlights or notes yet. Select text and press H to highlight, or use the selection toolbar.</p>
     <div class="annotations-footer">
       <div class="annotations-privacy">
-        <span>Highlights and notes stay in this browser and are never uploaded.</span>
-        <button class="annotations-storage" type="button" data-storage-open>Keep on this device</button>
+        <span data-i18n="annotations.privacy">Highlights and notes stay in this browser and are never uploaded.</span>
+        <button class="annotations-storage" type="button" data-storage-open data-i18n="annotations.keep">Keep on this device</button>
       </div>
       <div class="annotations-actions">
-        <button type="button" data-annotations-copy>Copy all</button>
+        <button type="button" data-annotations-copy data-i18n="annotations.copyAll">Copy all</button>
         <details class="annotations-export">
-          <summary>Export</summary>
+          <summary data-i18n="annotations.export">Export</summary>
           <div class="annotations-export-menu">
-            <button type="button" data-annotations-export-markdown>Markdown (.md)</button>
-            <button type="button" data-annotations-export>JSON backup (.json)</button>
+            <button type="button" data-annotations-export-markdown data-i18n="annotations.exportMarkdown">Markdown (.md)</button>
+            <button type="button" data-annotations-export data-i18n="annotations.exportJson">JSON backup (.json)</button>
           </div>
         </details>
-        <button type="button" data-annotations-import>Import</button>
+        <button type="button" data-annotations-import data-i18n="annotations.import">Import</button>
         <input type="file" accept=".json,application/json" data-annotations-file hidden>
       </div>
     </div>
@@ -244,27 +251,27 @@
 <dialog id="epub2web-storage-dialog" class="sheet storage-sheet" aria-labelledby="epub2web-storage-title">
   <div class="sheet-head">
     <div>
-      <p class="sheet-eyebrow">Privacy</p>
-      <h2 class="sheet-title" id="epub2web-storage-title">Keep highlights on this device</h2>
+      <p class="sheet-eyebrow" data-i18n="storage.eyebrow">Privacy</p>
+      <h2 class="sheet-title" id="epub2web-storage-title" data-i18n="storage.title">Keep highlights on this device</h2>
     </div>
-    <button class="icon-btn" type="button" data-close aria-label="Close storage settings">{{ icon("close") }}</button>
+    <button class="icon-btn" type="button" data-close aria-label="Close storage settings" data-i18n-aria-label="storage.close">{{ icon("close") }}</button>
   </div>
   <div class="sheet-body storage-body">
-    <p>Highlights and notes are stored only in this browser. They are never uploaded and never added to the published site.</p>
-    <p>Browsers can remove site data when storage is low. Your browser can keep this site’s data on this device, but it may ask for permission first.</p>
-    <p class="storage-note">epub2web does not receive your book text or notes. Export a backup if you need a copy you can move elsewhere.</p>
+    <p data-i18n="storage.intro">Highlights and notes are stored only in this browser. They are never uploaded and never added to the published site.</p>
+    <p data-i18n="storage.risk">Browsers can remove site data when storage is low. Your browser can keep this site’s data on this device, but it may ask for permission first.</p>
+    <p class="storage-note" data-i18n="storage.note">epub2web does not receive your book text or notes. Export a backup if you need a copy you can move elsewhere.</p>
     <p class="storage-state" data-storage-state role="status" aria-live="polite"></p>
     <div class="storage-actions">
-      <button class="btn btn-quiet" type="button" data-close>Not now</button>
-      <button class="btn btn-primary" type="button" data-storage-request>Ask browser to keep data</button>
+      <button class="btn btn-quiet" type="button" data-close data-i18n="storage.notNow">Not now</button>
+      <button class="btn btn-primary" type="button" data-storage-request data-i18n="storage.request">Ask browser to keep data</button>
     </div>
   </div>
 </dialog>
 
-<dialog id="epub2web-lightbox" class="lightbox" aria-label="Figure viewer">
-  <button class="lightbox-close" type="button" data-lightbox-close aria-label="Close figure">{{ icon("close", 24) }}</button>
-  <button class="lightbox-nav lightbox-prev" type="button" data-lightbox-prev aria-label="Previous figure">{{ icon("arrow-left", 24) }}</button>
-  <button class="lightbox-nav lightbox-next" type="button" data-lightbox-next aria-label="Next figure">{{ icon("arrow-right", 24) }}</button>
+<dialog id="epub2web-lightbox" class="lightbox" aria-label="Figure viewer" data-i18n-aria-label="lightbox.label">
+  <button class="lightbox-close" type="button" data-lightbox-close aria-label="Close figure" data-i18n-aria-label="lightbox.close">{{ icon("close", 24) }}</button>
+  <button class="lightbox-nav lightbox-prev" type="button" data-lightbox-prev aria-label="Previous figure" data-i18n-aria-label="lightbox.previous">{{ icon("arrow-left", 24) }}</button>
+  <button class="lightbox-nav lightbox-next" type="button" data-lightbox-next aria-label="Next figure" data-i18n-aria-label="lightbox.next">{{ icon("arrow-right", 24) }}</button>
   <p class="lightbox-status" data-lightbox-status aria-live="polite"></p>
   <figure>
     <img alt="">

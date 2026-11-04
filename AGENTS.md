@@ -11,6 +11,7 @@ instructions for coding agents working in this repository; `README.md`,
 - `RELEASING.md` — tag-driven release and PyPI process.
 - `docs/gui.md` — GUI architecture and portable packaging.
 - `docs/fonts.md` — bundled fonts, script detection, and per-book font selection.
+- `docs/i18n.md` — reader interface languages, translation keys, and the switch.
 - `docs/highlights-and-notes.md` — annotation storage, persistence, and optional
   calibre import design.
 - `docs/highlights-and-notes-ux.md` — annotation UI/UX, accessibility, and
@@ -84,7 +85,11 @@ renderer change.
   carefully.
 - `epub2web/fonts.py` — script detection, font-manifest selection, generated
   `@font-face` CSS, and RTL language checks.
+- `epub2web/i18n.py` — English/Vietnamese interface messages and the shared
+  translation helper embedded in generated pages.
 - `epub2web/render.py` — Jinja rendering, static assets, search index, sitemap.
+- `epub2web/theme/assets/i18n.js` — applies the selected interface language to
+  templates and exposes the translator to the reader scripts.
 - `epub2web/theme/assets/annotations.js` — browser annotation store and reader
   UI.
 - `epub2web/paths.py` — shared route and base-path helpers.

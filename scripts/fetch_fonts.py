@@ -25,18 +25,23 @@ USER_AGENT = (
 
 # Family, Google Fonts query, filename prefix, and the subsets to vendor.
 FAMILIES = [
-    ("Fraunces", "Fraunces:opsz,wght@9..144,100..900", "fraunces", {"latin", "latin-ext"}),
+    (
+        "Fraunces",
+        "Fraunces:opsz,wght@9..144,100..900",
+        "fraunces",
+        {"latin", "latin-ext", "vietnamese"},
+    ),
     (
         "Inter",
         "Inter:wght@100..900",
         "inter",
-        {"latin", "latin-ext", "greek", "greek-ext", "cyrillic", "cyrillic-ext"},
+        {"latin", "latin-ext", "vietnamese", "greek", "greek-ext", "cyrillic", "cyrillic-ext"},
     ),
     (
         "Literata",
         "Literata:opsz,wght@7..72,200..900",
         "literata",
-        {"latin", "latin-ext", "greek", "greek-ext", "cyrillic", "cyrillic-ext"},
+        {"latin", "latin-ext", "vietnamese", "greek", "greek-ext", "cyrillic", "cyrillic-ext"},
     ),
     ("Noto Naskh Arabic", "Noto+Naskh+Arabic:wght@400..700", "noto-naskh-arabic", {"arabic"}),
     ("Noto Sans Arabic", "Noto+Sans+Arabic:wght@100..900", "noto-sans-arabic", {"arabic"}),
@@ -68,6 +73,7 @@ CJK_FAMILIES = [
 SUBSET_SCRIPT = {
     "latin": "latin",
     "latin-ext": "latin",
+    "vietnamese": "latin",
     "greek": "greek",
     "greek-ext": "greek",
     "cyrillic": "cyrillic",

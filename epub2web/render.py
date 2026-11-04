@@ -24,6 +24,7 @@ from .fonts import (
     select_font_faces,
     uses_character_metrics,
 )
+from .i18n import ui_messages
 from .paths import normalize_base_path, route_to_file
 from .progress import ProgressCallback, report
 from .text import normalize_text, slugify, split_title, text_of, year_from_date
@@ -119,6 +120,7 @@ class SiteRenderer:
                 "(pass overwrite=True to allow it)"
             )
         self.book = json.loads((self.content_dir / "book.json").read_text(encoding="utf-8"))
+        self.ui_i18n = ui_messages()
         self.env = Environment(
             loader=FileSystemLoader(self.templates_dir),
             autoescape=select_autoescape(["html", "xml"]),
@@ -130,6 +132,25 @@ class SiteRenderer:
 
     def _report(self, phase: str, label: str, current: int, total: int) -> None:
         report(self.progress, phase, label, current, total)
+
+    @staticmethod
+    def _readtime_html(page: dict) -> str:
+        """Return the localized read-time marker used by chapter headers."""
+        minutes = int(page.get("reading_minutes", 0) or 0)
+        current = int(page.get("chapter_index", 0) or 0)
+        total = int(page.get("chapter_total", 0) or 0)
+        if current and total:
+            text = f"Chapter {current} of {total} · {minutes} min read"
+            return (
+                f'<span data-i18n="readTime.chapter" data-var-current="{current}" '
+                f'data-var-total="{total}" data-var-minutes="{minutes}">'
+                f"{html.escape(text)}</span>"
+            )
+        text = f"{minutes} min read"
+        return (
+            f'<span data-i18n="readTime.minutes" data-var-minutes="{minutes}">'
+            f"{html.escape(text)}</span>"
+        )
 
     def run(self) -> dict:
         self._prepare()
@@ -238,7 +259,7 @@ class SiteRenderer:
         return f"{kind}-{slugify(title)}"
 
     @staticmethod
-    def _continue_label(page: dict) -> str:
+    def _continue_label(page: dict, language: str = "en") -> str:
         if page.get("type") == "chapter":
             number = str(page.get("number") or "").strip()
             if number.isdigit():
@@ -246,7 +267,7 @@ class SiteRenderer:
             if not number:
                 number = str(page.get("chapter_index") or "")
             if number:
-                return f"Chapter {number}"
+                return f"Chapter {number}" if language == "en" else f"Chương {number}"
         return short_label(page.get("title", "")) or page.get("display_title", "")
 
     @staticmethod
@@ -297,6 +318,7 @@ class SiteRenderer:
             cumulative += self._reading_weight(page)
             page["progress_end"] = round(cumulative / total_weight, 6)
             page["continue_label"] = self._continue_label(page)
+            page["continue_label_vi"] = self._continue_label(page, "vi")
 
         self.reading_map = [
             {
@@ -304,6 +326,7 @@ class SiteRenderer:
                 "chapterKey": page["chapter_key"],
                 "route": page["route"],
                 "label": page["continue_label"],
+                "labelVi": page["continue_label_vi"],
             }
             for page in self.pages
         ]
@@ -355,10 +378,16 @@ class SiteRenderer:
         self.sidebar = {"before": before, "chapters": chapters, "after": after}
         self.toc_blocks = self.toc_tree
 
-        links = [{"label": "Contents", "href": "/contents/"}]
+        links = [{"label": "Contents", "href": "/contents/", "i18n": "nav.contents"}]
         for page in self.pages:
             if page.get("type") == "frontmatter":
-                links.append({"label": "Front matter", "href": page["route"]})
+                links.append(
+                    {
+                        "label": "Front matter",
+                        "href": page["route"],
+                        "i18n": "footer.frontMatter",
+                    }
+                )
                 break
         for wanted in ("notes", "references", "index"):
             for page in self.pages:
@@ -451,6 +480,7 @@ class SiteRenderer:
                 else (self.pages[0]["route"] if self.pages else "/contents/")
             )
         self.home_heading = "The chapters" if self.home_chapters else "Contents"
+        self.home_heading_key = "home.headingChapters" if self.home_chapters else "nav.contents"
 
         stats = self.stats
         figure_count = stats.get("figures", 0)
@@ -464,11 +494,12 @@ class SiteRenderer:
         chapter_count = stats.get("chapters") or len(self.home_chapters)
         parts = []
         if chapter_count:
-            parts.append(f"{chapter_count} chapters")
+            parts.append("1 chapter" if chapter_count == 1 else f"{chapter_count} chapters")
         if figure_count:
-            parts.append(f"{figure_count} figures")
+            parts.append("1 figure" if figure_count == 1 else f"{figure_count} figures")
         if chapter_length:
-            parts.append(f"{comma(chapter_length)} {length_label}")
+            unit = length_label[:-1] if chapter_length == 1 else length_label
+            parts.append(f"{comma(chapter_length)} {unit}")
         if parts:
             self.hero_intro = (
                 "The complete text, set for the browser. "
@@ -477,18 +508,27 @@ class SiteRenderer:
             )
         else:
             self.hero_intro = "The complete text, set for the browser, with nothing abridged."
+        self.hero_facts = {
+            "has_parts": bool(parts),
+            "chapters": chapter_count,
+            "figures": figure_count,
+            "length": chapter_length,
+            "unit": "characters" if character_metrics else "words",
+        }
         self.stats_items = []
-        for label, value in (
-            ("Chapters", chapter_count),
-            (length_label.title(), chapter_length),
-            ("Figures", figure_count),
+        for label, value, key in (
+            ("Chapters", chapter_count, "stats.chapters"),
+            (length_label.title(), chapter_length, f"stats.{length_label}"),
+            ("Figures", figure_count, "stats.figures"),
         ):
             if value:
-                self.stats_items.append({"label": label, "value": comma(value)})
+                self.stats_items.append({"label": label, "value": comma(value), "i18n": key})
         self.contents_intro = (
             "Every chapter and section, plus the front and back matter. Every section is linked."
         )
-        self.contents_quick = [{"label": "Start reading", "href": self.start_href}]
+        self.contents_quick = [
+            {"label": "Start reading", "href": self.start_href, "i18n": "home.startReading"}
+        ]
         for page in self.pages:
             low = page.get("title", "").lower()
             if any(k in low for k in ("notes", "references", "index")):
@@ -524,6 +564,7 @@ class SiteRenderer:
             "wide": wide,
             "book_meta": self.book_meta,
             "reading_map": self.reading_map,
+            "ui_i18n": self.ui_i18n,
             "legacy_anchors": legacy_anchors if legacy_anchors is not None else {"top", "main"},
         }
 
@@ -581,9 +622,11 @@ class SiteRenderer:
             home_chapters=self.home_chapters,
             home_extras=self.home_extras,
             hero_intro=self.hero_intro,
+            hero_facts=self.hero_facts,
             stats_items=self.stats_items,
             start_href=self.start_href,
             home_heading=self.home_heading,
+            home_heading_key=self.home_heading_key,
             book_json_ld=book_json_ld,
             reading_map=self.reading_map,
             cover_width=meta.get("cover_width", 438),
@@ -625,12 +668,7 @@ class SiteRenderer:
                 self._report("render-pages", "Building pages", page_index, total_pages)
                 continue
             fragment = fragment_path.read_text(encoding="utf-8")
-            readtime = f"{page['reading_minutes']} min read"
-            if page.get("chapter_index") and page.get("chapter_total"):
-                readtime = (
-                    f"Chapter {page['chapter_index']} of {page['chapter_total']} · {readtime}"
-                )
-            fragment = fragment.replace("<!--READTIME-->", readtime)
+            fragment = fragment.replace("<!--READTIME-->", self._readtime_html(page))
             pos = self.reading_order.index(page["id"]) if page["id"] in self.reading_order else -1
             prev_page = self.page_by_id.get(self.reading_order[pos - 1]) if pos > 0 else None
             next_page = (

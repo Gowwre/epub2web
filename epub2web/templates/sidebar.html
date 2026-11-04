@@ -15,11 +15,11 @@
 </ol>
 {% endmacro %}
 
-<aside class="sidebar" aria-label="Book contents" data-chrome>
+<aside class="sidebar" aria-label="Book contents" data-i18n-aria-label="sidebar.label" data-chrome>
   <div class="sidebar-inner">
     <div class="sidebar-head">
-      <p class="sidebar-eyebrow">Contents</p>
-      <a class="sidebar-all" href="/contents/">All chapters <span aria-hidden="true">→</span></a>
+      <p class="sidebar-eyebrow" data-i18n="sidebar.contents">Contents</p>
+      <a class="sidebar-all" href="/contents/"><span data-i18n="sidebar.allChapters">All chapters</span> <span aria-hidden="true">→</span></a>
     </div>
     <nav class="sidebar-nav">
       {% for entry in sidebar.before %}
@@ -37,8 +37,8 @@
       {% endfor %}
     </nav>
     <div class="sidebar-foot">
-      <a href="/#colophon">About this edition</a>
-      <button class="sidebar-search" type="button" data-search-open>Search the book <span aria-hidden="true">/</span></button>
+      <a href="/#colophon" data-i18n="sidebar.about">About this edition</a>
+      <button class="sidebar-search" type="button" data-search-open><span data-i18n="sidebar.search">Search the book</span> <span aria-hidden="true">/</span></button>
     </div>
   </div>
 </aside>

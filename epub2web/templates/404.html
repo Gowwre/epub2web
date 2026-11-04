@@ -4,11 +4,11 @@
 {% block layout %}
 <main id="epub2web-main" class="not-found">
   <p class="eyebrow">404</p>
-  <h1>This page is not in the book.</h1>
-  <p>The address may be wrong, or the section may have moved.</p>
+  <h1 data-i18n="notFound.title">This page is not in the book.</h1>
+  <p data-i18n="notFound.body">The address may be wrong, or the section may have moved.</p>
   <div class="hero-actions">
-    <a class="btn btn-primary" href="/">Back to the cover</a>
-    <a class="btn btn-quiet" href="/contents/">Contents</a>
+    <a class="btn btn-primary" href="/" data-i18n="notFound.cover">Back to the cover</a>
+    <a class="btn btn-quiet" href="/contents/" data-i18n="nav.contents">Contents</a>
   </div>
 </main>
 {% endblock %}

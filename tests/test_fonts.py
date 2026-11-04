@@ -68,6 +68,17 @@ def test_font_selection_includes_only_used_scripts():
     assert not any(path.startswith("cjk/jp/") for path in files)
 
 
+def test_font_selection_always_includes_vietnamese_subsets():
+    faces, regions = select_font_faces(set(), "en", set())
+    files = {face["file"] for face in faces}
+    assert {
+        "fraunces-vietnamese.woff2",
+        "inter-vietnamese.woff2",
+        "literata-vietnamese.woff2",
+    } <= files
+    assert regions == []
+
+
 def test_font_css_is_self_contained():
     scripts = detect_scripts("Γειά σου. مرحبا.")
     codepoints = {ord(character) for character in "Γειά σου. مرحبا." if ord(character) >= 0x0300}

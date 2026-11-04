@@ -9,57 +9,57 @@
       {{ fragment|safe }}
     </article>
 
-    <div class="annotation-toolbar" id="epub2web-annotation-toolbar" role="toolbar" aria-label="Highlight or note this selection" data-chrome hidden>
-      <button class="annotation-tool" type="button" data-annotation-highlight aria-keyshortcuts="H" title="Highlight (H)">
-        {{ icon("highlighter", 16) }}<span>Highlight</span><kbd class="annotation-key" aria-hidden="true">H</kbd>
+    <div class="annotation-toolbar" id="epub2web-annotation-toolbar" role="toolbar" aria-label="Highlight or note this selection" data-i18n-aria-label="toolbar.label" data-chrome hidden>
+      <button class="annotation-tool" type="button" data-annotation-highlight aria-keyshortcuts="H" title="Highlight (H)" data-i18n-title="toolbar.highlightTitle">
+        {{ icon("highlighter", 16) }}<span data-i18n="toolbar.highlight">Highlight</span><kbd class="annotation-key" aria-hidden="true">H</kbd>
       </button>
-      <button class="annotation-tool" type="button" data-annotation-note aria-keyshortcuts="N" title="Add a note (N)">
-        {{ icon("note", 16) }}<span>Note</span><kbd class="annotation-key" aria-hidden="true">N</kbd>
+      <button class="annotation-tool" type="button" data-annotation-note aria-keyshortcuts="N" title="Add a note (N)" data-i18n-title="toolbar.noteTitle">
+        {{ icon("note", 16) }}<span data-i18n="toolbar.note">Note</span><kbd class="annotation-key" aria-hidden="true">N</kbd>
       </button>
-      <button class="annotation-tool annotation-color-toggle" type="button" data-annotation-color-toggle aria-label="Choose highlight color" aria-expanded="false">
+      <button class="annotation-tool annotation-color-toggle" type="button" data-annotation-color-toggle aria-label="Choose highlight color" aria-expanded="false" data-i18n-aria-label="toolbar.chooseColor">
         <span class="annotation-color-dot" data-annotation-color-dot aria-hidden="true"></span>
       </button>
-      <div class="annotation-colors" data-annotation-colors role="group" aria-label="Highlight color" hidden>
-        <button type="button" class="annotation-color" data-annotation-color-choice="yellow" aria-label="Yellow highlight" aria-pressed="true" style="--annotation-color: var(--hl-yellow)"></button>
-        <button type="button" class="annotation-color" data-annotation-color-choice="green" aria-label="Green highlight" aria-pressed="false" style="--annotation-color: var(--hl-green)"></button>
-        <button type="button" class="annotation-color" data-annotation-color-choice="blue" aria-label="Blue highlight" aria-pressed="false" style="--annotation-color: var(--hl-blue)"></button>
-        <button type="button" class="annotation-color" data-annotation-color-choice="pink" aria-label="Pink highlight" aria-pressed="false" style="--annotation-color: var(--hl-pink)"></button>
-        <button type="button" class="annotation-color" data-annotation-color-choice="purple" aria-label="Purple highlight" aria-pressed="false" style="--annotation-color: var(--hl-purple)"></button>
+      <div class="annotation-colors" data-annotation-colors role="group" aria-label="Highlight color" data-i18n-aria-label="toolbar.colorGroup" hidden>
+        <button type="button" class="annotation-color" data-annotation-color-choice="yellow" aria-label="Yellow highlight" aria-pressed="true" style="--annotation-color: var(--hl-yellow)" data-i18n-aria-label="color.yellow"></button>
+        <button type="button" class="annotation-color" data-annotation-color-choice="green" aria-label="Green highlight" aria-pressed="false" style="--annotation-color: var(--hl-green)" data-i18n-aria-label="color.green"></button>
+        <button type="button" class="annotation-color" data-annotation-color-choice="blue" aria-label="Blue highlight" aria-pressed="false" style="--annotation-color: var(--hl-blue)" data-i18n-aria-label="color.blue"></button>
+        <button type="button" class="annotation-color" data-annotation-color-choice="pink" aria-label="Pink highlight" aria-pressed="false" style="--annotation-color: var(--hl-pink)" data-i18n-aria-label="color.pink"></button>
+        <button type="button" class="annotation-color" data-annotation-color-choice="purple" aria-label="Purple highlight" aria-pressed="false" style="--annotation-color: var(--hl-purple)" data-i18n-aria-label="color.purple"></button>
       </div>
     </div>
 
-    <div class="highlight-card" id="epub2web-highlight-card" role="dialog" aria-label="Highlight" tabindex="-1" data-chrome hidden>
-      <button class="icon-btn highlight-card-close" type="button" data-highlight-close aria-label="Close highlight">{{ icon("close", 16) }}</button>
+    <div class="highlight-card" id="epub2web-highlight-card" role="dialog" aria-label="Highlight" tabindex="-1" data-i18n-aria-label="toolbar.cardLabel" data-chrome hidden>
+      <button class="icon-btn highlight-card-close" type="button" data-highlight-close aria-label="Close highlight" data-i18n-aria-label="toolbar.closeCard">{{ icon("close", 16) }}</button>
       <blockquote class="highlight-card-quote" data-highlight-quote></blockquote>
       <p class="highlight-card-note" data-highlight-note hidden></p>
       <p class="highlight-card-meta" data-highlight-meta></p>
       <div class="highlight-card-actions">
-        <button type="button" data-highlight-edit>{{ icon("note", 14) }}<span>Add note</span></button>
-        <button type="button" data-highlight-color-toggle aria-expanded="false">{{ icon("highlighter", 14) }}<span>Color</span></button>
-        <button type="button" data-highlight-copy>Copy</button>
-        <button type="button" data-highlight-remove>Remove</button>
+        <button type="button" data-highlight-edit>{{ icon("note", 14) }}<span data-i18n="toolbar.addNote">Add note</span></button>
+        <button type="button" data-highlight-color-toggle aria-expanded="false">{{ icon("highlighter", 14) }}<span data-i18n="toolbar.color">Color</span></button>
+        <button type="button" data-highlight-copy data-i18n="toolbar.copy">Copy</button>
+        <button type="button" data-highlight-remove data-i18n="toolbar.remove">Remove</button>
       </div>
-      <div class="highlight-card-colors" data-highlight-colors role="group" aria-label="Highlight color" hidden>
-        <button type="button" class="annotation-color" data-highlight-color-choice="yellow" aria-label="Yellow highlight" aria-pressed="true" style="--annotation-color: var(--hl-yellow)"></button>
-        <button type="button" class="annotation-color" data-highlight-color-choice="green" aria-label="Green highlight" aria-pressed="false" style="--annotation-color: var(--hl-green)"></button>
-        <button type="button" class="annotation-color" data-highlight-color-choice="blue" aria-label="Blue highlight" aria-pressed="false" style="--annotation-color: var(--hl-blue)"></button>
-        <button type="button" class="annotation-color" data-highlight-color-choice="pink" aria-label="Pink highlight" aria-pressed="false" style="--annotation-color: var(--hl-pink)"></button>
-        <button type="button" class="annotation-color" data-highlight-color-choice="purple" aria-label="Purple highlight" aria-pressed="false" style="--annotation-color: var(--hl-purple)"></button>
+      <div class="highlight-card-colors" data-highlight-colors role="group" aria-label="Highlight color" data-i18n-aria-label="toolbar.colorGroup" hidden>
+        <button type="button" class="annotation-color" data-highlight-color-choice="yellow" aria-label="Yellow highlight" aria-pressed="true" style="--annotation-color: var(--hl-yellow)" data-i18n-aria-label="color.yellow"></button>
+        <button type="button" class="annotation-color" data-highlight-color-choice="green" aria-label="Green highlight" aria-pressed="false" style="--annotation-color: var(--hl-green)" data-i18n-aria-label="color.green"></button>
+        <button type="button" class="annotation-color" data-highlight-color-choice="blue" aria-label="Blue highlight" aria-pressed="false" style="--annotation-color: var(--hl-blue)" data-i18n-aria-label="color.blue"></button>
+        <button type="button" class="annotation-color" data-highlight-color-choice="pink" aria-label="Pink highlight" aria-pressed="false" style="--annotation-color: var(--hl-pink)" data-i18n-aria-label="color.pink"></button>
+        <button type="button" class="annotation-color" data-highlight-color-choice="purple" aria-label="Purple highlight" aria-pressed="false" style="--annotation-color: var(--hl-purple)" data-i18n-aria-label="color.purple"></button>
       </div>
     </div>
 
     {% if prev or next %}
-    <nav class="chapter-nav" aria-label="Chapter navigation" data-chrome>
+    <nav class="chapter-nav" aria-label="Chapter navigation" data-i18n-aria-label="pagination.label" data-chrome>
       {% if prev %}
       <a class="chapter-nav-card chapter-nav-prev" href="{{ prev.route }}">
-        <span class="chapter-nav-kicker">{{ icon("arrow-left", 16) }} Previous</span>
+        <span class="chapter-nav-kicker">{{ icon("arrow-left", 16) }} <span data-i18n="pagination.previous">Previous</span></span>
         <span class="chapter-nav-title">{{ prev.short_title }}</span>
         {% if prev.title and prev.title != prev.short_title %}<span class="chapter-nav-sub">{{ prev.title }}</span>{% endif %}
       </a>
       {% else %}<span></span>{% endif %}
       {% if next %}
       <a class="chapter-nav-card chapter-nav-next" href="{{ next.route }}">
-        <span class="chapter-nav-kicker">Next {{ icon("arrow-right", 16) }}</span>
+        <span class="chapter-nav-kicker"><span data-i18n="pagination.next">Next</span> {{ icon("arrow-right", 16) }}</span>
         <span class="chapter-nav-title">{{ next.short_title }}</span>
         {% if next.title and next.title != next.short_title %}<span class="chapter-nav-sub">{{ next.title }}</span>{% endif %}
       </a>
@@ -68,11 +68,11 @@
     {% endif %}
 
     <div class="page-end" data-chrome dir="auto">
-      <a href="/contents/">Contents</a>
+      <a href="/contents/" data-i18n="pagination.contents">Contents</a>
       <span aria-hidden="true">·</span>
-      <a href="/#colophon">About this edition</a>
+      <a href="/#colophon" data-i18n="pagination.about">About this edition</a>
       <span aria-hidden="true">·</span>
-      <a href="#epub2web-top" data-top>Back to top</a>
+      <a href="#epub2web-top" data-top data-i18n="pagination.top">Back to top</a>
     </div>
   </main>
 </div>

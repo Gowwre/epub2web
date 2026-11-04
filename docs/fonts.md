@@ -5,9 +5,9 @@ a font from a remote service.
 
 ## Bundled families
 
-- **Literata** — body text for Latin, Greek, and Cyrillic scripts.
-- **Fraunces** — display headings for Latin text.
-- **Inter** — interface text for Latin, Greek, and Cyrillic scripts.
+- **Literata** — body text for Latin (including Vietnamese), Greek, and Cyrillic scripts.
+- **Fraunces** — display headings for Latin (including Vietnamese) text.
+- **Inter** — interface text for Latin (including Vietnamese), Greek, and Cyrillic scripts.
 - **Noto Naskh Arabic** and **Noto Sans Arabic** — Arabic body and interface text.
 - **Noto Serif Hebrew** and **Noto Sans Hebrew** — Hebrew body and interface text.
 - **Noto Serif Devanagari** and **Noto Sans Devanagari** — Devanagari body and interface text.
@@ -24,7 +24,9 @@ All families are licensed under the SIL Open Font License 1.1. See
 `epub2web/fonts.py` scans the extracted text for script ranges. During rendering,
 `epub2web/render.py` selects only the subsets needed by that book, copies their
 WOFF2 files into `assets/fonts/`, and generates `assets/fonts.css` with
-matching `@font-face` and `unicode-range` rules. Latin is always included.
+matching `@font-face` and `unicode-range` rules. Latin is always included,
+together with the Vietnamese subset so the interface can switch languages for a
+book in any language.
 
 The CJK selection uses kana for Japanese, Hangul for Korean, and the book
 language for Chinese variants (`zh-Hans`/`zh-CN` → SC,

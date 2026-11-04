@@ -12,6 +12,24 @@
   const chapterKey = isReading ? (body.dataset.chapterKey || "").trim() : "";
   const progressStart = isReading ? parseFloat(body.dataset.progressStart || "0") : 0;
   const progressEnd = isReading ? parseFloat(body.dataset.progressEnd || "1") : 1;
+  const i18n = window.epub2webI18n;
+
+  function t(key, values) {
+    return i18n ? i18n.t(key, values) : key;
+  }
+
+  function uiLanguage() {
+    return i18n ? i18n.language() : "en";
+  }
+
+  function formatNumber(value) {
+    return i18n ? i18n.formatNumber(value) : String(value);
+  }
+
+  function mapLabel(entry) {
+    if (!entry) return "";
+    return uiLanguage() === "vi" && entry.labelVi ? entry.labelVi : entry.label;
+  }
 
   function withBase(path) {
     if (!path) return basePath + "/";
@@ -89,9 +107,10 @@
 
   function syncThemeLabel() {
     if (!themeButton) return;
-    const next = currentTheme() === "dark" ? "light" : "dark";
-    themeButton.setAttribute("aria-label", "Switch to " + next + " theme");
-    themeButton.setAttribute("title", "Switch to " + next + " theme");
+    const next = currentTheme() === "dark" ? "theme.light" : "theme.dark";
+    const label = t("theme.switchTo", { mode: t(next) });
+    themeButton.setAttribute("aria-label", label);
+    themeButton.setAttribute("title", label);
   }
 
   function syncThemeInputs() {
@@ -392,12 +411,12 @@
     searchResults.replaceChildren();
     if (!query) {
       searchStatus.textContent = searchIndex
-        ? searchIndex.length.toLocaleString() + " sections indexed. Type to search."
-        : "Type a word or phrase.";
+        ? t("search.indexed", { count: formatNumber(searchIndex.length) })
+        : t("search.prompt");
       return;
     }
     if (!searchIndex) {
-      searchStatus.textContent = "Loading the search index…";
+      searchStatus.textContent = t("search.loading");
       return;
     }
     const needle = query.toLowerCase();
@@ -412,17 +431,19 @@
       .sort(function (a, b) { return b.score - a.score; });
     const matches = allMatches.slice(0, 20);
     if (!matches.length) {
-      searchStatus.textContent = "No matches for “" + query + "”.";
+      searchStatus.textContent = t("search.noMatches", { query: query });
       return;
     }
     searchStatus.textContent =
-      allMatches.length +
-      " result" +
-      (allMatches.length === 1 ? "" : "s") +
-      " for “" +
-      query +
-      "”" +
-      (allMatches.length > matches.length ? " · showing the first 20" : "") +
+      (allMatches.length === 1
+        ? t("search.oneResult", { query: query })
+        : t("search.manyResults", {
+            count: formatNumber(allMatches.length),
+            query: query,
+          })) +
+      (allMatches.length > matches.length
+        ? t("search.showingFirst", { count: formatNumber(matches.length) })
+        : "") +
       ".";
     matches.forEach(function (match) {
       const entry = match.entry;
@@ -451,7 +472,7 @@
   function loadSearch() {
     if (searchIndex) return Promise.resolve(searchIndex);
     if (searchPromise) return searchPromise;
-    if (searchStatus) searchStatus.textContent = "Loading the search index…";
+    if (searchStatus) searchStatus.textContent = t("search.loading");
     searchPromise = fetch(withBase("/search-index.json"), { credentials: "same-origin" })
       .then(function (response) {
         if (!response.ok) throw new Error("search index missing");
@@ -465,8 +486,7 @@
       .catch(function () {
         searchIndex = null;
         if (searchStatus) {
-          searchStatus.textContent =
-            "Search index unavailable. Serve the site with `epub2web --serve`.";
+          searchStatus.textContent = t("search.unavailable");
         }
         return null;
       });
@@ -549,7 +569,12 @@
     if (lightboxStatus) {
       lightboxStatus.hidden = !multiple || lightboxIndex < 0;
       lightboxStatus.textContent =
-        multiple && lightboxIndex >= 0 ? lightboxIndex + 1 + " of " + links.length : "";
+        multiple && lightboxIndex >= 0
+          ? t("lightbox.position", {
+              current: formatNumber(lightboxIndex + 1),
+              total: formatNumber(links.length),
+            })
+          : "";
     }
   }
 
@@ -619,6 +644,12 @@
     if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
     event.preventDefault();
     stepLightbox(event.key === "ArrowLeft" ? -1 : 1);
+  });
+
+  document.addEventListener("epub2web:languagechange", function () {
+    syncThemeLabel();
+    renderSearch();
+    updateLightboxControls();
   });
 
   /* ------------------------------------------------------------------
@@ -749,7 +780,6 @@
     const restart = document.querySelector("[data-reading-restart]");
     const mapElement = document.getElementById("epub2web-reading-map");
     const defaultHref = startLinks.length ? startLinks[0].getAttribute("href") : "";
-    const defaultLabel = startLabel ? startLabel.textContent : "";
 
     function setStartHrefs(href) {
       startLinks.forEach(function (link) {
@@ -764,8 +794,11 @@
         link.removeAttribute("aria-label");
         link.removeAttribute("title");
       });
-      if (startLabel) startLabel.textContent = defaultLabel || "Start reading";
-      if (restart) restart.hidden = true;
+      if (startLabel) startLabel.textContent = t("home.startReading");
+      if (restart) {
+        restart.hidden = true;
+        restart.title = t("home.startOverTitle");
+      }
     }
 
     function enhanceHomeContinue() {
@@ -796,13 +829,17 @@
       }
       const continueHref = withBase(entry.route);
       setStartHrefs(continueHref + (continueHref.indexOf("?") === -1 ? "?continue=1" : "&continue=1"));
-      const description = entry.label ? "Continue reading: " + entry.label : "Continue reading";
+      const label = mapLabel(entry);
+      const description = label
+        ? t("home.continueReadingLabel", { label: label })
+        : t("home.continueReading");
       if (startLink) {
         startLink.setAttribute("aria-label", description);
         startLink.title = description;
       }
       if (startLabel) {
-        startLabel.textContent = description.length <= 42 ? description : "Continue reading";
+        startLabel.textContent =
+          description.length <= 42 ? description : t("home.continueReading");
       }
       if (restart) restart.hidden = false;
     }
@@ -818,6 +855,7 @@
       window.addEventListener("storage", function (event) {
         if (event.key === progressKey) enhanceHomeContinue();
       });
+      document.addEventListener("epub2web:languagechange", enhanceHomeContinue);
     }
 
     if (restart) {

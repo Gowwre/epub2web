@@ -16,6 +16,24 @@
   const chapterKey = (body.dataset.chapterKey || "").trim();
   const progressStart = parseFloat(body.dataset.progressStart || "0");
   const progressEnd = parseFloat(body.dataset.progressEnd || "1");
+  const i18n = window.epub2webI18n;
+
+  function t(key, values) {
+    return i18n ? i18n.t(key, values) : key;
+  }
+
+  function uiLanguage() {
+    return i18n ? i18n.language() : "en";
+  }
+
+  function formatNumber(value) {
+    return i18n ? i18n.formatNumber(value) : String(value);
+  }
+
+  function mapLabel(entry) {
+    if (!entry) return "";
+    return uiLanguage() === "vi" && entry.labelVi ? entry.labelVi : entry.label;
+  }
 
   const SCHEMA = "epub2web.annotations";
   const VERSION = 1;
@@ -24,6 +42,13 @@
   const LOCAL_PREFIX = "epub2web:annotations:v1:";
   const COLOR_KEY = "epub2web:annotations:color";
   const COLORS = ["yellow", "green", "blue", "pink", "purple"];
+  const COLOR_LABELS = {
+    yellow: "color.yellow",
+    green: "color.green",
+    blue: "color.blue",
+    pink: "color.pink",
+    purple: "color.purple",
+  };
 
   const toolbar = document.getElementById("epub2web-annotation-toolbar");
   const toolbarColors = document.querySelector("[data-annotation-colors]");
@@ -161,7 +186,7 @@
   function formatDate(value) {
     if (!validIso(value)) return "";
     try {
-      return new Intl.DateTimeFormat(undefined, {
+      return new Intl.DateTimeFormat(i18n ? i18n.locale() : undefined, {
         day: "numeric",
         month: "short",
         year: "numeric",
@@ -544,28 +569,26 @@
   async function refreshStorageState() {
     if (!storageState || !storageRequest) return;
     if (!canPersistStorage()) {
-      storageState.textContent =
-        "This browser does not support persistent storage. Export a backup if you need a copy.";
+      storageState.textContent = t("storage.unsupported");
       storageRequest.disabled = true;
-      storageRequest.textContent = "Not supported";
+      storageRequest.textContent = t("storage.notSupported");
       return;
     }
     storageRequest.disabled = false;
-    storageRequest.textContent = "Ask browser to keep data";
+    storageRequest.textContent = t("storage.request");
     const persisted = await storageIsPersisted();
     if (persisted) {
-      storageState.textContent =
-        "This browser is already keeping this site’s data on this device.";
+      storageState.textContent = t("storage.alreadyKept");
       storageRequest.disabled = true;
-      storageRequest.textContent = "Already kept";
+      storageRequest.textContent = t("storage.alreadyKeptButton");
     } else {
-      storageState.textContent = "Your browser may ask for permission when you continue.";
+      storageState.textContent = t("storage.permissionMaybe");
     }
   }
 
   function openStorageDialog() {
     if (!storageDialog) return;
-    if (storageState) storageState.textContent = "Checking this browser…";
+    if (storageState) storageState.textContent = t("storage.checking");
     if (storageRequest) storageRequest.disabled = true;
     if (!storageDialog.open) storageDialog.showModal();
     refreshStorageState();
@@ -579,8 +602,8 @@
     }
     state.storageBusy = true;
     storageRequest.disabled = true;
-    storageRequest.textContent = "Requesting…";
-    storageState.textContent = "Waiting for your browser…";
+    storageRequest.textContent = t("storage.requesting");
+    storageState.textContent = t("storage.waiting");
     let granted = false;
     try {
       granted = await navigator.storage.persist();
@@ -589,14 +612,12 @@
     }
     state.storageBusy = false;
     if (granted) {
-      storageState.textContent =
-        "This browser will keep your highlights and notes on this device.";
-      storageRequest.textContent = "Kept on this device";
+      storageState.textContent = t("storage.granted");
+      storageRequest.textContent = t("storage.keptButton");
       storageRequest.disabled = true;
     } else {
-      storageState.textContent =
-        "The browser did not grant persistent storage. Export a backup to keep a copy.";
-      storageRequest.textContent = "Try again";
+      storageState.textContent = t("storage.denied");
+      storageRequest.textContent = t("storage.tryAgain");
       storageRequest.disabled = false;
     }
   }
@@ -736,9 +757,11 @@
     }
     if (panelTotal) panelTotal.textContent = count ? String(count) : "";
     if (openButton) {
-      const label = count
-        ? "Highlights and notes, " + count + (count === 1 ? " item" : " items")
-        : "Highlights and notes";
+      let label = t("annotations.open");
+      if (count === 1) label = t("annotations.openCountOne");
+      else if (count) {
+        label = t("annotations.openCount", { count: formatNumber(count) });
+      }
       openButton.setAttribute("aria-label", label);
     }
   }
@@ -1072,7 +1095,9 @@
       button.textContent = "✎";
       button.setAttribute(
         "aria-label",
-        "Note: " + (item.annotation.quote || item.annotation.note || "annotation")
+        t("annotations.noteMarker", {
+          text: item.annotation.quote || item.annotation.note || "",
+        })
       );
       button.addEventListener("click", function (event) {
         event.preventDefault();
@@ -1136,7 +1161,7 @@
     text.setAttribute("data-annotation-toast-text", "");
     const button = document.createElement("button");
     button.type = "button";
-    button.textContent = "Undo";
+    button.textContent = t("annotations.undo");
     button.setAttribute("data-annotation-toast-undo", "");
     button.hidden = true;
     button.addEventListener("click", function () {
@@ -1329,13 +1354,13 @@
     refresh();
     persist(annotation).then(function (ok) {
       if (!ok) {
-        showToast("Highlight saved in this tab only. Export to keep it.", function () {
+        showToast(t("annotations.highlightTabOnly"), function () {
           undoCreate(annotation.id);
         });
       }
     });
     broadcast(annotation);
-    showToast("Highlighted", function () {
+    showToast(t("annotations.highlighted"), function () {
       undoCreate(annotation.id);
     });
   }
@@ -1360,9 +1385,12 @@
     refresh();
     persist(annotation);
     broadcast(annotation);
-    showToast(annotation.quote ? "Highlight removed" : "Note removed", function () {
-      restoreAnnotation(before);
-    });
+    showToast(
+      annotation.quote ? t("annotations.highlightRemoved") : t("annotations.noteRemoved"),
+      function () {
+        restoreAnnotation(before);
+      }
+    );
   }
 
   function restoreAnnotation(before) {
@@ -1397,6 +1425,19 @@
     noteSave.disabled = !noteText.value.trim();
   }
 
+  function syncNoteComposerLabels() {
+    if (!noteQuote || !noteText || !noteTitle) return;
+    const target = state.note;
+    const annotation = target ? target.annotation : null;
+    const selection = target ? target.selection : null;
+    const quote = annotation ? annotation.quote : selection ? selection.quote : "";
+    noteQuote.textContent = quote || t("annotations.noteAtLocation");
+    noteText.placeholder = annotation
+      ? t("note.placeholderOptional")
+      : t("note.placeholder");
+    noteTitle.textContent = annotation ? t("note.editTitle") : t("note.addTitle");
+  }
+
   function openNoteComposer(selection, annotation) {
     if (!noteDialog) return;
     hideToolbar();
@@ -1404,14 +1445,13 @@
     state.noteReturnFocus = document.activeElement;
     state.note = { selection: selection, annotation: annotation, created: null };
     const quote = annotation ? annotation.quote : selection ? selection.quote : "";
-    noteQuote.textContent = quote || "Note at this location";
+    noteQuote.textContent = quote || t("annotations.noteAtLocation");
     noteQuote.style.setProperty(
       "--annotation-color",
       colorValue(annotation ? annotation.style.color : selection ? state.lastColor : "yellow")
     );
     noteText.value = annotation ? annotation.note : "";
-    noteText.placeholder = annotation ? "Add a note (optional)" : "Write a note…";
-    noteTitle.textContent = annotation ? "Edit note" : "Add a note";
+    syncNoteComposerLabels();
     noteRemove.hidden = !(annotation && annotation.note);
     noteError.hidden = true;
     noteError.textContent = "";
@@ -1427,9 +1467,7 @@
   }
 
   function showNoteError(message) {
-    noteError.textContent =
-      message ||
-      "This browser could not save the note. Export your annotations to keep them.";
+    noteError.textContent = message || t("annotations.noteError");
     noteError.hidden = false;
   }
 
@@ -1451,7 +1489,7 @@
       if (saved) {
         broadcast(annotation);
         noteDialog.close();
-        showToast("Note saved", function () {
+        showToast(t("annotations.noteSaved"), function () {
           const current = state.annotations.get(annotation.id);
           if (!current) return;
           current.note = before.note;
@@ -1478,7 +1516,7 @@
         clearNativeSelection();
         broadcast(annotation);
         noteDialog.close();
-        showToast("Note saved", function () {
+        showToast(t("annotations.noteSaved"), function () {
           undoCreate(annotation.id);
         });
       }
@@ -1501,7 +1539,7 @@
     broadcast(annotation);
     noteDialog.close();
     if (saved) {
-      showToast("Note removed", function () {
+      showToast(t("annotations.noteRemoved"), function () {
         const current = state.annotations.get(annotation.id);
         if (!current) return;
         current.note = before;
@@ -1512,7 +1550,7 @@
         hideToast();
       });
     } else {
-      showToast("Note removed in this tab only. Export to keep it.", null);
+      showToast(t("annotations.noteTabOnly"), null);
     }
   }
 
@@ -1524,10 +1562,12 @@
     if (!card || !annotation) return;
     card.dataset.annotationId = annotation.id;
     card.style.setProperty("--annotation-color", colorValue(annotation.style.color));
-    cardQuote.textContent = annotation.quote || "Note at this location";
+    cardQuote.textContent = annotation.quote || t("annotations.noteAtLocation");
     cardNote.textContent = annotation.note;
     cardNote.hidden = !annotation.note;
-    cardEdit.querySelector("span").textContent = annotation.note ? "Edit note" : "Add note";
+    cardEdit.querySelector("span").textContent = annotation.note
+      ? t("annotations.editNote")
+      : t("annotations.addNote");
     cardMeta.textContent = [chapterLabel(annotation), formatDate(annotation.updated)]
       .filter(Boolean)
       .join(" · ");
@@ -1583,7 +1623,7 @@
   function copyText(text, label, quiet) {
     if (!text) return Promise.resolve(false);
     const done = function () {
-      if (!quiet) showToast(label || "Copied", null);
+      if (!quiet) showToast(label || t("annotations.copied"), null);
       return true;
     };
     if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
@@ -1621,11 +1661,11 @@
     const chapterEntry = readingMap.find(function (entry) {
       return entry.chapterKey && entry.chapterKey === anchor.chapter_key;
     });
-    if (chapterEntry && chapterEntry.label) return chapterEntry.label;
+    if (chapterEntry && chapterEntry.label) return mapLabel(chapterEntry);
     const pageEntry = readingMap.find(function (entry) {
       return entry.key === anchor.page_key;
     });
-    return pageEntry && pageEntry.label ? pageEntry.label : "";
+    return pageEntry && pageEntry.label ? mapLabel(pageEntry) : "";
   }
 
   /* ------------------------------------------------------------------
@@ -1671,7 +1711,7 @@
       button.type = "button";
       button.className = "annotation-color";
       button.dataset.annotationColorChoice = color;
-      button.setAttribute("aria-label", color.charAt(0).toUpperCase() + color.slice(1) + " highlight");
+      button.setAttribute("aria-label", t(COLOR_LABELS[color] || COLOR_LABELS.yellow));
       button.setAttribute("aria-pressed", annotation.style.color === color ? "true" : "false");
       button.style.setProperty("--annotation-color", colorValue(color));
       wrapper.appendChild(button);
@@ -1706,8 +1746,13 @@
     }
     panelSearchStatus.hidden = false;
     panelSearchStatus.textContent = count
-      ? count + (count === 1 ? " match" : " matches") + " for “" + query + "”"
-      : "No matches for “" + query + "”";
+      ? count === 1
+        ? t("annotations.matchOne", { query: query })
+        : t("annotations.matches", {
+            count: formatNumber(count),
+            query: query,
+          })
+      : t("annotations.noMatches", { query: query });
   }
 
   function renderPanel() {
@@ -1725,12 +1770,13 @@
     panelEmpty.hidden = filtered.length > 0;
     if (!filtered.length) {
       if (!all.length) {
-        panelEmpty.textContent =
-          "No highlights or notes yet. Select text and press H to highlight, or use the selection toolbar.";
+        panelEmpty.textContent = t("annotations.empty");
       } else if (state.query.trim()) {
-        panelEmpty.textContent = "No annotations match “" + state.query.trim() + "”.";
+        panelEmpty.textContent = t("annotations.noQueryMatch", {
+          query: state.query.trim(),
+        });
       } else {
-        panelEmpty.textContent = "No annotations match this filter.";
+        panelEmpty.textContent = t("annotations.noFilterMatch");
       }
     }
 
@@ -1747,7 +1793,7 @@
       const heading = document.createElement("h3");
       heading.className = "annotation-group-title";
       const first = annotations[0];
-      heading.textContent = chapterLabel(first) || "Book";
+      heading.textContent = chapterLabel(first) || t("annotations.book");
       section.appendChild(heading);
 
       annotations.forEach(function (annotation) {
@@ -1766,7 +1812,7 @@
         text.className = "annotation-item-text";
         const quote = document.createElement("span");
         quote.className = "annotation-item-quote";
-        quote.textContent = annotation.quote || "Note at this location";
+        quote.textContent = annotation.quote || t("annotations.noteAtLocation");
         text.appendChild(quote);
         if (annotation.note && annotation.quote) {
           const note = document.createElement("span");
@@ -1777,10 +1823,10 @@
         const meta = document.createElement("span");
         meta.className = "annotation-item-meta";
         const bits = [];
-        if (annotation.note) bits.push("Note");
+        if (annotation.note) bits.push(t("annotations.note"));
         const date = formatDate(annotation.updated);
         if (date) bits.push(date);
-        if (annotation.needs_review) bits.push("Needs review");
+        if (annotation.needs_review) bits.push(t("annotations.needsReview"));
         meta.textContent = bits.join(" · ");
         text.appendChild(meta);
         main.append(bar, text);
@@ -1788,13 +1834,18 @@
         const details = document.createElement("details");
         details.className = "annotation-item-menu";
         const summary = document.createElement("summary");
-        summary.setAttribute("aria-label", "Actions for this annotation");
+        summary.setAttribute("aria-label", t("annotations.actions"));
         summary.textContent = "⋯";
         const actions = document.createElement("div");
         actions.className = "annotation-item-actions";
-        actions.appendChild(menuButton(annotation.note ? "Edit note" : "Add note", "edit-note"));
-        actions.appendChild(menuButton("Copy quote", "copy"));
-        actions.appendChild(menuButton("Remove", "remove"));
+        actions.appendChild(
+          menuButton(
+            annotation.note ? t("annotations.editNote") : t("annotations.addNote"),
+            "edit-note"
+          )
+        );
+        actions.appendChild(menuButton(t("annotations.copyQuote"), "copy"));
+        actions.appendChild(menuButton(t("annotations.remove"), "remove"));
         actions.appendChild(colorChoices(annotation));
         details.append(summary, actions);
         item.append(main, details);
@@ -1825,7 +1876,7 @@
   function scrollToAnnotation(annotation) {
     const item = state.resolved.get(annotation.id);
     if (!item) {
-      showToast("Could not find this annotation on this page.", null);
+      showToast(t("annotations.couldNotFind"), null);
       return;
     }
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -1869,7 +1920,7 @@
         return item.key === targetKey;
       });
       if (!entry) {
-        showToast("This annotation is on another page.", null);
+        showToast(t("annotations.otherPage"), null);
         return;
       }
       const separator = entry.route.indexOf("?") === -1 ? "?" : "&";
@@ -1883,26 +1934,26 @@
 
   async function importAnnotations(file) {
     if (file.size > 10 * 1024 * 1024) {
-      setStatus("That annotation file is too large.");
+      setStatus(t("annotations.importTooLarge"));
       return;
     }
     let raw;
     try {
       raw = JSON.parse(await file.text());
     } catch (error) {
-      setStatus("That file is not valid JSON.");
+      setStatus(t("annotations.importInvalidJson"));
       return;
     }
     const imported = validateImportedDocument(raw);
     if (!imported) {
-      setStatus("That file is not a valid epub2web annotation file.");
+      setStatus(t("annotations.importInvalid"));
       return;
     }
     const sameBook =
       imported.book.content_id === contentId ||
       (sourceSha256 && imported.book.source_sha256 === sourceSha256);
     if (!sameBook) {
-      setStatus("That file belongs to a different book.");
+      setStatus(t("annotations.importOtherBook"));
       return;
     }
 
@@ -1917,7 +1968,7 @@
     });
 
     if (!changed.length) {
-      setStatus("No new annotations.");
+      setStatus(t("annotations.importNone"));
       return;
     }
 
@@ -1926,16 +1977,22 @@
     renderPanel();
     if (saved) {
       const total = added + updated;
-      const detail = updated ? " (" + added + " new, " + updated + " updated)" : "";
+      const detail = updated
+        ? t("annotations.importDetail", {
+            added: formatNumber(added),
+            updated: formatNumber(updated),
+          })
+        : "";
       setStatus(
-        "Imported " +
-          total +
-          (total === 1 ? " annotation" : " annotations") +
-          detail +
-          "."
+        total === 1
+          ? t("annotations.importOne", { detail: detail })
+          : t("annotations.importMany", {
+              count: formatNumber(total),
+              detail: detail,
+            })
       );
     } else {
-      setStatus("Imported annotations, but this browser could not save them. Export to keep them.");
+      setStatus(t("annotations.importUnsaved"));
     }
     changed.forEach(broadcast);
   }
@@ -1966,13 +2023,15 @@
   }
 
   function annotationCount(count) {
-    return count + (count === 1 ? " annotation" : " annotations");
+    return count === 1
+      ? t("annotations.countOne")
+      : t("annotations.count", { count: formatNumber(count) });
   }
 
   function markdownForAnnotations(annotations) {
     if (!annotations.length) return "";
     const lines = [];
-    const title = String(bookMeta.title || "Highlights and notes")
+    const title = String(bookMeta.title || t("annotations.markdownTitle"))
       .replace(/\s+/g, " ")
       .trim();
     lines.push("# " + title, "");
@@ -1982,7 +2041,9 @@
     if (author) lines.push(author, "");
     let currentChapter = null;
     annotations.forEach(function (annotation) {
-      const chapter = (chapterLabel(annotation) || "Book").replace(/\s+/g, " ").trim();
+      const chapter = (chapterLabel(annotation) || t("annotations.book"))
+        .replace(/\s+/g, " ")
+        .trim();
       if (chapter !== currentChapter) {
         currentChapter = chapter;
         lines.push("## " + chapter, "");
@@ -2009,14 +2070,16 @@
   function copyAllAnnotations() {
     const annotations = annotationsForExport();
     if (!annotations.length) {
-      setStatus("No annotations to copy.");
+      setStatus(t("annotations.copyNone"));
       return;
     }
     copyText(markdownForAnnotations(annotations), "", true).then(function (copied) {
       setStatus(
         copied
-          ? "Copied " + annotationCount(annotations.length) + " to the clipboard."
-          : "Could not copy. Use Export instead."
+          ? t("annotations.copiedCount", {
+              count: annotationCount(annotations.length),
+            })
+          : t("annotations.copyFailed")
       );
     });
   }
@@ -2024,7 +2087,7 @@
   function exportMarkdown() {
     const annotations = annotationsForExport();
     if (!annotations.length) {
-      setStatus("No annotations to export.");
+      setStatus(t("annotations.exportNone"));
       return;
     }
     downloadText(
@@ -2032,7 +2095,11 @@
       markdownForAnnotations(annotations),
       "text/markdown;charset=utf-8"
     );
-    setStatus("Exported " + annotationCount(annotations.length) + " as Markdown.");
+    setStatus(
+      t("annotations.exportedMarkdown", {
+        count: annotationCount(annotations.length),
+      })
+    );
   }
 
   function exportAnnotations() {
@@ -2044,7 +2111,11 @@
     };
     const text = JSON.stringify(payload, null, 2) + "\n";
     downloadText(bookSlug() + ".annotations.json", text, "application/json");
-    setStatus("Exported " + annotationCount(activeAnnotations().length) + " as JSON.");
+    setStatus(
+      t("annotations.exportedJson", {
+        count: annotationCount(activeAnnotations().length),
+      })
+    );
   }
 
   function closeExportMenu() {
@@ -2096,7 +2167,7 @@
     const startPath = nodePath(bookPage, textNode);
     const endPath = startPath;
     if (!startPath) {
-      showToast("Could not find a place for the note on this page.", null);
+      showToast(t("annotations.noNoteSpot"), null);
       return;
     }
     const before = document.createRange();
@@ -2185,7 +2256,10 @@
     card.querySelector("[data-highlight-copy]").addEventListener("click", function () {
       const annotation = state.annotations.get(state.cardId);
       if (!annotation) return;
-      copyText(annotation.quote || annotation.note, annotation.quote ? "Quote copied" : "Note copied");
+      copyText(
+        annotation.quote || annotation.note,
+        annotation.quote ? t("annotations.quoteCopied") : t("annotations.noteCopied")
+      );
     });
     card.querySelector("[data-highlight-remove]").addEventListener("click", function () {
       const id = state.cardId;
@@ -2286,8 +2360,8 @@
         closePanel();
         openNoteComposer(null, annotation);
       } else if (action.dataset.annotationAction === "copy") {
-        copyText(annotation.quote || annotation.note, "Copied");
-        setStatus("Copied.");
+        copyText(annotation.quote || annotation.note, t("annotations.copied"));
+        setStatus(t("annotations.copiedSentence"));
       } else if (action.dataset.annotationAction === "remove") {
         closePanel();
         deleteAnnotation(id);
@@ -2539,6 +2613,33 @@
     renderHighlights();
     if (panel && panel.open) renderPanel();
   }
+
+  function refreshLanguage() {
+    updateCount();
+    state.markers.forEach(function (item) {
+      if (!item.button) return;
+      item.button.setAttribute(
+        "aria-label",
+        t("annotations.noteMarker", {
+          text: item.annotation.quote || item.annotation.note || "",
+        })
+      );
+    });
+    if (state.cardId) {
+      const annotation = state.annotations.get(state.cardId);
+      if (annotation) updateCard(annotation);
+    }
+    if (panel && panel.open) renderPanel();
+    if (noteDialog && noteDialog.open) syncNoteComposerLabels();
+    if (storageDialog && storageDialog.open) refreshStorageState();
+    if (toast) {
+      const undo = toast.querySelector("[data-annotation-toast-undo]");
+      if (undo) undo.textContent = t("annotations.undo");
+    }
+    updateToolbarColors();
+  }
+
+  document.addEventListener("epub2web:languagechange", refreshLanguage);
 
   function init() {
     state.lastColor = readLastColor();
