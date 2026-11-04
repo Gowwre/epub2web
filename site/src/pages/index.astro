@@ -48,26 +48,31 @@ const features = [
   },
   {
     number: "03",
+    title: "Highlights and notes",
+    body: "Select a passage to highlight it or add a private note. Review by chapter, search your marks, copy them all as Markdown, or keep a JSON backup. Everything stays in the browser.",
+  },
+  {
+    number: "04",
     title: "Easy on the eyes",
     body: "Light and dark themes, adjustable text size, line spacing, paragraph style, and page width. Your choices are remembered the next time you open the book.",
   },
   {
-    number: "04",
+    number: "05",
     title: "Pick up where you left off",
     body: "The site remembers your page and shows how far you've read. Your place is stored in the browser, separately for each EPUB.",
   },
   {
-    number: "05",
+    number: "06",
     title: "The whole book comes along",
     body: "Pictures with captions, tables, lists, footnotes, and cross-references all survive the move. Fonts for major writing systems are included, so the text looks right.",
   },
   {
-    number: "06",
+    number: "07",
     title: "Works for more readers",
     body: "You can navigate with a keyboard, labels are clear, and images have descriptions.",
   },
   {
-    number: "07",
+    number: "08",
     title: "Yours to keep",
     body: "The finished site is one folder of HTML, CSS, images, fonts, and search data. Put it on any static host, or keep it on your computer.",
   },
@@ -88,6 +93,16 @@ const faqs = [
     question: "What exactly do I get?",
     answer:
       "A folder with a cover page, a table of contents, a page for each chapter, the images, the fonts, and a search index. It includes a small reading theme that works on phones and desktops.",
+  },
+  {
+    question: "Can I highlight passages and take notes?",
+    answer:
+      "Yes. Select text to highlight it, add a private note, and find it again in the Highlights & notes panel. Search your marks by quote, note, or chapter, copy them all as Markdown, or export a JSON backup. Everything stays in your browser and is never added to the published site.",
+  },
+  {
+    question: "Do highlights and notes sync between devices?",
+    answer:
+      "Not automatically. They live in the browser that created them. Use Copy all or Export to move them or keep a backup before clearing site data. The reader asks for persistent storage only when you choose Keep on this device.",
   },
   {
     question: "How do I open the site after I close the app?",
@@ -128,8 +143,9 @@ const faqs = [
         </h1>
         <p class="hero__intro">
           epub2web builds a reading website from the EPUB you own. The text
-          stays exactly as it appears in the EPUB, the pictures and notes come
-          along, and the finished folder is yours to keep or publish.
+          stays exactly as it appears in the EPUB, the pictures come along, and
+          readers can highlight passages and keep private notes. The finished
+          folder is yours to keep or publish.
         </p>
 
         <div class="hero__actions">
@@ -150,8 +166,8 @@ const faqs = [
 
         <ul class="hero__meta" aria-label="At a glance">
           <li>Free &amp; open source</li>
+          <li>Highlights &amp; notes</li>
           <li>Windows · macOS · Linux</li>
-          <li>No Python required</li>
         </ul>
 
         <p class="hero__audience">
@@ -285,8 +301,8 @@ const faqs = [
         </div>
         <p class="lede">
           You get a cover, a table of contents, a page for each chapter, the
-          pictures and notes, and search. It's all one folder you can keep or
-          publish.
+          pictures and footnotes, search, and a private layer for highlights
+          and notes. It's all one folder you can keep or publish.
         </p>
       </div>
 
@@ -349,10 +365,122 @@ const faqs = [
     </div>
   </section>
 
+  <section class="section annotations" id="annotations">
+    <div class="container">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">III · Highlights and notes</p>
+          <h2>Read it. <span class="accent">Mark it up.</span> Keep it.</h2>
+        </div>
+        <p class="lede">
+          Select a passage to highlight it, add a private note, and find every
+          thought again by chapter or search. Copy it all as Markdown, export a
+          backup, and keep everything in your browser.
+        </p>
+      </div>
+
+      <div class="annotations__grid">
+        <div class="annotations__points">
+          <article class="annotation-point">
+            <span class="annotation-point__label">Highlight</span>
+            <h3>One action, no mode.</h3>
+            <p>
+              Select text and highlight it in your last-used color. Add a note
+              only when you want one.
+            </p>
+          </article>
+          <article class="annotation-point">
+            <span class="annotation-point__label">Find</span>
+            <h3>Every mark, one panel.</h3>
+            <p>
+              Grouped by chapter, searchable by quote or note, and one click
+              away from the passage.
+            </p>
+          </article>
+          <article class="annotation-point">
+            <span class="annotation-point__label">Take</span>
+            <h3>Markdown or a backup.</h3>
+            <p>
+              Copy all as Markdown for a notes app, download a readable file, or
+              keep a JSON backup.
+            </p>
+          </article>
+          <article class="annotation-point">
+            <span class="annotation-point__label">Private</span>
+            <h3>Yours, not the site&apos;s.</h3>
+            <p>
+              Highlights and notes stay in your browser. They are never uploaded
+              or added to the published site.
+            </p>
+          </article>
+          <p class="annotations__more">
+            <a class="text-link" href={DEMO_URL} target="_blank" rel="noopener noreferrer">
+              Try highlights in the live demo
+              <Icon name="arrow-up-right" size={14} class="icon--external" />
+            </a>
+          </p>
+        </div>
+
+        <figure
+          class="annotation-visual"
+          aria-label="Example of a highlighted passage and the Highlights and notes panel"
+        >
+          <div class="annotation-visual__page">
+            <p class="annotation-visual__kicker">Chapter III</p>
+            <p class="annotation-visual__text">
+              Alice was beginning to get very tired of sitting by her sister on
+              the bank, and of having nothing to do: <mark>once or twice she had
+              peeped into the book her sister was reading, but it had no
+              pictures or conversations in it.</mark>
+            </p>
+            <div class="annotation-visual__toolbar" aria-hidden="true">
+              <span class="annotation-visual__dot"></span>
+              <span>Highlight</span><kbd>H</kbd>
+              <span>Note</span><kbd>N</kbd>
+            </div>
+          </div>
+          <div class="annotation-visual__panel">
+            <div class="annotation-visual__head">
+              <span>Highlights &amp; notes</span>
+              <span class="annotation-visual__count">2</span>
+            </div>
+            <div class="annotation-visual__search">Search highlights and notes…</div>
+            <div class="annotation-visual__item">
+              <span class="annotation-visual__bar"></span>
+              <div>
+                <p>“…it had no pictures or conversations in it.”</p>
+                <span>A note about what Alice wants from a book.</span>
+              </div>
+            </div>
+            <div class="annotation-visual__item">
+              <span class="annotation-visual__bar annotation-visual__bar--blue"></span>
+              <div>
+                <p>
+                  “What is the use of a book,” thought Alice, “without pictures
+                  or conversations?”
+                </p>
+                <span>Chapter I</span>
+              </div>
+            </div>
+            <div class="annotation-visual__foot">
+              <span>Copy all</span>
+              <span>Export ▾</span>
+              <span>Keep on this device</span>
+            </div>
+          </div>
+          <figcaption class="figure-caption">
+            An illustrative look at the reader’s Highlights &amp; notes tools.
+            Nothing is uploaded.
+          </figcaption>
+        </figure>
+      </div>
+    </div>
+  </section>
+
   <section class="private" id="privacy">
     <div class="container private__grid">
       <div class="private__lead">
-        <p class="eyebrow eyebrow--night">III · Your book stays yours</p>
+        <p class="eyebrow eyebrow--night">IV · Your book stays yours</p>
         <h2>
           Your book stays<br />
           on your computer.<br />
@@ -381,7 +509,8 @@ const faqs = [
             <h3>Nothing leaves your computer</h3>
             <p>
               The EPUB, the finished site, the logs, and any error reports stay
-              on your machine. Nothing is sent to a server.
+              on your machine. Highlights and notes stay in your browser.
+              Nothing is sent to a server.
             </p>
           </div>
         </article>
@@ -414,7 +543,7 @@ const faqs = [
     <div class="container">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">IV · How it works</p>
+          <p class="eyebrow">V · How it works</p>
           <h2>From EPUB to website <span class="accent">in three steps.</span></h2>
         </div>
         <p class="lede">
@@ -503,7 +632,7 @@ epub2web book.epub --serve</code></pre>
     <div class="container">
       <div class="section-heading">
         <div>
-          <p class="eyebrow">V · Reading it later</p>
+          <p class="eyebrow">VI · Reading it later</p>
           <h2>Serve the folder. <span class="accent">Don&apos;t double-click.</span></h2>
         </div>
         <div class="section-heading__side">
@@ -595,7 +724,7 @@ py -m http.server 8000</code></pre>
   <section class="section faq" id="faq">
     <div class="container faq__layout">
       <aside class="faq__aside">
-        <p class="eyebrow">VI · Questions</p>
+        <p class="eyebrow">VII · Questions</p>
         <h2>Before you download.</h2>
         <p class="faq__intro">
           What people ask before downloading, including the security warning
@@ -700,7 +829,7 @@ py -m http.server 8000</code></pre>
       <span class="closing__watermark" aria-hidden="true">
         <Icon name="book" size={420} strokeWidth={0.8} />
       </span>
-      <p class="eyebrow">VII · Get started</p>
+      <p class="eyebrow">VIII · Get started</p>
       <h2>
         Make a web edition<br />
         <span class="accent">of your book.</span>
@@ -1281,6 +1410,239 @@ py -m http.server 8000</code></pre>
     padding-top: 1.2rem;
     border-top: 1px solid var(--rule);
     text-align: right;
+  }
+
+  /* ------------------------------------------------------------------
+     Highlights and notes
+     ------------------------------------------------------------------ */
+
+  .annotations {
+    background: linear-gradient(180deg, var(--paper-2), var(--paper));
+  }
+
+  .annotations__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+    gap: clamp(2.2rem, 6vw, 5rem);
+    align-items: start;
+  }
+
+  .annotations__points {
+    border-top: 1px solid var(--rule-strong);
+  }
+
+  .annotation-point {
+    padding-block: 1.05rem;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .annotation-point__label {
+    display: block;
+    margin-bottom: 0.28rem;
+    font-family: var(--font-ui);
+    font-size: 0.57rem;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .annotation-point h3 {
+    margin-bottom: 0.25rem;
+    font-size: 1.12rem;
+    line-height: 1.22;
+    letter-spacing: -0.01em;
+  }
+
+  .annotation-point p {
+    margin: 0;
+    font-size: 0.87rem;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  .annotations__more {
+    margin: 1.2rem 0 0;
+  }
+
+  .annotation-visual {
+    position: relative;
+    margin: 0;
+  }
+
+  .annotation-visual__page {
+    position: relative;
+    z-index: 1;
+    padding: clamp(1.2rem, 3vw, 1.8rem);
+    border: 1px solid var(--rule);
+    border-radius: 5px;
+    background: var(--paper-2);
+    box-shadow: var(--shadow-soft);
+    transform: rotate(-0.4deg);
+  }
+
+  .annotation-visual__kicker {
+    margin: 0 0 0.55rem;
+    font-family: var(--font-ui);
+    font-size: 0.55rem;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .annotation-visual__text {
+    margin: 0;
+    font-family: var(--font-body);
+    font-size: clamp(0.92rem, 0.85rem + 0.25vw, 1.05rem);
+    line-height: 1.66;
+    color: var(--ink-2);
+  }
+
+  .annotation-visual mark {
+    padding: 0 0.06em;
+    border-radius: 2px;
+    background: #f3d36a;
+    color: #1f1b16;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  html[data-theme="dark"] .annotation-visual mark {
+    background: #5f4c1b;
+    color: var(--night-ink);
+  }
+
+  .annotation-visual__toolbar {
+    position: absolute;
+    right: 1rem;
+    bottom: -1.35rem;
+    z-index: 3;
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.35rem 0.45rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 4px;
+    background: var(--paper);
+    box-shadow: var(--shadow-soft);
+    font-family: var(--font-ui);
+    font-size: 0.62rem;
+    font-weight: 600;
+    color: var(--ink-2);
+  }
+
+  .annotation-visual__toolbar kbd {
+    padding: 0.12rem 0.24rem;
+    border: 1px solid var(--rule-strong);
+    border-bottom-width: 2px;
+    border-radius: 2px;
+    font-size: 0.54rem;
+    line-height: 1;
+    color: var(--muted);
+  }
+
+  .annotation-visual__dot {
+    width: 0.72rem;
+    height: 0.72rem;
+    border-radius: 50%;
+    background: #f3d36a;
+    box-shadow: inset 0 0 0 1px rgba(31, 27, 22, 0.16);
+  }
+
+  .annotation-visual__panel {
+    position: relative;
+    z-index: 2;
+    width: 92%;
+    margin: 2rem 0 0 auto;
+    padding: 0.8rem 0.85rem 0.75rem;
+    border: 1px solid var(--rule-strong);
+    border-radius: 5px;
+    background: var(--paper);
+    box-shadow: var(--shadow-deep);
+    transform: rotate(0.55deg);
+  }
+
+  .annotation-visual__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--rule);
+    font-family: var(--font-display);
+    font-size: 1rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+
+  .annotation-visual__count {
+    color: var(--accent);
+    font-family: var(--font-ui);
+    font-size: 0.7rem;
+  }
+
+  .annotation-visual__search {
+    margin: 0.55rem 0;
+    padding: 0.42rem 0.5rem;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--paper-2);
+    font-family: var(--font-ui);
+    font-size: 0.62rem;
+    color: var(--muted);
+  }
+
+  .annotation-visual__item {
+    display: grid;
+    grid-template-columns: 3px minmax(0, 1fr);
+    gap: 0.55rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .annotation-visual__bar {
+    border-radius: 2px;
+    background: #f3d36a;
+  }
+
+  .annotation-visual__bar--blue {
+    background: #b9d9f2;
+  }
+
+  .annotation-visual__item p {
+    margin: 0 0 0.12rem;
+    font-family: var(--font-body);
+    font-size: 0.77rem;
+    line-height: 1.45;
+    color: var(--ink);
+  }
+
+  .annotation-visual__item div > span {
+    font-family: var(--font-ui);
+    font-size: 0.57rem;
+    line-height: 1.4;
+    color: var(--muted);
+  }
+
+  .annotation-visual__foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    padding-top: 0.55rem;
+    font-family: var(--font-ui);
+    font-size: 0.56rem;
+    color: var(--muted);
+  }
+
+  .annotation-visual__foot span {
+    padding: 0.22rem 0.4rem;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+  }
+
+  .annotation-visual .figure-caption {
+    margin-top: 1rem;
   }
 
   /* ------------------------------------------------------------------
@@ -2050,6 +2412,16 @@ py -m http.server 8000</code></pre>
       gap: 1.5rem;
     }
 
+    .annotations__grid {
+      grid-template-columns: 1fr;
+      gap: 2.5rem;
+    }
+
+    .annotation-visual {
+      width: min(100%, 640px);
+      margin: 0 auto;
+    }
+
     .search-shot {
       width: min(100%, 430px);
       margin: 0 0 0 auto;
@@ -2094,6 +2466,14 @@ py -m http.server 8000</code></pre>
     .gate-grid {
       grid-template-columns: 1fr;
       gap: 1.8rem;
+    }
+
+    .annotation-visual__panel {
+      width: 100%;
+    }
+
+    .annotation-visual__toolbar {
+      right: 0.75rem;
     }
 
     .gate {

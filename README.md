@@ -1,10 +1,11 @@
 # epub2web
 
-**Turn an EPUB into a website you can read and share in any browser.**
+**Turn an EPUB into a website you can read, annotate, and share in any browser.**
 
 `epub2web` takes an ebook you already own and turns it into a clean,
-comfortable website. It works on your computer, even offline. There is no
-account, no upload, and your text is not rewritten.
+comfortable website you can read, highlight, and take notes in. It works on
+your computer, even offline. There is no account, no upload, and your text is
+not rewritten.
 
 An EPUB is the standard ebook file format used by most ebook stores and reading
 apps. This tool is for authors, translators, small presses, teachers, and
@@ -122,9 +123,8 @@ A complete website, ready to read:
 - every chapter as a clean, readable web page
 - pictures, captions, tables, lists, notes, and cross-references
 - built-in search that works without an account or internet connection
-- highlight passages and add private notes, review and search them in a panel,
-  copy them all as Markdown, export them as Markdown or JSON, and import JSON
-  backups; they stay in your browser and never enter the generated site
+- highlights and private notes, with chapter review, search, Markdown export,
+  and JSON backup; they stay in your browser and never enter the generated site
 - light, dark, and automatic reading modes
 - adjustable text size, line spacing, paragraph style, and page width, remembered in your browser
 - self-hosted fonts for Latin, Greek, Cyrillic, Arabic, Hebrew, Devanagari, Thai, and CJK text
@@ -142,6 +142,23 @@ options.
 ![epub2web reading view](https://raw.githubusercontent.com/Gowwre/epub2web/main/docs/reading.png)
 
 ![Built-in search](https://raw.githubusercontent.com/Gowwre/epub2web/main/docs/search.png)
+
+## Highlights and notes
+
+Readers can make the book their own without an account or a cloud service:
+
+- Select text to highlight it, choose a color, and add a private note.
+- Review annotations in a chapter-grouped panel, search quotes and notes, and
+  jump back to the passage.
+- Copy everything as Markdown, download a readable Markdown file, or keep a JSON
+  backup that can be imported again.
+- Use keyboard shortcuts (`H`, `N`, `Shift+A`, and `?`) with a built-in shortcut
+  reference.
+
+Highlights and notes stay in the browser. They are never written into the
+generated site, added to its search index, or uploaded. The reader explains
+this before asking the browser for persistent storage, and only asks after
+**Keep on this device** is chosen. Export is the portable backup.
 
 ## Your book stays your book
 

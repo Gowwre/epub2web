@@ -22,11 +22,12 @@ export function withBase(path: string): string {
 }
 
 export const SITE_DESCRIPTION =
-  "Turn an EPUB you own into a reading website. Your words stay as they are, the files stay on your computer, and the folder is yours to keep or publish.";
+  "Turn an EPUB you own into a reading website with private highlights and notes. Your files stay on your computer, and the folder is yours to keep or publish.";
 
 export const NAV_LINKS = [
   { label: "Text checks", href: "/#fidelity" },
   { label: "The edition", href: "/#edition" },
+  { label: "Highlights", href: "/#annotations" },
   { label: "How it works", href: "/#how-it-works" },
   { label: "Changelog", href: "/changelog/" },
   { label: "FAQ", href: "/#faq" },
