@@ -2,7 +2,7 @@
 import SiteHeader from "../components/SiteHeader.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import frauncesLatin from "../assets/fonts/fraunces-latin.woff2?url";
-import literataLatin from "../assets/fonts/literata-latin.woff2?url";
+import interLatin from "../assets/fonts/inter-latin.woff2?url";
 import { SITE_DESCRIPTION, withBase } from "../consts";
 import "../styles/global.css";
 
@@ -32,8 +32,8 @@ const socialImage = Astro.site
     <title>{title}</title>
     <meta name="description" content={description} />
     <meta name="color-scheme" content="light dark" />
-    <meta name="theme-color" content="#f5f0e6" media="(prefers-color-scheme: light)" />
-    <meta name="theme-color" content="#14120f" media="(prefers-color-scheme: dark)" />
+    <meta name="theme-color" content="#f7f3ea" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#151310" media="(prefers-color-scheme: dark)" />
     {canonical && <link rel="canonical" href={canonical} />}
     <link rel="icon" href={withBase("/favicon.svg")} type="image/svg+xml" />
 
@@ -48,7 +48,7 @@ const socialImage = Astro.site
     {socialImage && (
       <meta
         property="og:image:alt"
-        content="epub2web: Turn an EPUB into a website. A screenshot of the reader beside the headline."
+        content="epub2web: Turn an EPUB into a reading website. A screenshot of the reader beside the headline."
       />
     )}
     <meta name="twitter:card" content="summary_large_image" />
@@ -63,7 +63,7 @@ const socialImage = Astro.site
     />
     <link
       rel="preload"
-      href={literataLatin}
+      href={interLatin}
       as="font"
       type="font/woff2"
       crossorigin

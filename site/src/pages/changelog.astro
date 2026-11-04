@@ -190,9 +190,9 @@ function releaseLink(release: (typeof releases)[number]) {
   .changelog-hero h1 {
     margin-top: 0.25rem;
     font-size: clamp(3.2rem, 2.1rem + 4.2vw, 5.5rem);
-    line-height: 0.92;
-    letter-spacing: -0.055em;
-    font-variation-settings: "opsz" 100, "SOFT" 35, "WONK" 0;
+    line-height: 0.94;
+    letter-spacing: -0.05em;
+    font-variation-settings: "opsz" 144, "SOFT" 0, "WONK" 0;
   }
 
   .changelog-hero h1 span {
@@ -212,19 +212,9 @@ function releaseLink(release: (typeof releases)[number]) {
     padding: 1.1rem 1.25rem 1.2rem;
     border: 1px solid var(--rule-strong);
     border-top: 3px solid var(--accent);
-    border-radius: 4px;
+    border-radius: var(--radius-lg);
     background: var(--paper-2);
-    box-shadow: var(--shadow-deep);
-    transform: rotate(0.5deg);
-  }
-
-  .latest-release::before {
-    content: "";
-    position: absolute;
-    inset: 8px -8px -8px 8px;
-    z-index: -1;
-    border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent);
-    border-radius: 4px;
+    box-shadow: var(--shadow-soft);
   }
 
   .latest-release__head {
@@ -471,8 +461,9 @@ function releaseLink(release: (typeof releases)[number]) {
   }
 
   .release-prose {
-    font-size: 0.94rem;
-    line-height: 1.65;
+    font-family: var(--font-reading);
+    font-size: 0.98rem;
+    line-height: 1.7;
     color: var(--ink-2);
   }
 
@@ -530,7 +521,6 @@ function releaseLink(release: (typeof releases)[number]) {
     .latest-release {
       max-width: 420px;
       width: 100%;
-      transform: none;
     }
 
     .changelog-layout {

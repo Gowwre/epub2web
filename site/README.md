@@ -4,10 +4,13 @@ The public-facing landing page and download page for
 [epub2web](https://github.com/Gowwre/epub2web), built with
 [Astro](https://astro.build/).
 
-The design reuses the reader's own visual language: warm paper, rust ink,
-Fraunces display type, Literata reading type, and Inter for the interface. The
-fonts are bundled from `src/assets/fonts/`; the screenshots and social card are
-self-hosted. The site has no client-side framework or runtime services.
+The design uses the reader's own visual language: warm paper, rust ink,
+Fraunces for display, Inter for the interface, and Literata inside reading
+excerpts. The landing page is deliberately product-first: real reader
+screenshots, one build colophon, and a quiet bento grid instead of decorative
+chrome. The fonts are bundled from `src/assets/fonts/`; the screenshots and
+social card are self-hosted. The site has no client-side framework or runtime
+services.
 
 ## Development
 
@@ -94,5 +97,6 @@ use the heading format `## 0.2.0 - 2026-10-28`; the `Unreleased` section is not
 published on the site.
 
 The screenshots come from `docs/` at the repository root and are checked in here
-as optimized WebP files. The social card is `public/og.png`; rebuild it if the
-headline or palette changes.
+as optimized WebP files. `search-panel.webp` is cropped from `docs/search.png`
+so the search card shows the panel without its dimmed backdrop. The social card
+is `public/og.png`; rebuild it if the headline or palette changes.

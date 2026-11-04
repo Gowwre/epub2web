@@ -5,6 +5,7 @@ import {
   DEMO_URL,
   FIRST_LAUNCH_URL,
   GITHUB_URL,
+  ISSUES_URL,
   LATEST_RELEASE_URL,
   README_URL,
   RELEASES_URL,
@@ -15,66 +16,20 @@ const home720 = withBase("/screenshots/home-720.webp");
 const home1440 = withBase("/screenshots/home-1440.webp");
 const reading720 = withBase("/screenshots/reading-720.webp");
 const reading1440 = withBase("/screenshots/reading-1440.webp");
-const searchCrop = withBase("/screenshots/search-crop.webp");
+const searchPanel = withBase("/screenshots/search-panel.webp");
 
-const gates = [
+const fidelityChecks = [
   {
-    number: "01",
-    title: "The words come through unchanged.",
-    body: "Each page is compared with the EPUB it came from. If a sentence is dropped, punctuation changes, or a paragraph moves, the build stops.",
+    label: "Text",
+    body: "Every reading page is compared with the EPUB it came from. A dropped sentence, changed punctuation, or moved paragraph stops the build.",
   },
   {
-    number: "02",
-    title: "Every picture has to be there.",
-    body: "The image count on each page is checked against the source. If a figure is missing, the build fails instead of publishing a book with a hole in it.",
+    label: "Images",
+    body: "Each figure is counted and checked against the source. A missing image fails the build instead of publishing a hole in the book.",
   },
   {
-    number: "03",
-    title: "Links work before the site goes live.",
-    body: "Internal links, anchors, images, and duplicate IDs are checked before anything is published. Readers don't hit a dead end between chapters.",
-  },
-];
-
-const features = [
-  {
-    number: "01",
-    title: "Cover and contents",
-    body: "A cover page and a table of contents you can click through, instead of one long scroll.",
-  },
-  {
-    number: "02",
-    title: "Search the whole book",
-    body: "The whole book is indexed when the site is built. Search for a word and jump straight to it; no search service or account.",
-  },
-  {
-    number: "03",
-    title: "Highlights and notes",
-    body: "Select a passage to highlight it or add a private note. Review by chapter, search your marks, copy them all as Markdown, or keep a JSON backup. Everything stays in the browser.",
-  },
-  {
-    number: "04",
-    title: "Easy on the eyes",
-    body: "Light and dark themes, adjustable text size, line spacing, paragraph style, and page width. Your choices are remembered the next time you open the book.",
-  },
-  {
-    number: "05",
-    title: "Pick up where you left off",
-    body: "The site remembers your page and shows how far you've read. Your place is stored in the browser, separately for each EPUB.",
-  },
-  {
-    number: "06",
-    title: "The whole book comes along",
-    body: "Pictures with captions, tables, lists, footnotes, and cross-references all survive the move. Fonts for major writing systems are included, so the text looks right.",
-  },
-  {
-    number: "07",
-    title: "Works for more readers",
-    body: "You can navigate with a keyboard, labels are clear, and images have descriptions.",
-  },
-  {
-    number: "08",
-    title: "Yours to keep",
-    body: "The finished site is one folder of HTML, CSS, images, fonts, and search data. Put it on any static host, or keep it on your computer.",
+    label: "Links",
+    body: "Internal links, anchors, images, and duplicate IDs are checked before anything is published. Readers do not hit a dead end between chapters.",
   },
 ];
 
@@ -82,52 +37,37 @@ const faqs = [
   {
     question: "Is my book uploaded anywhere?",
     answer:
-      "No. The EPUB is read on your computer, the site is built there, and the finished folder stays there. There is no account and no upload step. If you want to publish it later, that's up to you.",
+      "No. The EPUB is read on your computer, the site is built there, and the finished folder stays there. There is no account and no upload step. If you publish it, that is your choice.",
   },
   {
     question: "Will the text be changed?",
     answer:
-      "No. The words and punctuation stay as they are. The site may change how the book looks, but not what it says.",
+      "No. The words and punctuation stay as they are. epub2web may change how the book looks, but not what it says. A fidelity gate compares every page with the source and stops the build if anything is missing.",
   },
   {
     question: "What exactly do I get?",
     answer:
-      "A folder with a cover page, a table of contents, a page for each chapter, the images, the fonts, and a search index. It includes a small reading theme that works on phones and desktops.",
+      "A folder with a cover, a table of contents, a page for each chapter, images, fonts, and a search index. It includes a small reading theme that works on phones and desktops. Standard EPUB 2 and EPUB 3 books work best; DRM-protected and fixed-layout books may not.",
   },
   {
     question: "Can I highlight passages and take notes?",
     answer:
-      "Yes. Select text to highlight it, add a private note, and find it again in the Highlights & notes panel. Search your marks by quote, note, or chapter, copy them all as Markdown, or export a JSON backup. Everything stays in your browser and is never added to the published site.",
+      "Yes. Select text to highlight it in one action, add a private note when you want one, and find every mark in the Highlights & notes panel. Copy them as Markdown or export a JSON backup. Everything stays in your browser and is never added to the published site.",
   },
   {
     question: "Do highlights and notes sync between devices?",
     answer:
-      "Not automatically. They live in the browser that created them. Use Copy all or Export to move them or keep a backup before clearing site data. The reader asks for persistent storage only when you choose Keep on this device.",
+      "Not automatically. They live in the browser that created them. Use Copy all or Export to move them, and keep a backup before clearing site data. The reader only asks for persistent storage after you choose Keep on this device.",
   },
   {
-    question: "How do I open the site after I close the app?",
+    question: "Can I put the site online, or read it later?",
     answer:
-      "The preview stops when the app closes. Reopen the app, choose the same EPUB, and press Convert to refresh the site and start the preview again. You can also serve the folder with any local static server; the commands are above.",
+      "Yes. The output is a plain static folder, so it works on GitHub Pages, Cloudflare Pages, Netlify, S3, nginx, or any static host. To read it later on your own computer, reopen the app and press Convert, or serve the folder with any local static server. Subpath hosting is supported with the command-line --base-path option.",
   },
   {
-    question: "Which EPUBs work best?",
+    question: "What if my book does not convert?",
     answer:
-      "Normal, reflowable EPUB 2 and EPUB 3 books work best. DRM-protected, fixed-layout, and image-only books may not work. Books that load images from the internet are refused, so the finished site doesn't depend on another server.",
-  },
-  {
-    question: "What if my book doesn't convert?",
-    answer:
-      "epub2web stops instead of dropping content, leaves any previous working site untouched, and creates a support ZIP you can attach to a GitHub issue. Don't attach the book itself. The ZIP can contain file paths, metadata, and short excerpts, so look through it first.",
-  },
-  {
-    question: "Can I put the site online?",
-    answer:
-      "Yes. The output is a plain static folder, so it works on GitHub Pages, Cloudflare Pages, Netlify, S3, nginx, or any other static host. Subpath hosting is supported with the command-line --base-path option.",
-  },
-  {
-    question: "Can I use the command line instead?",
-    answer:
-      "Yes. epub2web is a Python package for Python 3.10 and newer. The CLI offers preview, output, metadata, logging, and verification options. The desktop app runs the same converter with a window around it.",
+      "epub2web stops instead of dropping content, leaves any previous working site untouched, and creates a support ZIP you can attach to a GitHub issue. Do not attach the book itself. The ZIP can contain file paths, metadata, and short excerpts, so look through it first.",
   },
 ];
 ---
@@ -136,15 +76,20 @@ const faqs = [
   <section class="hero">
     <div class="container hero__inner">
       <div class="hero__copy">
-        <p class="eyebrow">EPUB → a reading website</p>
-        <h1 class="hero__title">
-          <span>Turn an EPUB</span>
-          <span class="hero__title-accent">into a website.</span>
+        <a class="launch-pill" href="#annotations">
+          <span class="launch-pill__new">New</span>
+          <span>Highlights &amp; notes</span>
+          <Icon name="arrow-right" size={13} class="launch-pill__arrow" />
+        </a>
+
+        <h1>
+          Turn an EPUB<br />
+          into a <span class="accent">website.</span>
         </h1>
+
         <p class="hero__intro">
-          epub2web builds a reading website from the EPUB you own. The text
-          stays exactly as it appears in the EPUB, the pictures come along, and
-          readers can highlight passages and keep private notes. The finished
+          A reading website built from the EPUB you own. The text and images
+          survive intact, search and highlights are built in, and the finished
           folder is yours to keep or publish.
         </p>
 
@@ -159,204 +104,226 @@ const faqs = [
             target="_blank"
             rel="noopener noreferrer"
           >
-            Try the live demo
+            Open the live demo
             <Icon name="arrow-up-right" size={15} class="btn-arrow" />
           </a>
         </div>
 
         <ul class="hero__meta" aria-label="At a glance">
           <li>Free &amp; open source</li>
-          <li>Highlights &amp; notes</li>
           <li>Windows · macOS · Linux</li>
+          <li>No account · No upload</li>
         </ul>
-
-        <p class="hero__audience">
-          For authors, translators, small presses, and anyone else with a book
-          to share.
-        </p>
       </div>
 
-      <div class="hero__visual">
-        <figure class="browser-frame hero__edition">
-          <div class="browser-bar" aria-hidden="true">
-            <span class="browser-dots"><span></span><span></span><span></span></span>
-            <span class="browser-url">
-              <Icon name="lock" size={10} />
-              gowwre.github.io/epub2web/demo
-            </span>
-            <span class="browser-menu">···</span>
-          </div>
+      <figure class="hero__visual">
+        <div class="shot">
           <img
             src={home1440}
             srcset={`${home720} 720w, ${home1440} 1440w`}
             sizes="(max-width: 980px) 100vw, 46vw"
             width="1440"
             height="1000"
-            alt="The epub2web reader home page for Alice's Adventures in Wonderland, showing a cover, title, author, and Start reading button."
+            alt="The epub2web reader home page for Alice's Adventures in Wonderland, showing the cover, title, author, and Start reading button."
             fetchpriority="high"
           />
-        </figure>
-
-        <aside class="verify-card" aria-label="Example build verification">
-          <span class="verify-card__seal" aria-hidden="true">PASS</span>
-          <p class="verify-card__eyebrow">Build verified</p>
-          <ul>
-            <li><Icon name="check" size={13} /> 13/13 pages match</li>
-            <li><Icon name="check" size={13} /> 743 links checked</li>
-            <li><Icon name="check" size={13} /> Nothing uploaded</li>
-          </ul>
-        </aside>
-
-        <p class="hero__caption">
-          Converted in 0.57 seconds.
-        </p>
-      </div>
+        </div>
+        <figcaption class="shot-caption">
+          Alice's Adventures in Wonderland, built from EPUB.
+        </figcaption>
+      </figure>
     </div>
   </section>
-
-  <div class="promise-bar">
-    <div class="container">
-      <ul>
-        <li><Icon name="check" size={13} /> Every page checked</li>
-        <li><Icon name="check" size={13} /> Your text unchanged</li>
-        <li><Icon name="check" size={13} /> Nothing uploaded</li>
-        <li><Icon name="check" size={13} /> One folder to share</li>
-      </ul>
-    </div>
-  </div>
 
   <section class="section fidelity" id="fidelity">
     <div class="container">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">I · The rule</p>
+      <div class="fidelity__grid">
+        <div class="fidelity__copy">
+          <p class="eyebrow">Fidelity</p>
           <h2>
-            What's in the EPUB is{" "}
-            <span class="accent">what goes online.</span>
+            The layout changes.<br />
+            <span class="accent">The words don't.</span>
           </h2>
-        </div>
-        <div class="section-heading__side">
-          <p class="fidelity__quote">“The layout can change. The words can't.”</p>
-          <p class="fidelity__intro">
-            epub2web changes how a book looks on the web. It doesn't change what
-            the book says. Three checks stand between your EPUB and a finished
-            site.
+          <p class="lede">
+            epub2web compares the finished site with the EPUB it came from. If
+            text, images, or links do not survive the conversion, the build
+            stops instead of publishing a damaged book.
           </p>
-        </div>
-      </div>
 
-      <div class="gate-grid">
-        {
-          gates.map((gate) => (
-            <article class="gate">
-              <span class="gate__num">{gate.number}</span>
-              <h3>{gate.title}</h3>
-              <p>{gate.body}</p>
-            </article>
-          ))
-        }
-      </div>
-
-      <div class="proof">
-        <figure class="build-report">
-          <div class="build-report__bar" aria-hidden="true">
-            <span class="build-report__dots"><span></span><span></span><span></span></span>
-            <span class="build-report__title">a real build</span>
-          </div>
-          <pre><code><span class="report-muted">$</span> epub2web alice.epub --serve
-<span class="report-label">EPUB</span>     Alice's Adventures in Wonderland
-<span class="report-label">Pages</span>    13
-<span class="report-label">Words</span>    29,564
-<span class="report-label">Verify</span>   <span class="report-pass">PASS (13/13 pages match)</span>
-<span class="report-label">Links</span>    <span class="report-pass">PASS (743 checked, 0 broken)</span>
-<span class="report-label">Search</span>   16 sections indexed
-<span class="report-label">Site</span>     <span class="report-accent">alice-site/index.html</span>
-<span class="report-label">Time</span>     0.57s</code></pre>
-        </figure>
-
-        <div class="proof__copy">
-          <p class="eyebrow">If something goes wrong</p>
-          <h3>You keep the last good version.</h3>
-          <p>
-            The new site is built in a staging folder and checked before it
-            replaces anything. If a check fails, your previous site stays
-            exactly where it was.
-          </p>
-          <ul class="check-list">
-            <li><Icon name="check" size={14} /> Built in a staging folder first.</li>
-            <li><Icon name="check" size={14} /> Text, images, and links are all checked.</li>
-            <li><Icon name="check" size={14} /> A failed build changes nothing.</li>
+          <ul class="fidelity__checks">
+            {
+              fidelityChecks.map((check) => (
+                <li>
+                  <span class="fidelity__check-label">
+                    <Icon name="check" size={13} />
+                    {check.label}
+                  </span>
+                  <p>{check.body}</p>
+                </li>
+              ))
+            }
           </ul>
         </div>
+
+        <figure class="colophon">
+          <div class="colophon__head">
+            <div>
+              <p class="colophon__kicker">Colophon</p>
+              <h3>A real build</h3>
+            </div>
+            <span class="status">
+              <Icon name="check" size={13} />
+              Verified
+            </span>
+          </div>
+
+          <dl class="colophon__rows">
+            <div class="colophon__row">
+              <dt>Source</dt>
+              <span class="colophon__dots" aria-hidden="true"></span>
+              <dd>alice.epub</dd>
+            </div>
+            <div class="colophon__row">
+              <dt>Words</dt>
+              <span class="colophon__dots" aria-hidden="true"></span>
+              <dd>29,564</dd>
+            </div>
+            <div class="colophon__row">
+              <dt>Pages</dt>
+              <span class="colophon__dots" aria-hidden="true"></span>
+              <dd>13 / 13 match</dd>
+            </div>
+            <div class="colophon__row">
+              <dt>Images</dt>
+              <span class="colophon__dots" aria-hidden="true"></span>
+              <dd>12 / 12 present</dd>
+            </div>
+            <div class="colophon__row">
+              <dt>Links</dt>
+              <span class="colophon__dots" aria-hidden="true"></span>
+              <dd>743 checked · 0 broken</dd>
+            </div>
+            <div class="colophon__row">
+              <dt>Uploads</dt>
+              <span class="colophon__dots" aria-hidden="true"></span>
+              <dd>None</dd>
+            </div>
+          </dl>
+
+          <figcaption>Generated locally in 0.57 seconds. Nothing was uploaded.</figcaption>
+        </figure>
       </div>
+
+      <p class="fidelity__failnote">
+        <Icon name="shield" size={16} />
+        <span>
+          <strong>If a check fails, the build stops.</strong> Your previous site
+          stays exactly where it was, and the error report tells you what did not
+          match.
+        </span>
+      </p>
     </div>
   </section>
 
-  <section class="section edition" id="edition">
+  <section class="section edition" id="features">
     <div class="container">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">II · The edition</p>
-          <h2>A website that <span class="accent">reads like a book.</span></h2>
-        </div>
+      <header class="section-intro">
+        <p class="eyebrow">The reading site</p>
+        <h2>
+          A book, not a<br />
+          <span class="accent">dump of HTML.</span>
+        </h2>
         <p class="lede">
           You get a cover, a table of contents, a page for each chapter, the
-          pictures and footnotes, search, and a private layer for highlights
-          and notes. It's all one folder you can keep or publish.
+          pictures, footnotes, search, and a private layer for highlights and
+          notes. It is all one static folder you can keep or publish.
         </p>
+      </header>
+
+      <div class="feature-grid">
+        <article class="feature feature--reading">
+          <h3>Reads like a book</h3>
+          <p>
+            Comfortable type, adjustable size and spacing, light and dark
+            themes, and a place marker that remembers where you stopped.
+          </p>
+          <figure class="feature__media">
+            <img
+              src={reading1440}
+              srcset={`${reading720} 720w, ${reading1440} 1440w`}
+              sizes="(max-width: 980px) 100vw, 56vw"
+              width="1440"
+              height="1000"
+              alt="The reading view: a chapter of Alice's Adventures in Wonderland with a contents sidebar, progress line, and comfortable serif typography."
+              loading="lazy"
+            />
+            <figcaption class="feature__media-caption">The reading view</figcaption>
+          </figure>
+        </article>
+
+        <article class="feature feature--search">
+          <h3>Search the whole book</h3>
+          <p>
+            The book is indexed when the site is built. Search for a word and
+            jump straight to it; no search service and no account.
+          </p>
+          <figure class="feature__media">
+            <img
+              src={searchPanel}
+              width="640"
+              height="480"
+              alt="The built-in search panel showing highlighted results for the word rabbit across chapters."
+              loading="lazy"
+            />
+            <figcaption class="feature__media-caption">Search results</figcaption>
+          </figure>
+        </article>
+
+        <article class="feature feature--file">
+          <Icon name="folder" size={21} />
+          <h3>Yours to keep</h3>
+          <p>
+            One folder of HTML, CSS, images, fonts, and search data. Put it on
+            any static host, or keep it on your computer.
+          </p>
+          <pre class="file-tree"><code><span class="tree-root">book-site/</span>
+├── <span class="tree-file">index.html</span>
+├── <span class="tree-file">read/1/index.html</span>
+├── <span class="tree-dir">assets/</span>
+└── <span class="tree-file">search-index.json</span></code></pre>
+        </article>
+
+        <article class="feature feature--book">
+          <Icon name="book" size={21} />
+          <h3>The whole book comes along</h3>
+          <p>
+            Pictures with captions, tables, lists, footnotes, and
+            cross-references all survive the move.
+          </p>
+          <ul class="tag-list">
+            <li>Figures</li>
+            <li>Tables</li>
+            <li>Footnotes</li>
+            <li>Cross-references</li>
+          </ul>
+        </article>
+
+        <article class="feature feature--a11y">
+          <Icon name="keyboard" size={21} />
+          <h3>Works for more readers</h3>
+          <p>
+            Keyboard navigation, clear labels, and image descriptions are part
+            of the reader, not an afterthought.
+          </p>
+          <ul class="tag-list">
+            <li>Keyboard</li>
+            <li>Labels</li>
+            <li>Alt text</li>
+          </ul>
+        </article>
       </div>
 
-      <div class="result-visual">
-        <figure class="browser-frame reading-shot">
-          <div class="browser-bar" aria-hidden="true">
-            <span class="browser-dots"><span></span><span></span><span></span></span>
-            <span class="browser-url">alice-site / read / 1</span>
-            <span class="browser-menu">···</span>
-          </div>
-          <img
-            src={reading1440}
-            srcset={`${reading720} 720w, ${reading1440} 1440w`}
-            sizes="(max-width: 900px) 100vw, 66vw"
-            width="1440"
-            height="1000"
-            alt="The reading view: a chapter of Alice's Adventures in Wonderland with a contents sidebar, progress line, and comfortable serif typography."
-            loading="lazy"
-          />
-        </figure>
-
-        <figure class="search-shot">
-          <div class="search-shot__bar">
-            <span><Icon name="search" size={14} /> Search the book</span>
-            <kbd>/</kbd>
-          </div>
-          <img
-            src={searchCrop}
-            width="660"
-            height="890"
-            alt="The built-in search panel showing highlighted results for the word rabbit across chapters."
-            loading="lazy"
-          />
-          <figcaption class="figure-caption">
-            Search results come from the site itself.
-          </figcaption>
-        </figure>
-      </div>
-
-      <div class="feature-ledger">
-        {
-          features.map((feature) => (
-            <article class="feature-row">
-              <span class="feature-row__num">{feature.number}</span>
-              <div>
-                <h3>{feature.title}</h3>
-                <p>{feature.body}</p>
-              </div>
-            </article>
-          ))
-        }
-      </div>
-
-      <p class="edition__more">
+      <p class="edition__link">
         <a class="text-link" href={DEMO_URL} target="_blank" rel="noopener noreferrer">
           Open the live demo
           <Icon name="arrow-up-right" size={14} class="icon--external" />
@@ -366,128 +333,111 @@ const faqs = [
   </section>
 
   <section class="section annotations" id="annotations">
-    <div class="container">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">III · Highlights and notes</p>
-          <h2>Read it. <span class="accent">Mark it up.</span> Keep it.</h2>
-        </div>
+    <div class="container annotations__grid">
+      <div class="annotations__copy">
+        <p class="eyebrow">Highlights &amp; notes</p>
+        <h2>
+          Read with a<br />
+          <span class="accent">pencil in hand.</span>
+        </h2>
         <p class="lede">
-          Select a passage to highlight it, add a private note, and find every
-          thought again by chapter or search. Copy it all as Markdown, export a
-          backup, and keep everything in your browser.
+          Select a passage to highlight it. Add a private note when you want
+          one. Everything stays in your browser and is never written into the
+          published site.
+        </p>
+
+        <ul class="annotation-points">
+          <li>
+            <Icon name="highlighter" size={18} />
+            <div>
+              <h3>Highlight in one action</h3>
+              <p>
+                Select text and highlight it in your last-used color. A note is
+                optional, never a required second step.
+              </p>
+            </div>
+          </li>
+          <li>
+            <Icon name="search" size={18} />
+            <div>
+              <h3>Find every mark</h3>
+              <p>
+                Review by chapter, search by quote or note, and jump back to the
+                passage in one click.
+              </p>
+            </div>
+          </li>
+          <li>
+            <Icon name="download" size={18} />
+            <div>
+              <h3>Take it with you</h3>
+              <p>
+                Copy everything as Markdown, export a readable file, or keep a
+                JSON backup. The marks never enter the site itself.
+              </p>
+            </div>
+          </li>
+        </ul>
+
+        <p class="annotations__more">
+          <a class="text-link" href={DEMO_URL} target="_blank" rel="noopener noreferrer">
+            Try highlights in the live demo
+            <Icon name="arrow-up-right" size={14} class="icon--external" />
+          </a>
         </p>
       </div>
 
-      <div class="annotations__grid">
-        <div class="annotations__points">
-          <article class="annotation-point">
-            <span class="annotation-point__label">Highlight</span>
-            <h3>One action, no mode.</h3>
-            <p>
-              Select text and highlight it in your last-used color. Add a note
-              only when you want one.
-            </p>
-          </article>
-          <article class="annotation-point">
-            <span class="annotation-point__label">Find</span>
-            <h3>Every mark, one panel.</h3>
-            <p>
-              Grouped by chapter, searchable by quote or note, and one click
-              away from the passage.
-            </p>
-          </article>
-          <article class="annotation-point">
-            <span class="annotation-point__label">Take</span>
-            <h3>Markdown or a backup.</h3>
-            <p>
-              Copy all as Markdown for a notes app, download a readable file, or
-              keep a JSON backup.
-            </p>
-          </article>
-          <article class="annotation-point">
-            <span class="annotation-point__label">Private</span>
-            <h3>Yours, not the site&apos;s.</h3>
-            <p>
-              Highlights and notes stay in your browser. They are never uploaded
-              or added to the published site.
-            </p>
-          </article>
-          <p class="annotations__more">
-            <a class="text-link" href={DEMO_URL} target="_blank" rel="noopener noreferrer">
-              Try highlights in the live demo
-              <Icon name="arrow-up-right" size={14} class="icon--external" />
-            </a>
-          </p>
-        </div>
-
-        <figure
-          class="annotation-visual"
-          aria-label="Example of a highlighted passage and the Highlights and notes panel"
-        >
-          <div class="annotation-visual__page">
-            <p class="annotation-visual__kicker">Chapter III</p>
-            <p class="annotation-visual__text">
+      <figure class="annotation-demo">
+        <div class="annotation-demo__stage">
+          <div class="annotation-demo__page">
+            <p class="annotation-demo__kicker">Chapter I</p>
+            <h3>Down the Rabbit-Hole</h3>
+            <p class="annotation-demo__text">
               Alice was beginning to get very tired of sitting by her sister on
               the bank, and of having nothing to do: <mark>once or twice she had
-              peeped into the book her sister was reading, but it had no
-              pictures or conversations in it.</mark>
+              peeped into the book her sister was reading, but it had no pictures
+              or conversations in it.</mark>
             </p>
-            <div class="annotation-visual__toolbar" aria-hidden="true">
-              <span class="annotation-visual__dot"></span>
-              <span>Highlight</span><kbd>H</kbd>
-              <span>Note</span><kbd>N</kbd>
-            </div>
+            <p class="annotation-demo__text">
+              So she was considering in her own mind whether the pleasure of
+              making a daisy-chain would be worth the trouble of getting up and
+              picking the daisies.
+            </p>
           </div>
-          <div class="annotation-visual__panel">
-            <div class="annotation-visual__head">
-              <span>Highlights &amp; notes</span>
-              <span class="annotation-visual__count">2</span>
+
+          <aside class="note-card" aria-label="Example note">
+            <div class="note-card__head">Note · Chapter I</div>
+            <blockquote>
+              “...what is the use of a book, without pictures or conversations?”
+            </blockquote>
+            <p>
+              Alice wants a book with pictures and conversation. The web edition
+              keeps both.
+            </p>
+            <div class="note-card__foot">
+              <span>Copy as Markdown</span>
+              <span>Export JSON</span>
             </div>
-            <div class="annotation-visual__search">Search highlights and notes…</div>
-            <div class="annotation-visual__item">
-              <span class="annotation-visual__bar"></span>
-              <div>
-                <p>“…it had no pictures or conversations in it.”</p>
-                <span>A note about what Alice wants from a book.</span>
-              </div>
-            </div>
-            <div class="annotation-visual__item">
-              <span class="annotation-visual__bar annotation-visual__bar--blue"></span>
-              <div>
-                <p>
-                  “What is the use of a book,” thought Alice, “without pictures
-                  or conversations?”
-                </p>
-                <span>Chapter I</span>
-              </div>
-            </div>
-            <div class="annotation-visual__foot">
-              <span>Copy all</span>
-              <span>Export ▾</span>
-              <span>Keep on this device</span>
-            </div>
-          </div>
-          <figcaption class="figure-caption">
-            An illustrative look at the reader’s Highlights &amp; notes tools.
-            Nothing is uploaded.
-          </figcaption>
-        </figure>
-      </div>
+          </aside>
+        </div>
+        <figcaption>
+          An illustrative look at the browser-only annotation layer. Nothing is
+          uploaded.
+        </figcaption>
+      </figure>
     </div>
   </section>
 
   <section class="private" id="privacy">
     <div class="container private__grid">
       <div class="private__lead">
-        <p class="eyebrow eyebrow--night">IV · Your book stays yours</p>
+        <p class="eyebrow eyebrow--night">Local by design</p>
         <h2>
-          Your book stays<br />
-          on your computer.<br />
-          <span>The text stays intact.</span>
+          Your book stays on<br />
+          <span>your computer.</span>
         </h2>
         <p class="private__lede">
-          There's no account and no upload. The app reads the EPUB on your
+          There is no account and no upload. The app reads the EPUB on your
           machine and builds the site there. Run it again and you get the same
           site.
         </p>
@@ -502,20 +452,19 @@ const faqs = [
         </a>
       </div>
 
-      <div class="private__points">
-        <article class="private-point">
-          <span>01</span>
+      <ul class="private__points">
+        <li>
+          <Icon name="lock" size={19} />
           <div>
             <h3>Nothing leaves your computer</h3>
             <p>
               The EPUB, the finished site, the logs, and any error reports stay
               on your machine. Highlights and notes stay in your browser.
-              Nothing is sent to a server.
             </p>
           </div>
-        </article>
-        <article class="private-point">
-          <span>02</span>
+        </li>
+        <li>
+          <Icon name="repeat" size={19} />
           <div>
             <h3>The same book gives the same site</h3>
             <p>
@@ -523,9 +472,9 @@ const faqs = [
               Only the build timestamp in the sitemap changes.
             </p>
           </div>
-        </article>
-        <article class="private-point">
-          <span>03</span>
+        </li>
+        <li>
+          <Icon name="code" size={19} />
           <div>
             <h3>You can check the work</h3>
             <p>
@@ -534,24 +483,24 @@ const faqs = [
               there to read.
             </p>
           </div>
-        </article>
-      </div>
+        </li>
+      </ul>
     </div>
   </section>
 
   <section class="section process" id="how-it-works">
     <div class="container">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">V · How it works</p>
-          <h2>From EPUB to website <span class="accent">in three steps.</span></h2>
-        </div>
+      <header class="section-intro section-intro--center">
+        <p class="eyebrow">How it works</p>
+        <h2>
+          From EPUB to website<br />
+          <span class="accent">in three steps.</span>
+        </h2>
         <p class="lede">
-          The desktop app comes with the converter, Python, and the fonts.
-          Choose a book, press Convert, and the finished site opens in your
-          browser.
+          The desktop app includes the converter, Python, and the fonts. Choose
+          a book, press Convert, and the finished site opens in your browser.
         </p>
-      </div>
+      </header>
 
       <ol class="steps">
         <li class="step">
@@ -565,8 +514,8 @@ const faqs = [
           <span class="step__num">02</span>
           <h3>Press Convert</h3>
           <p>
-            The app converts the book and checks each page as it goes. You can
-            watch the progress, so a long book doesn't look stuck.
+            The app converts the book and checks each page as it goes. Progress
+            is visible, so a long book does not look stuck.
           </p>
         </li>
         <li class="step">
@@ -579,144 +528,13 @@ const faqs = [
         </li>
       </ol>
 
-      <div class="process__output">
-        <figure class="output-card">
-          <div class="output-card__head">
-            <span>What lands on disk</span>
-            <span class="output-card__badge">static</span>
-          </div>
-          <pre><code><span class="tree-root">book-site/</span>
-├── <span class="tree-file">index.html</span>
-├── <span class="tree-file">contents/index.html</span>
-├── <span class="tree-file">read/1/index.html</span>
-├── <span class="tree-file">read/2/index.html</span>
-├── <span class="tree-dir">assets/</span>        <span class="tree-note">CSS, JS, self-hosted fonts</span>
-├── <span class="tree-dir">images/</span>        <span class="tree-note">optimized figures</span>
-├── <span class="tree-file">search-index.json</span>
-├── <span class="tree-file">sitemap.xml</span>
-└── <span class="tree-file">robots.txt</span></code></pre>
-        </figure>
-
-        <div class="process__copy">
-          <h3>A finished site is just files.</h3>
-          <p>
-            Keep the folder on your computer, put it on a USB stick, or serve it
-            from anywhere that can deliver static HTML. Running the app again
-            refreshes an existing epub2web site automatically.
-          </p>
-          <p>
-            On the desktop, sites land in{" "}
-            <code>Documents/epub2web/&lt;book&gt;-site</code>. Closing the app
-            does not remove the site or your books.
-          </p>
-
-          <details class="cli-details">
-            <summary>Prefer the command line?</summary>
-            <p>
-              epub2web is also a Python package for Python 3.10 and newer. Install
-              it from GitHub with <code>pipx</code>, then build and preview:
-            </p>
-            <pre class="cli-code"><code>pipx install git+https://github.com/Gowwre/epub2web
-epub2web book.epub --serve</code></pre>
-            <p class="cli-details__foot">
-              Full options are in the{" "}
-              <a href={README_URL} target="_blank" rel="noopener noreferrer">README</a>.
-            </p>
-          </details>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="section run-site" id="run-site">
-    <div class="container">
-      <div class="section-heading">
-        <div>
-          <p class="eyebrow">VI · Reading it later</p>
-          <h2>Serve the folder. <span class="accent">Don&apos;t double-click.</span></h2>
-        </div>
-        <div class="section-heading__side">
-          <p class="lede">
-            The finished site needs a web server, even on your own computer. The
-            app starts one for you; later, you can use any local server or
-            publish the folder.
-          </p>
-          <p class="run-site__docs">
-            <a
-              class="text-link"
-              href={`${README_URL}#run-the-site`}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Full run and hosting guide
-              <Icon name="arrow-up-right" size={14} class="icon--external" />
-            </a>
-          </p>
-        </div>
-      </div>
-
-      <div class="run-site__grid">
-        <div class="run-site__steps">
-          <article class="run-step">
-            <span class="run-step__num">01</span>
-            <div>
-              <h3>Keep the app open</h3>
-              <p>
-                The desktop app starts a local server and opens your book.{" "}
-                <strong>Stop</strong> shuts it down; closing the window does too.
-              </p>
-            </div>
-          </article>
-          <article class="run-step">
-            <span class="run-step__num">02</span>
-            <div>
-              <h3>Or reopen the app</h3>
-              <p>
-                Choose the same EPUB and press <strong>Convert</strong>. It
-                refreshes the site and starts the preview again.
-              </p>
-            </div>
-          </article>
-          <article class="run-step">
-            <span class="run-step__num">03</span>
-            <div>
-              <h3>Or use your own server</h3>
-              <p>
-                Start any static file server from the site folder. Python is one
-                option; the commands are on the right.
-              </p>
-            </div>
-          </article>
-        </div>
-
-        <figure class="run-code">
-          <div class="run-code__head">
-            <span>Terminal</span>
-            <span>local preview</span>
-          </div>
-          <div class="run-code__block">
-            <span>macOS / Linux</span>
-            <pre><code>cd ~/Documents/epub2web/my-book-site
-python3 -m http.server 8000</code></pre>
-          </div>
-          <div class="run-code__block">
-            <span>Windows PowerShell</span>
-            <pre><code>cd ~\Documents\epub2web\my-book-site
-py -m http.server 8000</code></pre>
-          </div>
-          <figcaption>
-            Replace <code>my-book-site</code> with your folder name, then open{" "}
-            <code>http://localhost:8000/</code>. Any static file server works.
-          </figcaption>
-        </figure>
-      </div>
-
-      <p class="run-site__note">
-        <Icon name="alert" size={15} />
-        <span>
-          Opening <code>index.html</code> from your filesystem won't work: the
-          site uses absolute links, and search needs <code>http://</code>.
-        </span>
+      <p class="process__cli">
+        <span>Prefer the command line?</span>
+        <code>pipx install git+https://github.com/Gowwre/epub2web</code>
+        <a class="text-link" href={README_URL} target="_blank" rel="noopener noreferrer">
+          Read the docs
+          <Icon name="arrow-up-right" size={13} class="icon--external" />
+        </a>
       </p>
     </div>
   </section>
@@ -724,84 +542,47 @@ py -m http.server 8000</code></pre>
   <section class="section faq" id="faq">
     <div class="container faq__layout">
       <aside class="faq__aside">
-        <p class="eyebrow">VII · Questions</p>
+        <p class="eyebrow">Questions</p>
         <h2>Before you download.</h2>
         <p class="faq__intro">
-          What people ask before downloading, including the security warning
-          your computer may show the first time you open the app.
+          What people ask before trying epub2web, including where the files go
+          and why your computer may warn you the first time you open the app.
         </p>
-        <div class="faq__warning-note">
-          <Icon name="alert" size={17} />
-          <p>
-            <strong>Unsigned, not unsafe.</strong> The desktop builds do not have
-            paid code-signing certificates yet. Only continue with a file from
-            the official releases page.
-          </p>
-        </div>
+        <a
+          class="text-link"
+          href={ISSUES_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Ask a question on GitHub
+          <Icon name="arrow-up-right" size={14} class="icon--external" />
+        </a>
       </aside>
 
       <div class="faq__list">
-        <details class="faq-item faq-item--warning" id="first-launch" open>
+        <details class="faq-item faq-item--first" id="first-launch">
           <summary>
-            Why does Windows or macOS warn me when I open the app?
+            Why does my computer warn me when I open the app?
             <span class="faq-item__marker" aria-hidden="true"></span>
           </summary>
           <div class="faq-item__answer">
             <p>
-              Windows SmartScreen and macOS Gatekeeper may warn about an
-              unidentified developer on first launch. That's expected because
-              the desktop builds aren't code-signed yet. It doesn't mean the
-              download was tampered with, but only continue if you downloaded it
-              from the{" "}
+              The desktop builds are not code-signed yet, so Windows SmartScreen
+              and macOS Gatekeeper may warn about an unidentified developer on
+              first launch. That is expected. Only continue with a file from the{" "}
               <a href={RELEASES_URL} target="_blank" rel="noopener noreferrer">
                 official GitHub releases page
               </a>.
             </p>
-
-            <div class="warning-grid">
-              <div class="warning-card">
-                <h3><Icon name="windows" size={16} /> Windows</h3>
-                <p>If “Windows protected your PC” appears:</p>
-                <ol>
-                  <li>Click <strong>More info</strong>.</li>
-                  <li>Click <strong>Run anyway</strong>.</li>
-                  <li>Open the app and choose your EPUB.</li>
-                </ol>
-                <p class="warning-card__note">
-                  On a workplace or school PC, Smart App Control may block
-                  unsigned apps entirely. Ask your administrator rather than
-                  disabling security features.
-                </p>
-              </div>
-
-              <div class="warning-card">
-                <h3><Icon name="apple" size={16} /> macOS 15 and later</h3>
-                <p>After dragging the app to Applications:</p>
-                <ol>
-                  <li>Try to open it once, then click <strong>Done</strong>.</li>
-                  <li>
-                    Open <strong>System Settings → Privacy &amp; Security</strong>.
-                  </li>
-                  <li>
-                    Under <strong>Security</strong>, click{" "}
-                    <strong>Open Anyway</strong>, then authenticate.
-                  </li>
-                  <li>Open the app again.</li>
-                </ol>
-                <p class="warning-card__note">
-                  The Open Anyway button is available for about an hour after
-                  the first attempt. On macOS 14 and earlier, right-click the
-                  app and choose <strong>Open</strong>.
-                </p>
-              </div>
-            </div>
-
-            <p class="faq-item__fine">
-              If macOS says the app is damaged, delete it, re-download from the
-              official release, and try again. You can verify downloads against
-              the SHA-256 checksums on the release page.{" "}
+            <p>
+              The download page has the step-by-step steps for Windows and
+              macOS, including the Open Anyway flow.{" "}
+              <a href={withBase("/download/#first-launch")}>
+                Read the first-launch guide
+              </a>
+              {" "}or the{" "}
               <a href={FIRST_LAUNCH_URL} target="_blank" rel="noopener noreferrer">
-                Full first-launch guide
+                full notes in the README
               </a>.
             </p>
           </div>
@@ -826,18 +607,14 @@ py -m http.server 8000</code></pre>
 
   <section class="closing">
     <div class="container closing__inner">
-      <span class="closing__watermark" aria-hidden="true">
-        <Icon name="book" size={420} strokeWidth={0.8} />
-      </span>
-      <p class="eyebrow">VIII · Get started</p>
+      <p class="eyebrow">Get started</p>
       <h2>
         Make a web edition<br />
         <span class="accent">of your book.</span>
       </h2>
       <p class="closing__intro">
-        Download the app, choose an EPUB, and the finished site opens in your
-        browser. Read it there, or share the folder with anyone who has a
-        browser.
+        Choose an EPUB, press Convert, and the finished site opens in your
+        browser. Keep it, or share the folder with anyone.
       </p>
       <div class="closing__actions">
         <a class="btn btn--primary btn--large" href={withBase("/download/")}>
@@ -870,66 +647,102 @@ py -m http.server 8000</code></pre>
      ------------------------------------------------------------------ */
 
   .hero {
-    padding-block: clamp(3.4rem, 7.5vw, 6.8rem) clamp(2.8rem, 5.5vw, 5rem);
+    padding-block: clamp(3rem, 6vw, 5.5rem);
   }
 
   .hero__inner {
     display: grid;
-    grid-template-columns: minmax(0, 1.03fr) minmax(0, 0.97fr);
-    gap: clamp(2.5rem, 5vw, 5rem);
+    grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.05fr);
+    gap: clamp(2.5rem, 5vw, 4.5rem);
     align-items: center;
   }
 
-  .hero__title {
-    max-width: 11ch;
-    margin-top: 0.3rem;
-    font-size: clamp(3.3rem, 2rem + 4.4vw, 5.55rem);
-    line-height: 0.91;
-    letter-spacing: -0.05em;
-    font-variation-settings: "opsz" 100, "SOFT" 35, "WONK" 0;
+  .hero__copy {
+    min-width: 0;
   }
 
-  .hero__title span {
-    display: block;
+  .launch-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.28rem 0.65rem 0.28rem 0.3rem;
+    border: 1px solid var(--rule);
+    border-radius: 999px;
+    background: var(--paper-2);
+    color: var(--ink-2);
+    font-family: var(--font-ui);
+    font-size: 0.73rem;
+    font-weight: 500;
+    text-decoration: none;
+    transition: border-color 0.15s ease, color 0.15s ease;
   }
 
-  .hero__title-accent {
+  .launch-pill__new {
+    padding: 0.2rem 0.45rem;
+    border-radius: 999px;
+    background: var(--accent);
+    color: var(--accent-ink);
+    font-size: 0.6rem;
+    font-weight: 650;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .launch-pill__arrow {
+    color: var(--muted);
+    transition: transform 0.15s ease, color 0.15s ease;
+  }
+
+  .launch-pill:hover {
+    border-color: var(--rule-strong);
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .launch-pill:hover .launch-pill__arrow {
     color: var(--accent);
+    transform: translateX(2px);
+  }
+
+  .hero h1 {
+    max-width: 12ch;
+    margin-top: 1.35rem;
+    font-size: clamp(3.2rem, 2.2rem + 3.8vw, 5.1rem);
+    line-height: 0.95;
+    letter-spacing: -0.045em;
+    font-variation-settings: "opsz" 144, "SOFT" 0, "WONK" 0;
   }
 
   .hero__intro {
-    max-width: 43ch;
-    margin: 1.7rem 0 1.9rem;
-    font-size: clamp(1.03rem, 0.97rem + 0.25vw, 1.14rem);
+    max-width: 46ch;
+    margin: 1.45rem 0 1.75rem;
+    font-size: clamp(1.02rem, 0.98rem + 0.2vw, 1.1rem);
+    line-height: 1.65;
     color: var(--ink-2);
   }
 
   .hero__actions {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 0.7rem;
+    gap: 0.65rem;
   }
 
   .hero__meta {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.45rem 1rem;
-    margin: 1.5rem 0 0;
+    gap: 0.4rem 1.05rem;
+    margin: 1.65rem 0 0;
     padding: 0;
     list-style: none;
     font-family: var(--font-ui);
-    font-size: 0.66rem;
-    font-weight: 550;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    font-size: 0.76rem;
     color: var(--muted);
   }
 
   .hero__meta li {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    gap: 0.55rem;
   }
 
   .hero__meta li + li::before {
@@ -940,362 +753,252 @@ py -m http.server 8000</code></pre>
     background: var(--rule-strong);
   }
 
-  .hero__audience {
-    margin: 2.3rem 0 0;
-    padding-top: 1rem;
-    border-top: 1px solid var(--rule);
-    max-width: 38ch;
-    font-size: 0.83rem;
-    color: var(--muted);
-  }
-
-  .hero__copy {
-    min-width: 0;
-  }
-
   .hero__visual {
-    position: relative;
-    z-index: 0;
     min-width: 0;
-    padding-bottom: 2.1rem;
   }
 
-  .hero__visual::before {
-    content: "";
-    position: absolute;
-    inset: 14px -14px -8px 14px;
-    z-index: -1;
-    border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
-    border-radius: 6px;
-    transform: rotate(1.2deg);
+  /* ------------------------------------------------------------------
+     Shared section
+     ------------------------------------------------------------------ */
+
+  .section {
+    padding-block: clamp(4.5rem, 8vw, 7.5rem);
+    border-top: 1px solid var(--rule);
   }
 
-  .hero__edition {
-    transform: rotate(-0.5deg);
-    transition: transform 0.45s cubic-bezier(0.2, 0.7, 0.2, 1);
+  .section-intro {
+    max-width: 820px;
   }
 
-  .hero__visual:hover .hero__edition {
-    transform: rotate(0deg) translateY(-3px);
+  .section-intro h2 {
+    max-width: 16ch;
+    margin-top: 0.1rem;
+    font-size: clamp(2.4rem, 1.7rem + 3vw, 4.3rem);
+    line-height: 1;
+    letter-spacing: -0.045em;
   }
 
-  .hero__edition .browser-url {
-    display: flex;
-    align-items: center;
+  .section-intro .lede {
+    margin-top: 1.2rem;
+  }
+
+  .section-intro--center {
+    max-width: 780px;
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  .section-intro--center .eyebrow {
     justify-content: center;
-    gap: 0.35rem;
   }
 
-  .verify-card {
-    position: absolute;
-    bottom: 0.4rem;
-    left: -1.6rem;
-    z-index: 2;
-    width: 255px;
-    padding: 1.05rem 1.15rem 1rem;
+  .section-intro--center h2 {
+    max-width: 24ch;
+    margin-inline: auto;
+  }
+
+  .section-intro--center .lede {
+    margin-inline: auto;
+  }
+
+  /* ------------------------------------------------------------------
+     Fidelity
+     ------------------------------------------------------------------ */
+
+  .fidelity__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr);
+    gap: clamp(2.5rem, 5vw, 5rem);
+    align-items: start;
+  }
+
+  .fidelity__copy h2 {
+    max-width: 18ch;
+    margin-top: 0.1rem;
+    font-size: clamp(2.4rem, 1.8rem + 2.4vw, 3.6rem);
+    line-height: 1;
+    letter-spacing: -0.045em;
+  }
+
+  .fidelity__copy .lede {
+    max-width: 46ch;
+    margin-top: 1.2rem;
+  }
+
+  .fidelity__checks {
+    margin: 2rem 0 0;
+    padding: 0;
+    border-top: 1px solid var(--rule-strong);
+    list-style: none;
+  }
+
+  .fidelity__checks li {
+    display: grid;
+    grid-template-columns: 6.2rem minmax(0, 1fr);
+    gap: 1rem;
+    padding: 0.9rem 0;
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .fidelity__check-label {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    padding-top: 0.12rem;
+    font-family: var(--font-ui);
+    font-size: 0.66rem;
+    font-weight: 650;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--ink);
+  }
+
+  .fidelity__check-label .icon {
+    color: var(--pass);
+  }
+
+  .fidelity__checks p {
+    margin: 0;
+    font-size: 0.86rem;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  .fidelity__failnote {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin: clamp(2.5rem, 4vw, 3.5rem) 0 0;
+    padding-top: 1.2rem;
+    border-top: 1px solid var(--rule);
+    font-size: 0.84rem;
+    line-height: 1.6;
+    color: var(--ink-2);
+  }
+
+  .fidelity__failnote .icon {
+    margin-top: 0.12rem;
+    color: var(--pass);
+  }
+
+  .fidelity__failnote strong {
+    color: var(--ink);
+  }
+
+  /* ------------------------------------------------------------------
+     Colophon
+     ------------------------------------------------------------------ */
+
+  .colophon {
+    position: sticky;
+    top: calc(var(--header-h) + 2rem);
+    margin: 0;
+    padding: clamp(1.4rem, 2.8vw, 2rem);
     border: 1px solid var(--rule-strong);
-    border-radius: 4px;
+    border-top: 3px solid var(--accent);
+    border-radius: var(--radius-lg);
     background: var(--paper-2);
     box-shadow: var(--shadow-soft);
   }
 
-  .verify-card__seal {
-    position: absolute;
-    top: 0.85rem;
-    right: 0.9rem;
-    display: grid;
-    place-items: center;
-    width: 40px;
-    height: 40px;
-    border: 1.5px double color-mix(in srgb, var(--accent) 65%, transparent);
-    border-radius: 50%;
-    color: var(--accent);
-    font-family: var(--font-ui);
-    font-size: 0.52rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
-    transform: rotate(-10deg);
-  }
-
-  .verify-card__eyebrow {
-    margin: 0 0 0.55rem;
-    font-family: var(--font-ui);
-    font-size: 0.55rem;
-    font-weight: 650;
-    letter-spacing: 0.17em;
-    text-transform: uppercase;
-    color: var(--accent);
-  }
-
-  .verify-card ul {
-    display: grid;
-    gap: 0.3rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .verify-card li {
+  .colophon__head {
     display: flex;
-    align-items: center;
-    gap: 0.4rem;
-    font-family: var(--font-ui);
-    font-size: 0.69rem;
-    color: var(--ink-2);
-  }
-
-  .verify-card li .icon {
-    color: var(--accent);
-  }
-
-  .hero__caption {
-    position: absolute;
-    right: 0;
-    bottom: -0.15rem;
-    margin: 0;
-    font-family: var(--font-ui);
-    font-size: 0.64rem;
-    color: var(--muted);
-    text-align: right;
-  }
-
-  .hero__caption cite {
-    font-style: normal;
-    color: var(--ink-2);
-  }
-
-  /* ------------------------------------------------------------------
-     Promise bar
-     ------------------------------------------------------------------ */
-
-  .promise-bar {
-    border-block: 1px solid var(--rule);
-    background: color-mix(in srgb, var(--paper-2) 75%, transparent);
-  }
-
-  .promise-bar ul {
-    display: flex;
-    flex-wrap: wrap;
+    align-items: flex-start;
     justify-content: space-between;
-    gap: 0.55rem 1.5rem;
-    margin: 0;
-    padding: 0.85rem 0;
-    list-style: none;
+    gap: 1rem;
+    padding-bottom: 1.2rem;
+    border-bottom: 1px solid var(--rule);
   }
 
-  .promise-bar li {
-    display: flex;
-    align-items: center;
-    gap: 0.4rem;
+  .colophon__kicker {
+    margin: 0 0 0.25rem;
     font-family: var(--font-ui);
-    font-size: 0.61rem;
-    font-weight: 600;
-    letter-spacing: 0.12em;
+    font-size: 0.6rem;
+    font-weight: 650;
+    letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--ink-2);
+    color: var(--muted);
   }
 
-  .promise-bar .icon {
-    color: var(--accent);
+  .colophon h3 {
+    font-size: 1.35rem;
+    line-height: 1.15;
+    letter-spacing: -0.02em;
   }
 
-  /* ------------------------------------------------------------------
-     Shared section heading
-     ------------------------------------------------------------------ */
-
-  .section {
-    padding-block: clamp(4.2rem, 8vw, 7.5rem);
-    border-top: 1px solid var(--rule);
-  }
-
-  .section-heading {
-    display: grid;
-    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
-    gap: clamp(2rem, 6vw, 5rem);
-    align-items: end;
-    margin-bottom: clamp(2.2rem, 4.5vw, 3.8rem);
-  }
-
-  .section-heading h2 {
-    margin-top: 0.15rem;
-    font-size: clamp(2.25rem, 1.55rem + 2.8vw, 4.1rem);
-    line-height: 1;
-    letter-spacing: -0.04em;
-  }
-
-  .accent {
-    color: var(--accent);
-  }
-
-  .section-heading__side {
-    padding-bottom: 0.15rem;
-  }
-
-  .fidelity__quote {
-    margin: 0 0 0.8rem;
-    font-family: var(--font-display);
-    font-size: clamp(1.15rem, 1rem + 0.6vw, 1.45rem);
-    line-height: 1.25;
-    letter-spacing: -0.01em;
-    color: var(--ink);
-  }
-
-  .fidelity__intro {
-    max-width: 44ch;
-    margin: 0;
-    font-size: 0.95rem;
-    color: var(--ink-2);
-  }
-
-  /* ------------------------------------------------------------------
-     Fidelity gates
-     ------------------------------------------------------------------ */
-
-  .gate-grid {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: clamp(1.5rem, 3vw, 3rem);
-  }
-
-  .gate {
-    padding-top: 1.15rem;
-    border-top: 1px solid var(--rule-strong);
-  }
-
-  .gate__num {
-    display: block;
-    margin-bottom: 0.6rem;
+  .status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.28rem 0.55rem;
+    border: 1px solid color-mix(in srgb, var(--pass) 35%, var(--rule));
+    border-radius: 999px;
+    background: var(--pass-soft);
+    color: var(--pass);
     font-family: var(--font-ui);
     font-size: 0.62rem;
     font-weight: 650;
-    letter-spacing: 0.16em;
-    color: var(--accent);
-  }
-
-  .gate h3 {
-    margin-bottom: 0.5rem;
-    font-size: clamp(1.2rem, 1.1rem + 0.35vw, 1.42rem);
-    line-height: 1.18;
-    letter-spacing: -0.015em;
-  }
-
-  .gate p {
-    margin: 0;
-    font-size: 0.9rem;
-    line-height: 1.65;
-    color: var(--ink-2);
-  }
-
-  .proof {
-    display: grid;
-    grid-template-columns: minmax(0, 1.12fr) minmax(0, 0.88fr);
-    gap: clamp(2rem, 5vw, 4.5rem);
-    align-items: center;
-    margin-top: clamp(3rem, 6vw, 5rem);
-  }
-
-  .build-report {
-    min-width: 0;
-    overflow: hidden;
-    margin: 0;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    border-radius: 5px;
-    background: #181410;
-    box-shadow: var(--shadow-deep);
-  }
-
-  .build-report__bar {
-    display: flex;
-    align-items: center;
-    gap: 0.8rem;
-    padding: 0.6rem 0.9rem;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.09);
-    background: #211c16;
-  }
-
-  .build-report__dots {
-    display: flex;
-    gap: 5px;
-  }
-
-  .build-report__dots span {
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: rgba(243, 235, 221, 0.22);
-  }
-
-  .build-report__title {
-    font-family: var(--font-ui);
-    font-size: 0.56rem;
-    font-weight: 600;
-    letter-spacing: 0.15em;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: #9d907e;
+    white-space: nowrap;
   }
 
-  .build-report pre {
+  .colophon__rows {
     margin: 0;
-    padding: clamp(1.1rem, 2.5vw, 1.6rem);
-    overflow-x: auto;
-    font-size: clamp(0.66rem, 0.61rem + 0.18vw, 0.78rem);
-    line-height: 1.9;
-    color: #efe6d6;
-    tab-size: 2;
+    padding: 0;
   }
 
-  .report-muted {
-    color: #998c78;
-  }
-
-  .report-label {
-    display: inline-block;
-    min-width: 5.7em;
-    color: #9d907e;
-  }
-
-  .report-pass {
-    color: #efb083;
-    font-weight: 650;
-  }
-
-  .report-accent {
-    color: #ef906b;
-  }
-
-  .proof__copy h3 {
-    margin-bottom: 0.7rem;
-    font-size: clamp(1.55rem, 1.3rem + 0.8vw, 2rem);
-    line-height: 1.12;
-    letter-spacing: -0.025em;
-  }
-
-  .proof__copy > p:not(.eyebrow) {
-    font-size: 0.93rem;
-    color: var(--ink-2);
-  }
-
-  .check-list {
+  .colophon__row {
     display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: baseline;
     gap: 0.55rem;
-    margin: 1.3rem 0 0;
-    padding: 1.1rem 0 0;
-    border-top: 1px solid var(--rule);
-    list-style: none;
+    padding: 0.62rem 0;
+    border-bottom: 1px solid var(--rule);
   }
 
-  .check-list li {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.55rem;
+  .colophon__row dt {
     font-family: var(--font-ui);
-    font-size: 0.75rem;
-    color: var(--ink-2);
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--muted);
   }
 
-  .check-list .icon {
-    margin-top: 0.16rem;
-    color: var(--accent);
+  .colophon__dots {
+    align-self: end;
+    margin-bottom: 0.28em;
+    border-bottom: 1px dotted var(--rule-strong);
+  }
+
+  .colophon__row dd {
+    margin: 0;
+    font-family: var(--font-ui);
+    font-size: 0.78rem;
+    font-variant-numeric: tabular-nums;
+    color: var(--ink);
+    text-align: right;
+  }
+
+  .colophon figcaption {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 1rem;
+    font-family: var(--font-ui);
+    font-size: 0.67rem;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  .colophon figcaption::before {
+    content: "";
+    flex: 0 0 auto;
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--pass);
   }
 
   /* ------------------------------------------------------------------
@@ -1304,535 +1007,96 @@ py -m http.server 8000</code></pre>
 
   .edition {
     background: var(--paper-2);
+    border-block: 1px solid var(--rule);
   }
 
-  .result-visual {
+  .feature-grid {
     display: grid;
-    grid-template-columns: minmax(0, 1.8fr) minmax(250px, 0.75fr);
-    gap: clamp(1.2rem, 3.5vw, 3rem);
-    align-items: end;
-    margin-top: clamp(2rem, 4vw, 3rem);
+    grid-template-columns: repeat(12, minmax(0, 1fr));
+    gap: 1rem;
+    margin-top: clamp(2.2rem, 4vw, 3.5rem);
   }
 
-  .reading-shot {
-    transform: rotate(-0.35deg);
-  }
-
-  .search-shot {
-    margin: 0 0 1.8rem;
-    border: 1px solid var(--rule-strong);
-    border-radius: 4px;
+  .feature {
+    --card-pad: clamp(1.2rem, 2.4vw, 1.7rem);
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: var(--card-pad);
+    overflow: hidden;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius-lg);
     background: var(--paper);
-    box-shadow: var(--shadow-soft);
-    transform: rotate(1deg);
   }
 
-  .search-shot__bar {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.62rem 0.75rem;
-    border-bottom: 1px solid var(--rule);
-    font-family: var(--font-ui);
-    font-size: 0.6rem;
-    font-weight: 600;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--muted);
+  .feature--reading {
+    grid-column: span 7;
   }
 
-  .search-shot__bar span {
-    display: flex;
-    align-items: center;
-    gap: 0.35rem;
+  .feature--search {
+    grid-column: span 5;
   }
 
-  .search-shot__bar kbd {
-    font-size: 0.58rem;
-    line-height: 1;
-    padding: 0.2rem 0.3rem;
-    border: 1px solid var(--rule-strong);
-    border-bottom-width: 2px;
-    border-radius: 3px;
-    color: var(--muted);
+  .feature--file,
+  .feature--book,
+  .feature--a11y {
+    grid-column: span 4;
   }
 
-  .search-shot img {
-    width: 100%;
-  }
-
-  .search-shot figcaption {
-    padding: 0.6rem 0.75rem 0.7rem;
-    border-top: 1px solid var(--rule);
-  }
-
-  .feature-ledger {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    column-gap: clamp(2rem, 5vw, 4.5rem);
-    margin-top: clamp(2.5rem, 5vw, 4rem);
-  }
-
-  .feature-row {
-    display: grid;
-    grid-template-columns: 2rem minmax(0, 1fr);
-    gap: 0.85rem;
-    padding-block: 1.15rem;
-    border-top: 1px solid var(--rule);
-  }
-
-  .feature-row__num {
-    padding-top: 0.2rem;
-    font-family: var(--font-ui);
-    font-size: 0.59rem;
-    font-weight: 650;
-    letter-spacing: 0.13em;
+  .feature > .icon {
+    margin-bottom: 0.9rem;
     color: var(--accent);
   }
 
-  .feature-row h3 {
-    margin-bottom: 0.25rem;
-    font-size: 1.1rem;
-    line-height: 1.2;
-    letter-spacing: -0.01em;
+  .feature h3 {
+    margin-bottom: 0.35rem;
+    font-size: clamp(1.25rem, 1.15rem + 0.3vw, 1.5rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
   }
 
-  .feature-row p {
+  .feature p {
+    max-width: 42ch;
     margin: 0;
     font-size: 0.86rem;
-    line-height: 1.55;
+    line-height: 1.6;
     color: var(--ink-2);
   }
 
-  .edition__more {
-    margin: 2rem 0 0;
-    padding-top: 1.2rem;
+  .feature__media {
+    margin: 1.4rem calc(var(--card-pad) * -1) calc(var(--card-pad) * -1);
     border-top: 1px solid var(--rule);
-    text-align: right;
-  }
-
-  /* ------------------------------------------------------------------
-     Highlights and notes
-     ------------------------------------------------------------------ */
-
-  .annotations {
-    background: linear-gradient(180deg, var(--paper-2), var(--paper));
-  }
-
-  .annotations__grid {
-    display: grid;
-    grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
-    gap: clamp(2.2rem, 6vw, 5rem);
-    align-items: start;
-  }
-
-  .annotations__points {
-    border-top: 1px solid var(--rule-strong);
-  }
-
-  .annotation-point {
-    padding-block: 1.05rem;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  .annotation-point__label {
-    display: block;
-    margin-bottom: 0.28rem;
-    font-family: var(--font-ui);
-    font-size: 0.57rem;
-    font-weight: 650;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--accent);
-  }
-
-  .annotation-point h3 {
-    margin-bottom: 0.25rem;
-    font-size: 1.12rem;
-    line-height: 1.22;
-    letter-spacing: -0.01em;
-  }
-
-  .annotation-point p {
-    margin: 0;
-    font-size: 0.87rem;
-    line-height: 1.6;
-    color: var(--ink-2);
-  }
-
-  .annotations__more {
-    margin: 1.2rem 0 0;
-  }
-
-  .annotation-visual {
-    position: relative;
-    margin: 0;
-  }
-
-  .annotation-visual__page {
-    position: relative;
-    z-index: 1;
-    padding: clamp(1.2rem, 3vw, 1.8rem);
-    border: 1px solid var(--rule);
-    border-radius: 5px;
     background: var(--paper-2);
-    box-shadow: var(--shadow-soft);
-    transform: rotate(-0.4deg);
   }
 
-  .annotation-visual__kicker {
-    margin: 0 0 0.55rem;
+  .feature__media img {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+    object-position: top;
+  }
+
+  .feature--search .feature__media img {
+    aspect-ratio: 4 / 3;
+  }
+
+  .feature__media-caption {
+    padding: 0.55rem var(--card-pad) 0.65rem;
+    border-top: 1px solid var(--rule);
     font-family: var(--font-ui);
-    font-size: 0.55rem;
-    font-weight: 650;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--accent);
-  }
-
-  .annotation-visual__text {
-    margin: 0;
-    font-family: var(--font-body);
-    font-size: clamp(0.92rem, 0.85rem + 0.25vw, 1.05rem);
-    line-height: 1.66;
-    color: var(--ink-2);
-  }
-
-  .annotation-visual mark {
-    padding: 0 0.06em;
-    border-radius: 2px;
-    background: #f3d36a;
-    color: #1f1b16;
-    -webkit-box-decoration-break: clone;
-    box-decoration-break: clone;
-  }
-
-  html[data-theme="dark"] .annotation-visual mark {
-    background: #5f4c1b;
-    color: var(--night-ink);
-  }
-
-  .annotation-visual__toolbar {
-    position: absolute;
-    right: 1rem;
-    bottom: -1.35rem;
-    z-index: 3;
-    display: flex;
-    align-items: center;
-    gap: 0.3rem;
-    padding: 0.35rem 0.45rem;
-    border: 1px solid var(--rule-strong);
-    border-radius: 4px;
-    background: var(--paper);
-    box-shadow: var(--shadow-soft);
-    font-family: var(--font-ui);
-    font-size: 0.62rem;
-    font-weight: 600;
-    color: var(--ink-2);
-  }
-
-  .annotation-visual__toolbar kbd {
-    padding: 0.12rem 0.24rem;
-    border: 1px solid var(--rule-strong);
-    border-bottom-width: 2px;
-    border-radius: 2px;
-    font-size: 0.54rem;
-    line-height: 1;
+    font-size: 0.65rem;
     color: var(--muted);
   }
 
-  .annotation-visual__dot {
-    width: 0.72rem;
-    height: 0.72rem;
-    border-radius: 50%;
-    background: #f3d36a;
-    box-shadow: inset 0 0 0 1px rgba(31, 27, 22, 0.16);
-  }
-
-  .annotation-visual__panel {
-    position: relative;
-    z-index: 2;
-    width: 92%;
-    margin: 2rem 0 0 auto;
-    padding: 0.8rem 0.85rem 0.75rem;
-    border: 1px solid var(--rule-strong);
-    border-radius: 5px;
-    background: var(--paper);
-    box-shadow: var(--shadow-deep);
-    transform: rotate(0.55deg);
-  }
-
-  .annotation-visual__head {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    padding-bottom: 0.5rem;
-    border-bottom: 1px solid var(--rule);
-    font-family: var(--font-display);
-    font-size: 1rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
-  }
-
-  .annotation-visual__count {
-    color: var(--accent);
-    font-family: var(--font-ui);
-    font-size: 0.7rem;
-  }
-
-  .annotation-visual__search {
-    margin: 0.55rem 0;
-    padding: 0.42rem 0.5rem;
-    border: 1px solid var(--rule);
-    border-radius: 3px;
-    background: var(--paper-2);
-    font-family: var(--font-ui);
-    font-size: 0.62rem;
-    color: var(--muted);
-  }
-
-  .annotation-visual__item {
-    display: grid;
-    grid-template-columns: 3px minmax(0, 1fr);
-    gap: 0.55rem;
-    padding: 0.5rem 0;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  .annotation-visual__bar {
-    border-radius: 2px;
-    background: #f3d36a;
-  }
-
-  .annotation-visual__bar--blue {
-    background: #b9d9f2;
-  }
-
-  .annotation-visual__item p {
-    margin: 0 0 0.12rem;
-    font-family: var(--font-body);
-    font-size: 0.77rem;
-    line-height: 1.45;
-    color: var(--ink);
-  }
-
-  .annotation-visual__item div > span {
-    font-family: var(--font-ui);
-    font-size: 0.57rem;
-    line-height: 1.4;
-    color: var(--muted);
-  }
-
-  .annotation-visual__foot {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem;
-    padding-top: 0.55rem;
-    font-family: var(--font-ui);
-    font-size: 0.56rem;
-    color: var(--muted);
-  }
-
-  .annotation-visual__foot span {
-    padding: 0.22rem 0.4rem;
-    border: 1px solid var(--rule);
-    border-radius: 3px;
-  }
-
-  .annotation-visual .figure-caption {
-    margin-top: 1rem;
-  }
-
-  /* ------------------------------------------------------------------
-     Private by construction
-     ------------------------------------------------------------------ */
-
-  .private {
-    position: relative;
-    overflow: hidden;
-    padding-block: clamp(4.5rem, 9vw, 8rem);
-    background: var(--night);
-    color: var(--night-ink);
-  }
-
-  .private::before {
-    content: "";
-    position: absolute;
-    top: -20%;
-    right: -10%;
-    width: 52rem;
-    height: 40rem;
-    background: radial-gradient(
-      circle,
-      color-mix(in srgb, var(--night-accent) 12%, transparent),
-      transparent 65%
-    );
-    pointer-events: none;
-  }
-
-  .private__grid {
-    position: relative;
-    display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-    gap: clamp(2.5rem, 7vw, 7rem);
-    align-items: start;
-  }
-
-  .private h2 {
-    margin-top: 0.2rem;
-    font-size: clamp(2.5rem, 1.7rem + 3.4vw, 4.8rem);
-    line-height: 0.98;
-    letter-spacing: -0.045em;
-  }
-
-  .private h2 span {
-    color: var(--night-accent);
-  }
-
-  .private__lede {
-    max-width: 48ch;
-    margin: 1.5rem 0 1.8rem;
-    font-size: 1rem;
-    color: var(--night-muted);
-  }
-
-  .btn--light {
-    border-color: var(--night-rule);
-    background: transparent;
-    color: var(--night-ink);
-  }
-
-  .btn--light:hover {
-    border-color: var(--night-accent);
-    background: transparent;
-    color: var(--night-accent);
-  }
-
-  .private__points {
-    border-top: 1px solid var(--night-rule);
-  }
-
-  .private-point {
-    display: grid;
-    grid-template-columns: 2.1rem minmax(0, 1fr);
-    gap: 0.9rem;
-    padding-block: 1.3rem;
-    border-bottom: 1px solid var(--night-rule);
-  }
-
-  .private-point > span {
-    padding-top: 0.2rem;
-    font-family: var(--font-ui);
-    font-size: 0.59rem;
-    font-weight: 650;
-    letter-spacing: 0.13em;
-    color: var(--night-accent);
-  }
-
-  .private-point h3 {
-    margin-bottom: 0.3rem;
-    font-family: var(--font-ui);
-    font-size: 0.83rem;
-    font-weight: 650;
-    letter-spacing: 0.01em;
-  }
-
-  .private-point p {
-    margin: 0;
-    font-size: 0.87rem;
-    line-height: 1.6;
-    color: var(--night-muted);
-  }
-
-  /* ------------------------------------------------------------------
-     Process
-     ------------------------------------------------------------------ */
-
-  .steps {
-    display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: clamp(1.5rem, 3vw, 3rem);
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-
-  .step {
-    padding-top: 1.2rem;
-    border-top: 1px solid var(--rule-strong);
-  }
-
-  .step__num {
-    display: block;
-    margin-bottom: 1.2rem;
-    font-family: var(--font-display);
-    font-size: clamp(2.6rem, 1.8rem + 2.5vw, 4rem);
-    font-weight: 500;
-    line-height: 0.78;
-    letter-spacing: -0.06em;
-    color: color-mix(in srgb, var(--accent) 70%, var(--paper));
-  }
-
-  .step h3 {
-    margin-bottom: 0.4rem;
-    font-size: 1.28rem;
-    line-height: 1.18;
-  }
-
-  .step p {
-    margin: 0;
-    font-size: 0.89rem;
-    line-height: 1.6;
-    color: var(--ink-2);
-  }
-
-  .process__output {
-    display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
-    gap: clamp(2rem, 6vw, 5rem);
-    align-items: start;
-    margin-top: clamp(3rem, 6vw, 5rem);
-  }
-
-  .output-card {
-    min-width: 0;
-    margin: 0;
-    border: 1px solid var(--rule);
-    border-radius: 5px;
-    background: var(--paper-2);
-    box-shadow: var(--shadow-soft);
-  }
-
-  .output-card__head {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.75rem 1rem;
-    border-bottom: 1px solid var(--rule);
-    font-family: var(--font-ui);
-    font-size: 0.61rem;
-    font-weight: 600;
-    letter-spacing: 0.13em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .output-card__badge {
-    padding: 0.2rem 0.4rem;
-    border: 1px solid var(--rule);
-    border-radius: 2px;
-    color: var(--accent);
-  }
-
-  .output-card pre {
-    margin: 0;
-    padding: clamp(1rem, 2.5vw, 1.5rem);
+  .file-tree {
+    margin: 1rem 0 0;
+    padding: 0.8rem 0.9rem;
     overflow-x: auto;
-    font-size: clamp(0.67rem, 0.62rem + 0.18vw, 0.78rem);
-    line-height: 2;
+    border: 1px solid var(--rule);
+    border-radius: var(--radius);
+    background: var(--paper-2);
+    font-size: 0.67rem;
+    line-height: 1.9;
     color: var(--ink-2);
   }
 
@@ -1850,233 +1114,387 @@ py -m http.server 8000</code></pre>
     font-weight: 650;
   }
 
-  .tree-note {
-    color: var(--muted);
-  }
-
-  .process__copy {
-    min-width: 0;
-    padding-top: 0.2rem;
-  }
-
-  .process__copy h3 {
-    margin-bottom: 0.8rem;
-    font-size: clamp(1.6rem, 1.35rem + 0.8vw, 2.1rem);
-    line-height: 1.13;
-    letter-spacing: -0.025em;
-  }
-
-  .process__copy > p {
-    font-size: 0.92rem;
-    color: var(--ink-2);
-  }
-
-  .process__copy code {
-    padding: 0.1em 0.3em;
-    border: 1px solid var(--rule);
-    border-radius: 2px;
-    background: var(--paper-3);
-    font-size: 0.82em;
-  }
-
-  .cli-details {
-    margin-top: 1.4rem;
-    padding-top: 1rem;
-    border-top: 1px solid var(--rule);
-  }
-
-  .cli-details summary {
+  .tag-list {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    font-family: var(--font-ui);
-    font-size: 0.77rem;
-    font-weight: 600;
-    color: var(--ink-2);
-    cursor: pointer;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin: auto 0 0;
+    padding: 1rem 0 0;
     list-style: none;
   }
 
-  .cli-details summary::-webkit-details-marker {
-    display: none;
-  }
-
-  .cli-details summary::after {
-    content: "+";
-    color: var(--accent);
-    font-size: 1rem;
-    font-weight: 400;
-  }
-
-  .cli-details[open] summary::after {
-    content: "−";
-  }
-
-  .cli-details p {
-    margin: 0.9rem 0;
-    font-size: 0.85rem;
-    color: var(--ink-2);
-  }
-
-  .cli-code {
-    margin: 0;
-    padding: 0.9rem 1rem;
-    overflow-x: auto;
+  .tag-list li {
+    padding: 0.18rem 0.45rem;
     border: 1px solid var(--rule);
-    border-radius: 3px;
-    background: var(--paper-3);
-    font-size: 0.7rem;
-    line-height: 1.8;
+    border-radius: 999px;
+    font-family: var(--font-ui);
+    font-size: 0.64rem;
     color: var(--ink-2);
   }
 
-  .cli-details__foot {
-    margin-bottom: 0 !important;
+  .edition__link {
+    margin: 1.8rem 0 0;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--rule);
+    text-align: right;
   }
 
   /* ------------------------------------------------------------------
-     Run the site
+     Highlights and notes
      ------------------------------------------------------------------ */
 
-  .run-site__docs {
-    margin: 0.9rem 0 0;
-  }
-
-  .run-site__grid {
+  .annotations__grid {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
-    gap: clamp(2rem, 5vw, 4.5rem);
+    grid-template-columns: minmax(0, 0.88fr) minmax(0, 1.12fr);
+    gap: clamp(2.5rem, 6vw, 5.5rem);
     align-items: start;
   }
 
-  .run-site__steps {
-    border-top: 1px solid var(--rule-strong);
+  .annotations__copy h2 {
+    max-width: 10ch;
+    margin-top: 0.1rem;
+    font-size: clamp(2.5rem, 1.8rem + 3.2vw, 4.4rem);
+    line-height: 1;
+    letter-spacing: -0.045em;
   }
 
-  .run-step {
+  .annotations__copy .lede {
+    max-width: 44ch;
+    margin-top: 1.2rem;
+  }
+
+  .annotation-points {
+    margin: 1.8rem 0 0;
+    padding: 0;
+    border-top: 1px solid var(--rule-strong);
+    list-style: none;
+  }
+
+  .annotation-points li {
     display: grid;
-    grid-template-columns: 2rem minmax(0, 1fr);
-    gap: 0.85rem;
-    padding-block: 1.15rem;
+    grid-template-columns: 1.4rem minmax(0, 1fr);
+    gap: 0.7rem;
+    padding: 1rem 0;
     border-bottom: 1px solid var(--rule);
   }
 
-  .run-step__num {
-    padding-top: 0.2rem;
-    font-family: var(--font-ui);
-    font-size: 0.59rem;
-    font-weight: 650;
-    letter-spacing: 0.13em;
+  .annotation-points > li > .icon {
+    margin-top: 0.15rem;
     color: var(--accent);
   }
 
-  .run-step h3 {
-    margin-bottom: 0.25rem;
+  .annotation-points h3 {
+    margin-bottom: 0.2rem;
     font-size: 1.08rem;
-    line-height: 1.2;
+    line-height: 1.25;
     letter-spacing: -0.01em;
   }
 
-  .run-step p {
+  .annotation-points p {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.58;
+    color: var(--ink-2);
+  }
+
+  .annotations__more {
+    margin: 1.3rem 0 0;
+  }
+
+  .annotation-demo {
+    margin: 0;
+  }
+
+  .annotation-demo__stage {
+    position: relative;
+  }
+
+  .annotation-demo__page {
+    position: relative;
+    z-index: 1;
+    padding: clamp(1.4rem, 3vw, 2.2rem);
+    border: 1px solid var(--rule-strong);
+    border-radius: var(--radius-lg);
+    background: var(--paper-2);
+    box-shadow: var(--shadow-soft);
+  }
+
+  .annotation-demo__kicker {
+    margin: 0 0 0.5rem;
+    font-family: var(--font-ui);
+    font-size: 0.6rem;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--accent);
+  }
+
+  .annotation-demo__page h3 {
+    margin-bottom: 1rem;
+    font-size: clamp(1.6rem, 1.3rem + 0.8vw, 2.1rem);
+    line-height: 1.1;
+    letter-spacing: -0.03em;
+  }
+
+  .annotation-demo__text {
+    margin: 0;
+    font-family: var(--font-reading);
+    font-size: clamp(0.98rem, 0.92rem + 0.22vw, 1.08rem);
+    line-height: 1.72;
+    color: var(--ink-2);
+  }
+
+  .annotation-demo__text + .annotation-demo__text {
+    margin-top: 0.9rem;
+  }
+
+  .annotation-demo mark {
+    padding: 0 0.08em;
+    border-radius: 2px;
+    background: var(--highlight);
+    color: var(--highlight-ink);
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+
+  .note-card {
+    position: relative;
+    z-index: 2;
+    width: min(340px, 88%);
+    margin: -1.1rem 0.8rem 0 auto;
+    padding: 1rem 1.1rem 0.9rem;
+    border: 1px solid var(--rule-strong);
+    border-top: 3px solid var(--highlight);
+    border-radius: var(--radius-lg);
+    background: var(--paper);
+    box-shadow: var(--shadow-deep);
+  }
+
+  .note-card__head {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 0.55rem;
+    font-family: var(--font-ui);
+    font-size: 0.6rem;
+    font-weight: 650;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .note-card__head::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--highlight);
+  }
+
+  .note-card blockquote {
+    margin: 0 0 0.55rem;
+    font-family: var(--font-display);
+    font-size: 1.03rem;
+    line-height: 1.45;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+
+  .note-card p {
+    margin: 0;
+    font-size: 0.8rem;
+    line-height: 1.55;
+    color: var(--ink-2);
+  }
+
+  .note-card__foot {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+    margin-top: 0.75rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--rule);
+    font-family: var(--font-ui);
+    font-size: 0.62rem;
+    color: var(--muted);
+  }
+
+  .note-card__foot span {
+    padding: 0.15rem 0.35rem;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+  }
+
+  .annotation-demo figcaption {
+    margin-top: 1rem;
+    font-family: var(--font-ui);
+    font-size: 0.68rem;
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  /* ------------------------------------------------------------------
+     Local by design
+     ------------------------------------------------------------------ */
+
+  .private {
+    padding-block: clamp(4.5rem, 9vw, 8rem);
+    background: var(--night);
+    color: var(--night-ink);
+  }
+
+  .private__grid {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 0.95fr);
+    gap: clamp(2.5rem, 7vw, 7rem);
+    align-items: start;
+  }
+
+  .private h2 {
+    max-width: 11ch;
+    margin-top: 0.1rem;
+    font-size: clamp(2.7rem, 1.9rem + 3.6vw, 5rem);
+    line-height: 0.98;
+    letter-spacing: -0.045em;
+  }
+
+  .private h2 span {
+    color: var(--night-accent);
+  }
+
+  .private__lede {
+    max-width: 46ch;
+    margin: 1.4rem 0 1.8rem;
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--night-muted);
+  }
+
+  .btn--light {
+    border-color: var(--night-rule);
+    background: transparent;
+    color: var(--night-ink);
+  }
+
+  .btn--light:hover {
+    border-color: var(--night-accent);
+    color: var(--night-accent);
+  }
+
+  .private__points {
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--night-rule);
+    list-style: none;
+  }
+
+  .private__points li {
+    display: grid;
+    grid-template-columns: 1.5rem minmax(0, 1fr);
+    gap: 0.8rem;
+    padding: 1.15rem 0;
+    border-bottom: 1px solid var(--night-rule);
+  }
+
+  .private__points .icon {
+    margin-top: 0.1rem;
+    color: var(--night-accent);
+  }
+
+  .private__points h3 {
+    margin-bottom: 0.25rem;
+    font-family: var(--font-ui);
+    font-size: 0.92rem;
+    font-weight: 600;
+    line-height: 1.35;
+    letter-spacing: 0;
+  }
+
+  .private__points p {
+    margin: 0;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--night-muted);
+  }
+
+  /* ------------------------------------------------------------------
+     Process
+     ------------------------------------------------------------------ */
+
+  .steps {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: clamp(1.5rem, 3vw, 3rem);
+    margin: clamp(2.5rem, 5vw, 4rem) 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .step {
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--rule-strong);
+  }
+
+  .step__num {
+    display: block;
+    margin-bottom: 1.1rem;
+    font-family: var(--font-ui);
+    font-size: 0.66rem;
+    font-weight: 650;
+    letter-spacing: 0.14em;
+    color: var(--accent);
+  }
+
+  .step h3 {
+    margin-bottom: 0.35rem;
+    font-size: clamp(1.35rem, 1.2rem + 0.4vw, 1.65rem);
+    line-height: 1.15;
+    letter-spacing: -0.02em;
+  }
+
+  .step p {
     margin: 0;
     font-size: 0.88rem;
     line-height: 1.6;
     color: var(--ink-2);
   }
 
-  .run-code {
-    overflow: hidden;
-    border: 1px solid var(--rule-strong);
-    border-radius: 5px;
-    background: var(--paper-2);
-    box-shadow: var(--shadow-soft);
-  }
-
-  .run-code__head {
+  .process__cli {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.72rem 1rem;
-    border-bottom: 1px solid var(--rule);
-    background: var(--paper-3);
-    font-family: var(--font-ui);
-    font-size: 0.57rem;
-    font-weight: 650;
-    letter-spacing: 0.13em;
-    text-transform: uppercase;
-    color: var(--muted);
-  }
-
-  .run-code__block {
-    padding: 0.95rem 1rem 1rem;
-    border-bottom: 1px solid var(--rule);
-  }
-
-  .run-code__block > span {
-    font-family: var(--font-ui);
-    font-size: 0.55rem;
-    font-weight: 650;
-    letter-spacing: 0.13em;
-    text-transform: uppercase;
-    color: var(--accent);
-  }
-
-  .run-code__block pre {
-    margin: 0.4rem 0 0;
-    overflow-x: auto;
-    font-size: clamp(0.64rem, 0.6rem + 0.16vw, 0.73rem);
-    line-height: 1.75;
-    color: var(--ink);
-  }
-
-  .run-code figcaption {
-    padding: 0.75rem 1rem 0.85rem;
-    font-family: var(--font-ui);
-    font-size: 0.67rem;
-    line-height: 1.5;
-    color: var(--muted);
-  }
-
-  .run-code code,
-  .run-site__note code {
-    padding: 0.08em 0.3em;
-    border: 1px solid var(--rule);
-    border-radius: 2px;
-    background: var(--paper);
-    font-size: 0.86em;
-    color: var(--ink);
-  }
-
-  .run-code__block code {
-    padding: 0;
-    border: 0;
-    background: transparent;
-    font-size: inherit;
-  }
-
-  .run-site__note {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    margin: 1.5rem 0 0;
-    padding-top: 1rem;
+    justify-content: center;
+    gap: 0.5rem 0.8rem;
+    margin: clamp(2.5rem, 5vw, 3.5rem) 0 0;
+    padding-top: 1.2rem;
     border-top: 1px solid var(--rule);
     font-family: var(--font-ui);
-    font-size: 0.71rem;
-    line-height: 1.6;
+    font-size: 0.78rem;
     color: var(--muted);
+    text-align: center;
   }
 
-  .run-site__note .icon {
-    margin-top: 0.13rem;
-    color: var(--accent);
+  .process__cli code {
+    padding: 0.2rem 0.4rem;
+    border: 1px solid var(--rule);
+    border-radius: 3px;
+    background: var(--paper-2);
+    font-size: 0.72rem;
+    color: var(--ink-2);
+    overflow-wrap: anywhere;
+  }
+
+  .process__cli a {
+    font-weight: 600;
   }
 
   /* ------------------------------------------------------------------
      FAQ
      ------------------------------------------------------------------ */
+
+  .faq {
+    background: var(--paper-2);
+  }
 
   .faq__layout {
     display: grid;
@@ -2091,48 +1509,31 @@ py -m http.server 8000</code></pre>
   }
 
   .faq__aside h2 {
-    font-size: clamp(2.3rem, 1.75rem + 2.5vw, 3.7rem);
+    max-width: 8ch;
+    font-size: clamp(2.3rem, 1.7rem + 2.5vw, 3.7rem);
     line-height: 1;
-    letter-spacing: -0.04em;
+    letter-spacing: -0.045em;
   }
 
   .faq__intro {
     max-width: 34ch;
-    margin: 1.1rem 0 1.5rem;
+    margin: 1.1rem 0 1.4rem;
     font-size: 0.95rem;
+    line-height: 1.65;
     color: var(--ink-2);
   }
 
-  .faq__warning-note {
-    display: flex;
-    align-items: flex-start;
-    gap: 0.65rem;
-    max-width: 34ch;
-    padding: 0.95rem 1rem;
-    border: 1px solid color-mix(in srgb, var(--accent) 25%, var(--rule));
-    border-radius: 4px;
-    background: var(--accent-soft);
-    font-family: var(--font-ui);
-    font-size: 0.73rem;
-    line-height: 1.55;
-    color: var(--ink-2);
-  }
-
-  .faq__warning-note .icon {
-    margin-top: 0.1rem;
-    color: var(--accent);
-  }
-
-  .faq__warning-note p {
-    margin: 0;
-  }
-
-  .faq__warning-note strong {
-    color: var(--ink);
+  .faq__list {
+    border-top: 1px solid var(--rule-strong);
   }
 
   .faq-item {
-    border-top: 1px solid var(--rule);
+    border-bottom: 1px solid var(--rule);
+  }
+
+  .faq-item--first {
+    border-top: 2px solid color-mix(in srgb, var(--accent) 50%, var(--rule-strong));
+    margin-top: -1px;
   }
 
   .faq-item summary {
@@ -2140,9 +1541,9 @@ py -m http.server 8000</code></pre>
     align-items: flex-start;
     justify-content: space-between;
     gap: 1.2rem;
-    padding: 1.25rem 0;
+    padding: 1.2rem 0;
     font-family: var(--font-display);
-    font-size: clamp(1.05rem, 0.98rem + 0.3vw, 1.22rem);
+    font-size: clamp(1.08rem, 1rem + 0.3vw, 1.24rem);
     font-weight: 600;
     line-height: 1.35;
     letter-spacing: -0.01em;
@@ -2188,94 +1589,18 @@ py -m http.server 8000</code></pre>
   }
 
   .faq-item__answer {
-    padding-bottom: 1.35rem;
-    font-size: 0.92rem;
+    max-width: 70ch;
+    padding-bottom: 1.3rem;
+    font-size: 0.9rem;
+    line-height: 1.65;
     color: var(--ink-2);
   }
 
-  .faq-item__answer > p {
-    max-width: 65ch;
+  .faq-item__answer p:last-child {
+    margin-bottom: 0;
   }
 
-  .faq-item--warning {
-    margin-bottom: 0.6rem;
-    padding-inline: clamp(1rem, 2vw, 1.4rem);
-    border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--rule));
-    border-top-width: 2px;
-    border-radius: 4px;
-    background: color-mix(in srgb, var(--accent-soft) 58%, var(--paper-2));
-  }
-
-  .faq-item--warning summary {
-    color: var(--ink);
-  }
-
-  .faq-item--warning .faq-item__answer {
-    padding-bottom: 1.35rem;
-  }
-
-  .warning-grid {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 1rem;
-    margin: 1.2rem 0;
-  }
-
-  .warning-card {
-    padding: 0.9rem 1rem;
-    border: 1px solid var(--rule);
-    border-radius: 3px;
-    background: var(--paper-2);
-  }
-
-  .warning-card h3 {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
-    margin-bottom: 0.55rem;
-    font-family: var(--font-ui);
-    font-size: 0.72rem;
-    font-weight: 650;
-    letter-spacing: 0.07em;
-    text-transform: uppercase;
-    color: var(--ink);
-  }
-
-  .warning-card h3 .icon {
-    color: var(--accent);
-  }
-
-  .warning-card p {
-    margin: 0;
-    font-size: 0.8rem;
-  }
-
-  .warning-card ol {
-    display: grid;
-    gap: 0.32rem;
-    margin: 0.5rem 0 0;
-    padding-left: 1.15rem;
-    font-size: 0.8rem;
-    line-height: 1.55;
-  }
-
-  .warning-card__note {
-    margin-top: 0.7rem !important;
-    padding-top: 0.6rem;
-    border-top: 1px solid var(--rule);
-    font-size: 0.73rem !important;
-    color: var(--muted);
-  }
-
-  .faq-item__fine {
-    margin: 0;
-    font-family: var(--font-ui);
-    font-size: 0.72rem;
-    line-height: 1.55;
-    color: var(--muted);
-  }
-
-  .faq-item__fine a {
+  .faq-item__answer a {
     color: var(--accent);
   }
 
@@ -2284,59 +1609,57 @@ py -m http.server 8000</code></pre>
      ------------------------------------------------------------------ */
 
   .closing {
-    position: relative;
-    overflow: hidden;
-    padding-block: clamp(4.5rem, 10vw, 9rem);
+    padding-block: clamp(5rem, 9vw, 8.5rem);
     border-top: 1px solid var(--rule);
-    background: var(--paper-2);
+    background: var(--paper);
   }
 
   .closing__inner {
-    position: relative;
-    z-index: 1;
-    max-width: 940px;
+    max-width: 820px;
+    margin-inline: auto;
+    text-align: center;
   }
 
-  .closing__watermark {
-    position: absolute;
-    right: -2rem;
-    bottom: -9rem;
-    z-index: 0;
-    color: var(--accent);
-    opacity: 0.05;
-    pointer-events: none;
-    transform: rotate(-9deg);
+  .closing .eyebrow {
+    justify-content: center;
   }
 
   .closing h2 {
-    max-width: 12ch;
-    font-size: clamp(2.9rem, 1.9rem + 4.8vw, 5.7rem);
-    line-height: 0.92;
-    letter-spacing: -0.055em;
+    max-width: 18ch;
+    margin-inline: auto;
+    font-size: clamp(2.8rem, 1.9rem + 4.2vw, 5rem);
+    line-height: 0.95;
+    letter-spacing: -0.05em;
   }
 
   .closing__intro {
-    max-width: 46ch;
-    margin: 1.5rem 0 1.8rem;
+    max-width: 52ch;
+    margin: 1.3rem auto 1.7rem;
     font-size: 1rem;
+    line-height: 1.65;
     color: var(--ink-2);
   }
 
   .closing__actions {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.7rem;
+    justify-content: center;
+    gap: 0.65rem;
   }
 
   .closing__meta {
-    margin: 2.1rem 0 0;
+    margin: 2rem 0 0;
     font-family: var(--font-ui);
-    font-size: 0.68rem;
-    letter-spacing: 0.02em;
+    font-size: 0.72rem;
     color: var(--muted);
   }
 
   .closing__meta a {
+    color: var(--muted);
+    text-decoration-color: var(--rule-strong);
+  }
+
+  .closing__meta a:hover {
     color: var(--accent);
   }
 
@@ -2346,250 +1669,203 @@ py -m http.server 8000</code></pre>
 
   @media (max-width: 1120px) {
     .hero__inner {
-      grid-template-columns: minmax(0, 1fr) minmax(0, 0.92fr);
-      gap: 2.8rem;
+      grid-template-columns: minmax(0, 1fr) minmax(0, 0.96fr);
+      gap: 2.5rem;
     }
 
-    .hero__title {
-      font-size: clamp(3.1rem, 1.8rem + 4.4vw, 4.9rem);
+    .hero h1 {
+      font-size: clamp(3rem, 1.9rem + 4.2vw, 4.7rem);
+    }
+  }
+
+  @media (max-width: 1020px) {
+    .fidelity__grid,
+    .annotations__grid,
+    .private__grid,
+    .faq__layout {
+      grid-template-columns: 1fr;
     }
 
-    .verify-card {
-      left: -0.8rem;
+    .fidelity__copy,
+    .annotations__copy,
+    .private__lead,
+    .faq__aside {
+      max-width: 680px;
+    }
+
+    .colophon {
+      position: static;
+    }
+
+    .annotation-demo {
+      max-width: 680px;
+      width: 100%;
+      margin-inline: auto;
+    }
+
+    .faq__aside {
+      position: static;
+    }
+
+    .private__points {
+      max-width: 680px;
     }
   }
 
   @media (max-width: 980px) {
     .hero__inner {
       grid-template-columns: 1fr;
-      gap: clamp(3rem, 8vw, 5rem);
+      gap: clamp(2.5rem, 7vw, 4rem);
     }
 
     .hero__copy {
       max-width: 680px;
     }
 
-    .hero__title {
+    .hero h1 {
       max-width: 13ch;
-      font-size: clamp(3.3rem, 2rem + 5.5vw, 5.3rem);
+      font-size: clamp(3.2rem, 2rem + 5.2vw, 5rem);
     }
 
     .hero__visual {
       max-width: 760px;
       width: 100%;
-      margin-left: auto;
     }
 
-    .hero__visual::before {
-      inset: 14px -10px -8px 10px;
+    .feature--reading {
+      grid-column: span 12;
     }
 
-    .verify-card {
-      left: -0.6rem;
-    }
-
-    .section-heading {
-      grid-template-columns: 1fr;
-      gap: 1.3rem;
-      align-items: start;
-    }
-
-    .section-heading__side {
-      max-width: 620px;
-    }
-
-    .proof {
-      grid-template-columns: 1fr;
-      align-items: start;
-    }
-
-    .proof__copy {
-      max-width: 640px;
-    }
-
-    .result-visual {
-      grid-template-columns: 1fr;
-      gap: 1.5rem;
-    }
-
-    .annotations__grid {
-      grid-template-columns: 1fr;
-      gap: 2.5rem;
-    }
-
-    .annotation-visual {
-      width: min(100%, 640px);
-      margin: 0 auto;
-    }
-
-    .search-shot {
-      width: min(100%, 430px);
-      margin: 0 0 0 auto;
-      transform: rotate(0.7deg);
-    }
-
-    .private__grid {
-      grid-template-columns: 1fr;
-      gap: 2.8rem;
-    }
-
-    .private__lead {
-      max-width: 660px;
-    }
-
-    .process__output {
-      grid-template-columns: 1fr;
-      gap: 2.5rem;
-    }
-
-    .run-site__grid {
-      grid-template-columns: 1fr;
-      gap: 2.5rem;
-    }
-
-    .faq__layout {
-      grid-template-columns: 1fr;
-      gap: 2.5rem;
-    }
-
-    .faq__aside {
-      position: static;
-      max-width: 620px;
-    }
-
-    .faq__warning-note {
-      max-width: 44ch;
+    .feature--search,
+    .feature--file,
+    .feature--book,
+    .feature--a11y {
+      grid-column: span 6;
     }
   }
 
   @media (max-width: 760px) {
-    .gate-grid {
+    .fidelity__checks li {
+      grid-template-columns: 5.5rem minmax(0, 1fr);
+    }
+
+    .feature-grid {
       grid-template-columns: 1fr;
-      gap: 1.8rem;
     }
 
-    .annotation-visual__panel {
-      width: 100%;
-    }
-
-    .annotation-visual__toolbar {
-      right: 0.75rem;
-    }
-
-    .gate {
-      max-width: 600px;
-    }
-
-    .feature-ledger {
-      grid-template-columns: 1fr;
+    .feature--reading,
+    .feature--search,
+    .feature--file,
+    .feature--book,
+    .feature--a11y {
+      grid-column: auto;
     }
 
     .steps {
       grid-template-columns: 1fr;
-      gap: 2rem;
+      gap: 1.8rem;
     }
 
     .step {
       max-width: 560px;
     }
 
-    .step__num {
-      margin-bottom: 0.8rem;
-    }
-
-    .warning-grid {
-      grid-template-columns: 1fr;
-    }
-
-    .hero__caption {
-      position: static;
-      margin-top: 1.2rem;
+    .edition__link {
       text-align: left;
     }
 
-    .promise-bar ul {
-      justify-content: flex-start;
+    .note-card {
+      width: 100%;
+      margin: -0.8rem 0 0;
     }
   }
 
   @media (max-width: 620px) {
     .hero {
-      padding-top: 2.7rem;
+      padding-top: 2.4rem;
     }
 
-    .build-report pre,
-    .output-card pre,
-    .cli-code,
-    .run-code__block pre {
-      white-space: pre-wrap;
-      overflow-wrap: anywhere;
-    }
-
-    .hero__actions {
+    .hero__actions,
+    .closing__actions {
       flex-direction: column;
       align-items: stretch;
     }
 
-    .hero__actions .btn {
+    .hero__actions .btn,
+    .closing__actions .btn {
       width: 100%;
     }
 
     .hero__meta {
       display: grid;
-      gap: 0.35rem;
+      grid-template-columns: 1fr;
+      gap: 0.2rem;
     }
 
     .hero__meta li + li::before {
       display: none;
     }
 
-    .hero__visual {
-      display: flex;
-      flex-direction: column;
-      padding-bottom: 0;
+    .fidelity__checks li {
+      grid-template-columns: 1fr;
+      gap: 0.35rem;
     }
 
-    .hero__visual::before {
-      inset: 10px -8px -6px 8px;
+    .fidelity__check-label {
+      padding-top: 0;
     }
 
-    .hero__edition {
-      transform: none;
+    .colophon__row {
+      grid-template-columns: auto 1fr;
     }
 
-    .hero__edition .browser-url {
+    .colophon__dots {
+      display: none;
+    }
+
+    .colophon__row dd {
+      grid-column: 2;
+      text-align: left;
+    }
+
+    .process__cli {
+      justify-content: flex-start;
+      text-align: left;
+    }
+
+    .process__cli code {
+      width: 100%;
+    }
+
+    .closing__inner {
+      text-align: left;
+    }
+
+    .closing .eyebrow {
       justify-content: flex-start;
     }
 
-    .verify-card {
-      position: relative;
-      inset: auto;
-      width: 100%;
-      margin-top: 1rem;
-      box-shadow: var(--shadow-soft);
-    }
-
-    .hero__caption {
-      margin-top: 0.8rem;
-    }
-
-    .promise-bar ul {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 0.55rem 1rem;
+    .closing h2,
+    .closing__intro {
+      margin-inline: 0;
     }
 
     .closing__actions {
-      flex-direction: column;
       align-items: stretch;
     }
+  }
 
-    .closing__actions .btn {
-      width: 100%;
+  @media (max-width: 480px) {
+    .hero h1 {
+      font-size: clamp(2.85rem, 12vw, 3.6rem);
     }
 
-    .edition__more {
-      text-align: left;
+    .note-card {
+      margin-left: 0;
+    }
+
+    .colophon__head {
+      flex-direction: column;
     }
   }
 </style>

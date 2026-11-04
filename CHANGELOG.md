@@ -17,6 +17,7 @@ All notable, user-facing changes are documented here. The format follows
 ### Changed
 
 - Explain that highlights and notes stay in the browser, and request persistent browser storage only after the user chooses **Keep on this device**. The browser is never prompted for storage permission automatically.
+- Refine the landing site with a cleaner, product-first design: real reader screenshots, a build colophon, a bento feature grid, and a simpler page structure on desktop and mobile. The social card has been rebuilt to match.
 - Relicense epub2web under GPL-3.0-or-later. Your EPUB and book text remain yours; generated sites include the GPL-licensed reader theme, so keep its notice when redistributing. Distributing a modified version of epub2web now requires making its source available under the same license.
 
 ### Fixed
