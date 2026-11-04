@@ -166,7 +166,9 @@ book**.
 - **Highlights and notes stay private.** They are stored in your browser, not in
   the generated site, and are never uploaded. Export them from the
   **Highlights & notes** panel if you want a backup or want to move them to
-  another browser.
+  another browser. The reader asks the browser for persistent storage only when
+  you choose **Keep on this device**, and explains what the browser may prompt
+  for before doing so.
 
 If a check fails, `epub2web` stops and leaves any previous working site
 untouched. It does not publish a half-finished version.

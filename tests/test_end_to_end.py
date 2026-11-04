@@ -180,6 +180,35 @@ def test_reader_advertises_keyboard_shortcuts(tiny_epub, tmp_path: Path):
     )
 
 
+def test_reader_explains_annotation_storage_before_requesting_persistence(
+    tiny_epub, tmp_path: Path
+):
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    site = tmp_path / "site"
+
+    GenericExtractor(tiny_epub, content, images).run()
+    render_site(content, site, site_url="http://localhost:8000")
+    page = BeautifulSoup((site / "read" / "1" / "index.html").read_text(encoding="utf-8"), "lxml")
+
+    panel = page.find(id="epub2web-annotations-dialog")
+    privacy = panel.find(class_="annotations-privacy").get_text(" ", strip=True)
+    assert "stay in this browser" in privacy
+    assert "never uploaded" in privacy
+    assert panel.find(attrs={"data-storage-open": True}) is not None
+
+    storage = page.find(id="epub2web-storage-dialog")
+    assert storage is not None
+    text = storage.get_text(" ", strip=True)
+    assert "never uploaded" in text
+    assert "may ask for permission" in text
+    assert "Export a backup" in text
+    assert storage.find(attrs={"data-storage-request": True}) is not None
+
+    script = (site / "assets" / "annotations.js").read_text(encoding="utf-8")
+    assert script.count("navigator.storage.persist()") == 1
+
+
 def test_rendered_pages_expose_reading_progress(tiny_epub, tmp_path: Path):
     content = tmp_path / "content"
     images = tmp_path / "images"

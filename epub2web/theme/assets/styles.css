@@ -2125,6 +2125,36 @@ mark.annotation-mark {
 }
 .note-remove:hover { color: var(--accent); }
 
+.storage-sheet { width: min(540px, calc(100vw - 2rem)); }
+.storage-body { display: flex; flex-direction: column; gap: 0.75rem; }
+.storage-body > p {
+  margin: 0;
+  color: var(--ink-2);
+  font-family: var(--font-ui);
+  font-size: 0.82rem;
+  line-height: 1.6;
+}
+.storage-body .storage-note {
+  padding: 0.65rem 0.8rem;
+  border-inline-start: 3px solid var(--accent);
+  background: var(--paper-3);
+  color: var(--muted);
+  font-size: 0.74rem;
+}
+.storage-body .storage-state {
+  min-height: 2.6em;
+  color: var(--muted);
+  font-size: 0.72rem;
+}
+.storage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--rule);
+}
+
 .annotations-sheet { width: min(600px, calc(100vw - 2rem)); }
 .annotations-body { display: flex; flex-direction: column; gap: 0.75rem; }
 .annotations-toolbar {
@@ -2319,10 +2349,30 @@ mark.annotation-mark {
   background: var(--paper);
 }
 .annotations-privacy {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  max-width: 20rem;
   color: var(--muted);
   font-family: var(--font-ui);
   font-size: 0.64rem;
+  line-height: 1.45;
 }
+.annotations-storage {
+  align-self: flex-start;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 0.64rem;
+  font-weight: 650;
+  text-decoration: underline;
+  text-underline-offset: 0.15em;
+  cursor: pointer;
+}
+.annotations-storage:hover { color: var(--accent-2); }
+.annotations-storage:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .annotations-actions { display: flex; gap: 0.35rem; }
 .annotations-actions button {
   padding: 0.4rem 0.65rem;
@@ -2491,6 +2541,9 @@ mark.annotation-mark {
     overflow-y: auto;
   }
   .annotations-toolbar { align-items: flex-start; }
+  .annotations-footer { align-items: flex-start; }
+  .storage-actions { justify-content: stretch; }
+  .storage-actions .btn { flex: 1 1 auto; }
 }
 
 @media (max-width: 420px) {

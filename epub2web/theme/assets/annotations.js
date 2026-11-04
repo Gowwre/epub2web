@@ -50,6 +50,9 @@
   const panelStatus = document.querySelector("[data-annotations-status]");
   const panelTotal = document.querySelector("[data-annotations-total]");
   const fileInput = document.querySelector("[data-annotations-file]");
+  const storageDialog = document.getElementById("epub2web-storage-dialog");
+  const storageState = document.querySelector("[data-storage-state]");
+  const storageRequest = document.querySelector("[data-storage-request]");
 
   const bookMeta = readJsonScript("epub2web-book-meta", {});
   const readingMap = readJsonScript("epub2web-reading-map", []);
@@ -68,7 +71,7 @@
     mode: "",
     bookSaved: false,
     storageError: false,
-    persistRequested: false,
+    storageBusy: false,
     ready: false,
     channel: null,
     panelReturnFocus: null,
@@ -522,14 +525,77 @@
     localStorage.setItem(localKey(), JSON.stringify(payload));
   }
 
-  function requestPersistence() {
-    if (state.persistRequested) return;
-    state.persistRequested = true;
+  function canPersistStorage() {
+    return Boolean(navigator.storage && typeof navigator.storage.persist === "function");
+  }
+
+  async function storageIsPersisted() {
     try {
-      if (navigator.storage && typeof navigator.storage.persist === "function") {
-        navigator.storage.persist().catch(function () {});
+      if (navigator.storage && typeof navigator.storage.persisted === "function") {
+        return await navigator.storage.persisted();
       }
     } catch (error) {}
+    return false;
+  }
+
+  async function refreshStorageState() {
+    if (!storageState || !storageRequest) return;
+    if (!canPersistStorage()) {
+      storageState.textContent =
+        "This browser does not support persistent storage. Export a backup if you need a copy.";
+      storageRequest.disabled = true;
+      storageRequest.textContent = "Not supported";
+      return;
+    }
+    storageRequest.disabled = false;
+    storageRequest.textContent = "Ask browser to keep data";
+    const persisted = await storageIsPersisted();
+    if (persisted) {
+      storageState.textContent =
+        "This browser is already keeping this site’s data on this device.";
+      storageRequest.disabled = true;
+      storageRequest.textContent = "Already kept";
+    } else {
+      storageState.textContent = "Your browser may ask for permission when you continue.";
+    }
+  }
+
+  function openStorageDialog() {
+    if (!storageDialog) return;
+    if (storageState) storageState.textContent = "Checking this browser…";
+    if (storageRequest) storageRequest.disabled = true;
+    if (!storageDialog.open) storageDialog.showModal();
+    refreshStorageState();
+  }
+
+  async function requestPersistentStorage() {
+    if (!storageRequest || !storageState || state.storageBusy) return;
+    if (!canPersistStorage()) {
+      refreshStorageState();
+      return;
+    }
+    state.storageBusy = true;
+    storageRequest.disabled = true;
+    storageRequest.textContent = "Requesting…";
+    storageState.textContent = "Waiting for your browser…";
+    let granted = false;
+    try {
+      granted = await navigator.storage.persist();
+    } catch (error) {
+      granted = false;
+    }
+    state.storageBusy = false;
+    if (granted) {
+      storageState.textContent =
+        "This browser will keep your highlights and notes on this device.";
+      storageRequest.textContent = "Kept on this device";
+      storageRequest.disabled = true;
+    } else {
+      storageState.textContent =
+        "The browser did not grant persistent storage. Export a backup to keep a copy.";
+      storageRequest.textContent = "Try again";
+      storageRequest.disabled = false;
+    }
   }
 
   async function persistRecord(record) {
@@ -540,7 +606,6 @@
           await idbPut(state.db, "books", bookRecord());
           state.bookSaved = true;
         }
-        requestPersistence();
         return true;
       } catch (error) {
         state.mode = "local";
@@ -548,7 +613,6 @@
     }
     try {
       writeLocalAnnotations();
-      requestPersistence();
       return true;
     } catch (error) {
       state.storageError = true;
@@ -590,7 +654,6 @@
           await idbPut(state.db, "books", bookRecord());
           state.bookSaved = true;
         }
-        requestPersistence();
         return true;
       } catch (error) {
         state.mode = "local";
@@ -598,7 +661,6 @@
     }
     try {
       writeLocalAnnotations();
-      requestPersistence();
       return true;
     } catch (error) {
       state.storageError = true;
@@ -2079,6 +2141,24 @@
     });
   }
 
+  function bindStorageDialog() {
+    if (!storageDialog) return;
+    document.querySelectorAll("[data-storage-open]").forEach(function (button) {
+      button.addEventListener("click", function () {
+        openStorageDialog();
+      });
+    });
+    if (storageRequest) {
+      storageRequest.addEventListener("click", requestPersistentStorage);
+    }
+    storageDialog.addEventListener("close", function () {
+      const trigger = document.querySelector("[data-storage-open]");
+      if (trigger && trigger.getClientRects().length) {
+        trigger.focus({ preventScroll: true });
+      }
+    });
+  }
+
   function bindNoteDialog() {
     if (!noteDialog) return;
     noteDialog.querySelectorAll("[data-note-cancel]").forEach(function (button) {
@@ -2299,6 +2379,7 @@
     bindToolbar();
     bindCard();
     bindPanel();
+    bindStorageDialog();
     bindNoteDialog();
     bindSelection();
     bindPageClicks();

@@ -216,12 +216,35 @@
     <div class="annotations-list" data-annotations-list></div>
     <p class="annotations-empty" data-annotations-empty hidden>No highlights or notes yet. Select text and press H to highlight, or use the selection toolbar.</p>
     <div class="annotations-footer">
-      <span class="annotations-privacy">Stored in this browser only.</span>
+      <div class="annotations-privacy">
+        <span>Highlights and notes stay in this browser and are never uploaded.</span>
+        <button class="annotations-storage" type="button" data-storage-open>Keep on this device</button>
+      </div>
       <div class="annotations-actions">
         <button type="button" data-annotations-import>Import</button>
         <button type="button" data-annotations-export>Export</button>
         <input type="file" accept=".json,application/json" data-annotations-file hidden>
       </div>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="epub2web-storage-dialog" class="sheet storage-sheet" aria-labelledby="epub2web-storage-title">
+  <div class="sheet-head">
+    <div>
+      <p class="sheet-eyebrow">Privacy</p>
+      <h2 class="sheet-title" id="epub2web-storage-title">Keep highlights on this device</h2>
+    </div>
+    <button class="icon-btn" type="button" data-close aria-label="Close storage settings">{{ icon("close") }}</button>
+  </div>
+  <div class="sheet-body storage-body">
+    <p>Highlights and notes are stored only in this browser. They are never uploaded and never added to the published site.</p>
+    <p>Browsers can remove site data when storage is low. Your browser can keep this site’s data on this device, but it may ask for permission first.</p>
+    <p class="storage-note">epub2web does not receive your book text or notes. Export a backup if you need a copy you can move elsewhere.</p>
+    <p class="storage-state" data-storage-state role="status" aria-live="polite"></p>
+    <div class="storage-actions">
+      <button class="btn btn-quiet" type="button" data-close>Not now</button>
+      <button class="btn btn-primary" type="button" data-storage-request>Ask browser to keep data</button>
     </div>
   </div>
 </dialog>

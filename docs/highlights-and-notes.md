@@ -1,14 +1,14 @@
-# Highlights and notes: storage, persistence, and migration
+# Highlights and notes: storage, persistence, and import
 
-This document describes the storage, anchoring, persistence, and migration
-design for highlights and notes. The first version is implemented: reading
-pages support local highlights, optional notes, review, and JSON export/import.
-Calibre import and the remaining reader adapters are still planned. It answers
-three questions:
+This document describes the storage, anchoring, persistence, and optional
+import design for highlights and notes. The first version is implemented:
+reading pages support local highlights, optional notes, review, and JSON
+export/import. Calibre import and the remaining reader adapters are planned as
+explicit, user-initiated features. It answers three questions:
 
 1. How should highlights and notes be stored?
 2. How can they survive regenerating the site?
-3. How can existing calibre highlights and notes be migrated?
+3. How can existing annotations be imported when the user asks for it?
 
 For the reader interaction design, see
 [`highlights-and-notes-ux.md`](highlights-and-notes-ux.md).
@@ -23,13 +23,15 @@ The short version:
 - Anchor a highlight with **several selectors**, not one: a DOM range, an EPUB
   source locator (CFI or normalized source offset), and a text quote with
   surrounding context. Resolve the cheapest selector first and fall back.
-- Migrate calibre annotations by reading its JSON exports/database, using the
-  calibre CFI as a hint and `highlighted_text` as verification. Merge by
-  calibre's identity rules (UUID for highlights, title for bookmarks), honor
-  `removed` tombstones, and report unresolved items instead of dropping them.
-- Calibre is the first adapter, not the whole feature. Other readers need their
-  own storage parser and locator converter; the shared import, matching, merge,
-  and review pipeline is what makes each additional reader cheaper.
+- Import calibre annotations **only when the user explicitly starts an import**,
+  using a file or source the user chooses. Use the calibre CFI as a hint and
+  `highlighted_text` as verification. Merge by calibre's identity rules (UUID
+  for highlights, title for bookmarks), honor `removed` tombstones, and report
+  unresolved items instead of dropping them.
+- Calibre is the first optional adapter, not automatic behavior. Other readers
+  need their own storage parser and locator converter; the shared import,
+  matching, merge, and review pipeline is what makes each additional reader
+  cheaper.
 
 ## 1. What the reader does today
 
@@ -151,7 +153,7 @@ a library), it can include annotations as repeated metadata elements:
 ```
 
 This is a copy made during metadata serialization, not the live database. It is
-useful for migrating an exported library folder that has no `metadata.db`.
+useful for importing an exported library folder that has no `metadata.db`.
 
 Source:
 [`src/calibre/ebooks/metadata/opf2.py`](https://github.com/kovidgoyal/calibre/blob/master/src/calibre/ebooks/metadata/opf2.py).
@@ -270,7 +272,7 @@ Worth copying:
 - newest-timestamp-wins merging;
 - a plain, versioned JSON export;
 - a style vocabulary that maps cleanly to CSS;
-- a migration report that distinguishes imported, unchanged, and unresolved.
+- an import report that distinguishes imported, unchanged, and unresolved.
 
 Not worth copying:
 
@@ -439,7 +441,7 @@ independent of the generated HTML. But:
 - a generated page may split a source file at a TOC anchor, so one source range
   can cross two generated pages.
 
-Use CFI as one selector and as the migration input. Use the quote and source
+Use CFI as one selector and as an import input. Use the quote and source
 text as the verification layer.
 
 ## 5. Where to store annotations
@@ -554,15 +556,19 @@ different id. Do not change that behavior for reading progress. Add
 
 ### 5.6 Quota, eviction, and privacy
 
-- Call `navigator.storage.persist()` when the user creates the first
-  annotation, and show a small "stored in this browser" note.
+- Never request persistent storage on first open or when the first annotation is
+  created. Explain in the annotation panel that highlights and notes stay in this
+  browser and are never uploaded. Call `navigator.storage.persist()` only after
+  the user chooses **Keep on this device** and confirms a dialog that explains
+  the browser may ask for permission. If the request is denied or unsupported,
+  point the user to **Export** for a backup.
 - Offer **Export annotations** and remind the user before clearing site data.
 - Treat notes as untrusted text. Render with `textContent`, never `innerHTML`.
   If Markdown is supported later, sanitize it with an allowlist.
 - Do not include annotation text in search indexes, page metadata, logs, or
   support ZIPs.
-- Private browsing and storage eviction can remove the store; the app-data copy
-  or an export is the backup.
+- Private browsing and storage eviction can remove the store; **Export** is the
+  current backup. A future app-data copy could add durability.
 
 ## 6. Storage format and merge rules
 
@@ -598,7 +604,7 @@ as a missing record.
 ### 6.3 Export
 
 Native export should be the complete document, including tombstones and
-`origin.raw`. It is the backup and migration format. The file contains private
+`origin.raw`. It is the backup and interchange format. The file contains private
 quotes and notes, so it must be treated like the book itself and never written
 into a published site. Add a human-readable Markdown/plain-text export
 separately; do not use it for re-import.
@@ -613,7 +619,7 @@ Optional calibre-compatible export:
 Round-tripping to calibre is inherently lossy unless the target is the same
 EPUB edition and the CFI can be regenerated.
 
-## 7. Migrating from calibre
+## 7. Importing from calibre
 
 ### 7.1 Source precedence
 
@@ -635,24 +641,33 @@ case fall back to the sidecar and the in-EPUB/OPF copies.
 If several sources disagree, use calibre's rules: newer timestamp wins,
 highlights match by UUID, bookmarks by title, and `removed` stays removed.
 
-### 7.2 Zero-touch migration is the default
+### 7.2 Import is explicit and opt-in
 
-The user should not have to find calibre's database, run an export, or choose a
-file. Treat migration as part of opening the book:
+Do not discover calibre libraries, databases, sidecars, or in-EPUB copies while
+building a site or opening a book. A normal build must read only the EPUB and
+write only its output. Import starts only from a clear user action:
 
-1. When the desktop app builds or opens a book, look for a local calibre
-   configuration/library (`metadata.db`) and for the viewer sidecar and in-EPUB
-   copies. This is read-only; never modify calibre's files.
-2. Match the book by `source_sha256`, `content_id`, ISBN, then title/author.
-   If exactly one confident match exists, import it automatically.
-3. Merge into the annotation store, show a compact summary such as
-   "Imported 42 highlights and 7 notes from calibre", and offer Undo.
+1. **Reader:** the user opens **Import** in the Highlights & notes panel and
+   chooses a native JSON file or a calibre export.
+2. **Desktop app:** the user chooses an explicit **Import from calibre…**
+   action. Only then may the app offer a file picker or look for likely calibre
+   locations.
+3. **CLI:** the user runs an explicit `epub2web annotations import` command with
+   a source path.
+
+After the user starts an import:
+
+1. Match the book by `content_id`, `source_sha256`, ISBN, then title/author.
+2. If exactly one confident match exists, merge into the annotation store.
+3. Show a compact summary such as "Imported 42 highlights and 7 notes from
+   calibre", with Undo and a link to review unresolved items.
 4. If the match is ambiguous or an edition changed, show the normal review list;
-   do not block the build and do not guess.
-5. Remember the import so it is not repeated. Re-import only when the calibre
-   source's timestamp or the annotation set changes.
+   do not guess.
+5. Do not remember the import for automatic re-runs. The user starts each import
+   explicitly.
 
-Path discovery must follow platform conventions:
+If the desktop app offers path discovery after the user asks, it must follow
+platform conventions:
 
 - Never hardcode `~/Calibre Library` or `~/.config/calibre`.
 - Use `CALIBRE_CONFIG_DIRECTORY` when set; otherwise use the platform config
@@ -668,42 +683,39 @@ Path discovery must follow platform conventions:
   recent annotations can be missing. Prefer a read-only SQLite connection with
   a busy timeout over copying a live library.
 - On macOS, reads outside the app container can require user permission. On
-  WSL, a Windows-side calibre installation is not automatically discoverable;
-  point at `/mnt/c/...` or use an export.
+  WSL, a Windows-side calibre installation requires an explicit path or an
+  exported file.
 
-For the CLI, the same detection should run by default. The explicit commands
-below remain useful for automation, tests, and unusual installs; they are not
-the expected user path.
+The normal build command must not run any detection:
 
 ```bash
-# Zero-touch default: discover and import a matching calibre library
+# Build only. No calibre discovery or import.
 epub2web book.epub -o book-site
 
-# Explicit paths, for automation or non-standard installs
+# Explicit imports, only when the user asks for them.
+epub2web annotations import book.epub \
+  --from calibre.json \
+  --output annotations.json
+
 epub2web annotations import book.epub \
   --calibre-library "$HOME/Calibre Library" \
   --calibre-book-id 42 \
   --output annotations.json
 
-# From a calibre JSON export
 calibredb annotations export -f json --search "id:42" > calibre.json
 epub2web annotations import book.epub \
   --from calibre.json \
   --output annotations.json
 
-# From the copies inside the EPUB / a metadata.opf
 epub2web annotations import book.epub --from-epub
 epub2web annotations import book.epub --from-opf metadata.opf
 
-# Dry run, with a machine-readable report
 epub2web annotations import book.epub --from calibre.json \
   --dry-run --report annotations-import-report.json
 ```
 
-`--output` writes the native annotation document. In the desktop app, the same
-result is written to the app-data store and served to the preview. In a purely
-static setup, the user imports the JSON through the reader's
-**Import annotations** control as a fallback.
+`--output` writes the native annotation document. The reader's **Import**
+control can read it directly. Nothing is written to the generated site.
 
 ### 7.3 Resolution algorithm
 
@@ -753,7 +765,7 @@ of the feature.
 | `toc_family_titles` | display/grouping metadata only |
 | `removed` | `deleted: true` |
 | bookmarks' `title`, `pos` | `quote`/label and `anchor` |
-| `last-read` | not an annotation; optionally migrate to reading progress |
+| `last-read` | not an annotation; optionally import into reading progress |
 
 ### 7.5 Special cases
 
@@ -780,15 +792,17 @@ of the feature.
 
 ### 7.6 Importing into the browser
 
-A static site cannot write a file next to itself. The practical options are:
+A static site cannot write a file next to itself. Import is always
+user-initiated:
 
-1. **Desktop app data (recommended, zero-touch):** the GUI/CLI discovers the
-   matching calibre annotations, writes
-   `<app data>/epub2web/annotations/<content_id>.json`, and the preview server
-   serves it. The page merges it on load; the user only sees a summary and Undo.
-2. **File picker (fallback for static hosting):** the reader has
-   **Import annotations** and **Export annotations** controls. The user selects
-   a native JSON file; the page validates and merges it into IndexedDB.
+1. **File picker (default):** the reader has **Import** and **Export** controls
+   in the Highlights & notes panel. The user selects a native JSON file or an
+   export; the page validates and merges it into IndexedDB.
+2. **Desktop app data (optional):** after an explicit **Import annotations** or
+   **Import from calibre…** action, the app may write a copy to
+   `<app data>/epub2web/annotations/<content_id>.json` and let the preview
+   server serve it to that import flow. Do not merge it on page load without the
+   user's action.
 3. **File System Access API (progressive enhancement):** the user grants access
    to one JSON file; the page reads and writes it directly.
 
@@ -799,6 +813,10 @@ Do not publish the import file with the site.
 The first two phases are implemented in `epub2web/annotations.py` (schema,
 validation, merge, tombstones, files) and
 `epub2web/theme/assets/annotations.js` (browser store and reader UI).
+
+Calibre import is intentionally out of scope until the user asks for it. If it
+is added later, it must stay an explicit action: no filesystem scanning during
+builds, no automatic import on page load, and no automatic import banner.
 
 ### Phase 1: identity and schema (implemented)
 
@@ -837,15 +855,19 @@ validation, merge, tombstones, files) and
   progression.
 - Implement resolution order and `needs_review`.
 - Handle page splits and cross-page ranges.
-- Add a migration test that regenerates a site with changed routes/TOC splits.
+- Add a re-anchoring test that regenerates a site with changed routes/TOC splits.
 
-### Phase 4: zero-touch calibre import (planned)
+### Phase 4: optional on-demand import (planned)
 
-- Start with exported JSON (`calibre_annotation_collection` and
-  `calibre_highlights`); it is the easiest to test offline.
-- Add `metadata.db` reading in read-only mode, then in-EPUB and OPF copies.
-- Add automatic discovery and book matching so the normal build/import path
-  needs no user input.
+- Start with a user-selected exported JSON file (`calibre_annotation_collection`
+  and `calibre_highlights`); it is the easiest to test offline.
+- Add an explicit **Import from calibre…** action in the desktop app and an
+  explicit CLI command. Do not scan for calibre data during a normal build or
+  page load.
+- Add read-only `metadata.db`, viewer sidecar, in-EPUB, and OPF loaders only
+  after the user chooses a source.
+- Match the book only inside the explicit import flow, and report ambiguous
+  matches instead of guessing.
 - Add a compact "Imported N highlights and M notes from calibre" summary with
   Undo; only surface the review list for ambiguous matches.
 - Add dry-run/report output as an automation and debugging escape hatch.
@@ -1002,7 +1024,8 @@ This means:
 
 ### 10.6 What to tell users
 
-A realistic promise is:
+A realistic promise, once an import adapter is explicitly requested and added,
+is:
 
 > epub2web can import annotations from calibre and from readers that export
 > standard or documented formats. Other readers can be supported through

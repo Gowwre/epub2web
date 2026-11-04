@@ -6,14 +6,14 @@ to make highlighting and note-taking feel like a natural part of reading:
 - one action to highlight;
 - notes are optional and never block the highlight;
 - no save button for highlights;
-- review and migration stay out of the reading flow;
+- review and optional imports stay out of the reading flow;
 - the same mental model works on desktop, tablet, phone, keyboard, and screen
   reader.
 
 The reader implementation lives in `epub2web/theme/assets/annotations.js`;
 storage, schema, and merge rules live in `epub2web/annotations.py`. See
 [`highlights-and-notes.md`](highlights-and-notes.md) for storage, anchoring,
-persistence, and calibre migration.
+persistence, and optional calibre import.
 
 ## 1. What other readers teach us
 
@@ -46,8 +46,9 @@ annotation list is a separate, deliberate mode.
    The reading page stays clean.
 7. **Color is not the only signal.** Notes get a marker and appear in the panel;
    every action has a text label or accessible name.
-8. **Migration is invisible.** Calibre annotations appear automatically with a
-   one-time summary, not a setup wizard.
+8. **Import is deliberate.** Calibre or other exported annotations are imported
+   only when the user chooses an import action. Never scan the filesystem or show
+   an unsolicited import prompt.
 9. **Interruptions are recoverable.** Undo is available for create, edit, and
    delete; failed persistence is explained with an export path.
 10. **Accessible by default.** The annotation panel is usable without a mouse
@@ -212,9 +213,14 @@ Rules:
 - Use `role="status"` for the live message and place the toast above the mobile
   safe area.
 
-### 3.6 Migration
+### 3.6 Importing annotations
 
-Calibre import should not look like migration:
+Import is deliberate, not automatic. Nothing is discovered during a build, page
+load, or first visit.
+
+The entry point is **Import** in the annotation panel footer, which opens a file
+picker. A desktop app may also offer an explicit **Import from calibre…** action.
+Only after the user starts an import:
 
 ```text
 ┌────────────────────────────────────────────────────┐
@@ -223,9 +229,11 @@ Calibre import should not look like migration:
 └────────────────────────────────────────────────────┘
 ```
 
-- Show once, as a non-blocking banner or toast. Never a setup wizard.
+- Show the summary after the import, as an inline panel message or a toast. Never
+  a setup wizard or an automatic banner.
 - “View” opens the annotation panel; “Undo” removes the imported batch.
-- If nothing is found, show nothing.
+- If nothing is found, say “No annotations found in that file.” Do not show an
+  import prompt when no import was requested.
 - If the match is ambiguous, show a small review sheet; do not block the book.
 - Unresolved items go to the panel’s “Needs review” section.
 
@@ -327,15 +335,32 @@ control if users ask.
   - date in muted UI text;
   - overflow button with a text label for screen readers.
 - Row activation: jump and flash.
-- Footer: Export and Import, separated from the list.
+- Footer: a short privacy note, **Keep on this device**, Export, and Import.
 
 ### 6.3 Empty and error states
 
 - Empty: short explanation plus a “Select text to highlight” hint. No tour.
 - Needs review: “3 annotations need review” with a short reason on each item.
 - Storage failure: an inline banner with “Export annotations” and a retry.
-- No annotations but import available: do not show an import prompt until the
-  user opens the panel.
+- Import is always available in the panel footer. Never show an unsolicited
+  import prompt or banner.
+
+### 6.4 Storage permission
+
+- Never request persistent browser storage on first load, first annotation, or
+  in the background. The browser prompt must never appear unexpectedly.
+- The panel footer explains: “Highlights and notes stay in this browser and are
+  never uploaded.” Next to it is **Keep on this device**.
+- Choosing that action opens a dialog before the browser prompt:
+  - highlights and notes are local and never enter the published site;
+  - browsers can remove site data when storage is low;
+  - the browser may ask for permission;
+  - epub2web does not receive the book text or notes;
+  - Export is the portable backup.
+- Only after **Ask browser to keep data** is pressed does the page call
+  `navigator.storage.persist()`.
+- Report the result inline: already kept, granted, denied, or unsupported. A
+  denial points to Export rather than retrying silently.
 
 ## 7. Keyboard and screen reader behavior
 
@@ -506,6 +531,10 @@ than reusing the light values.
 | Panel title | **Highlights & notes** |
 | Empty state | **No highlights or notes yet. Select text while reading to add one.** |
 | Import summary | **42 highlights and 7 notes imported from calibre.** View · Undo |
+| Import empty | **No annotations found in that file.** |
+| Storage note | **Highlights and notes stay in this browser and are never uploaded.** Keep on this device |
+| Storage dialog | **Keep highlights on this device** — explains local storage, eviction, and the possible browser prompt. |
+| Storage denied | **The browser did not grant persistent storage. Export a backup to keep a copy.** |
 | Needs review | **3 annotations need review** |
 | Storage error | **Highlights can’t be saved in this browser. Export them to keep them.** |
 
@@ -533,8 +562,10 @@ A first implementation is successful when:
   or the native selection handles.
 - The annotation panel clearly distinguishes notes from plain highlights without
   relying on color alone.
-- Calibre annotations appear automatically with a one-time summary and Undo; no
-  migration wizard is required.
+- Calibre or native annotations can be imported only when the user starts an
+  import; there is no automatic discovery or import banner.
+- The reader never triggers a browser storage permission prompt without an
+  explicit **Keep on this device** action and an explanation beforehand.
 - Highlights and notes survive reload, rebuild, and the documented origin/path
   changes described in the storage design.
 
@@ -550,6 +581,10 @@ A first implementation is successful when:
 - Do not show a confirmation dialog for deleting a single highlight; use Undo.
 - Do not add tags, sharing, rich text, or export formats to the first version.
 - Do not let a failed save silently discard the user’s text.
+- Do not scan for calibre data during a build, page load, or first visit.
+- Do not show an import banner unless the user has started an import.
+- Do not request persistent browser storage automatically or before explaining
+  why the browser may prompt.
 
 ## 13. Implementation notes
 
@@ -650,7 +685,7 @@ in-progress selection unless the user chooses an action.
 
 ### This repository
 
-- `docs/highlights-and-notes.md` — storage, anchoring, migration, and adapters.
+- `docs/highlights-and-notes.md` — storage, anchoring, optional imports, and adapters.
 - `epub2web/theme/assets/styles.css` — existing reader, sheet, and responsive
   design tokens.
 - `epub2web/theme/assets/app.js` — existing keyboard, dialog, selection, and
