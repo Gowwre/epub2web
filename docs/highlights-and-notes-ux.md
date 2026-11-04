@@ -237,6 +237,27 @@ Only after the user starts an import:
 - If the match is ambiguous, show a small review sheet; do not block the book.
 - Unresolved items go to the panel’s “Needs review” section.
 
+### 3.7 Copy and export
+
+The panel footer keeps the actions compact:
+
+```text
+[Copy all]  [Export ▾]  [Import]
+             ├ Markdown (.md)
+             └ JSON backup (.json)
+```
+
+- **Copy all** puts a Markdown document on the clipboard and reports the count
+  in the panel status line.
+- **Markdown (.md)** downloads the same document. It is grouped by chapter and
+  includes the book title, author, each quote, its note, and the date.
+- **JSON backup (.json)** downloads the complete native document, including
+  tombstones, for re-import and backup.
+- Both formats are generated locally. Nothing is uploaded.
+- If there are no active annotations, report “No annotations to copy/export”
+  instead of downloading an empty file.
+- Closing the export menu, pressing `Esc`, or clicking outside dismisses it.
+
 ## 4. Selection toolbar specification
 
 ### 4.1 When it appears
@@ -335,7 +356,8 @@ control if users ask.
   - date in muted UI text;
   - overflow button with a text label for screen readers.
 - Row activation: jump and flash.
-- Footer: a short privacy note, **Keep on this device**, Export, and Import.
+- Footer: a short privacy note, **Keep on this device**, **Copy all**, an
+  **Export** menu (Markdown or JSON backup), and **Import**.
 
 ### 6.3 Empty and error states
 
@@ -532,6 +554,9 @@ than reusing the light values.
 | Empty state | **No highlights or notes yet. Select text while reading to add one.** |
 | Import summary | **42 highlights and 7 notes imported from calibre.** View · Undo |
 | Import empty | **No annotations found in that file.** |
+| Copy all | **Copy all** → **Copied 12 annotations to the clipboard.** |
+| Export menu | **Export** → **Markdown (.md)** / **JSON backup (.json)** |
+| Export empty | **No annotations to export.** |
 | Storage note | **Highlights and notes stay in this browser and are never uploaded.** Keep on this device |
 | Storage dialog | **Keep highlights on this device** — explains local storage, eviction, and the possible browser prompt. |
 | Storage denied | **The browser did not grant persistent storage. Export a backup to keep a copy.** |
@@ -566,6 +591,9 @@ A first implementation is successful when:
   import; there is no automatic discovery or import banner.
 - The reader never triggers a browser storage permission prompt without an
   explicit **Keep on this device** action and an explanation beforehand.
+- Users can copy all active annotations as Markdown or download them as a
+  chapter-grouped Markdown file.
+- JSON remains available as a complete, re-importable backup.
 - Highlights and notes survive reload, rebuild, and the documented origin/path
   changes described in the storage design.
 
@@ -579,7 +607,8 @@ A first implementation is successful when:
 - Do not use color as the only indication that a note exists.
 - Do not auto-scroll or jump after saving a highlight.
 - Do not show a confirmation dialog for deleting a single highlight; use Undo.
-- Do not add tags, sharing, rich text, or export formats to the first version.
+- Do not add tags, sharing, rich text, or cloud export to the first version.
+- Do not make raw JSON the only usable export for readers.
 - Do not let a failed save silently discard the user’s text.
 - Do not scan for calibre data during a build, page load, or first visit.
 - Do not show an import banner unless the user has started an import.

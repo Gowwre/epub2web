@@ -209,6 +209,34 @@ def test_reader_explains_annotation_storage_before_requesting_persistence(
     assert script.count("navigator.storage.persist()") == 1
 
 
+def test_reader_offers_markdown_export_and_copy_all(tiny_epub, tmp_path: Path):
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    site = tmp_path / "site"
+
+    GenericExtractor(tiny_epub, content, images).run()
+    render_site(content, site, site_url="http://localhost:8000")
+    page = BeautifulSoup((site / "read" / "1" / "index.html").read_text(encoding="utf-8"), "lxml")
+    panel = page.find(id="epub2web-annotations-dialog")
+
+    copy_all = panel.find(attrs={"data-annotations-copy": True})
+    assert copy_all is not None
+    assert copy_all.get_text(strip=True) == "Copy all"
+    export = panel.find("details", class_="annotations-export")
+    assert export is not None
+    assert export.find("summary").get_text(strip=True) == "Export"
+    markdown = export.find(attrs={"data-annotations-export-markdown": True})
+    assert markdown is not None
+    assert markdown.get_text(strip=True) == "Markdown (.md)"
+    backup = export.find(attrs={"data-annotations-export": True})
+    assert backup is not None
+    assert backup.get_text(strip=True) == "JSON backup (.json)"
+
+    script = (site / "assets" / "annotations.js").read_text(encoding="utf-8")
+    assert "function markdownForAnnotations" in script
+    assert "text/markdown;charset=utf-8" in script
+
+
 def test_rendered_pages_expose_reading_progress(tiny_epub, tmp_path: Path):
     content = tmp_path / "content"
     images = tmp_path / "images"

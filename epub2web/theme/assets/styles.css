@@ -2373,8 +2373,14 @@ mark.annotation-mark {
 }
 .annotations-storage:hover { color: var(--accent-2); }
 .annotations-storage:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.annotations-actions { display: flex; gap: 0.35rem; }
-.annotations-actions button {
+.annotations-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+.annotations-actions button,
+.annotations-export > summary {
   padding: 0.4rem 0.65rem;
   border: 1px solid var(--rule-strong);
   border-radius: 3px;
@@ -2385,8 +2391,50 @@ mark.annotation-mark {
   font-weight: 600;
   cursor: pointer;
 }
-.annotations-actions button:hover { border-color: var(--accent); color: var(--accent); }
-.annotations-actions button:focus-visible { outline: 2px solid var(--accent); }
+.annotations-actions button:hover,
+.annotations-export > summary:hover { border-color: var(--accent); color: var(--accent); }
+.annotations-actions button:focus-visible,
+.annotations-export > summary:focus-visible { outline: 2px solid var(--accent); }
+.annotations-export { position: relative; }
+.annotations-export > summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  list-style: none;
+}
+.annotations-export > summary::after {
+  content: "▾";
+  font-size: 0.6rem;
+  opacity: 0.7;
+}
+.annotations-export > summary::-webkit-details-marker { display: none; }
+.annotations-export[open] > summary { border-color: var(--accent); color: var(--accent); }
+.annotations-export-menu {
+  position: absolute;
+  inset-inline-end: 0;
+  bottom: calc(100% + 0.35rem);
+  z-index: 4;
+  min-width: 11rem;
+  display: flex;
+  flex-direction: column;
+  padding: 0.3rem;
+  border: 1px solid var(--rule-strong);
+  border-radius: 5px;
+  background: var(--paper-2);
+  box-shadow: var(--shadow-soft);
+}
+.annotations-export-menu button {
+  width: 100%;
+  padding: 0.45rem 0.55rem;
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-2);
+  text-align: start;
+  white-space: nowrap;
+}
+.annotations-export-menu button:hover { background: var(--accent-soft); color: var(--accent); }
+.annotations-export-menu button:focus-visible { outline: 2px solid var(--accent); }
 
 .annotation-toast {
   position: fixed;

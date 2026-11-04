@@ -10,6 +10,7 @@ All notable, user-facing changes are documented here. The format follows
 
 - Highlight passages and add optional notes while reading. Select text to highlight it in one action, click a highlight to edit its note or color, and open **Highlights & notes** in the header to review annotations by chapter, jump back to a passage, or remove one with Undo.
 - Export and import annotations as JSON from the **Highlights & notes** panel. Highlights and notes stay in your browser and are never written into the generated site.
+- Export highlights and notes as readable Markdown, or copy them all in one action for a notes app or document. JSON remains available as the backup format.
 - Make keyboard shortcuts discoverable: a **Keyboard shortcuts** button and `?` open a reference dialog, the search button shows `/`, the selection toolbar shows `H` and `N`, and the note composer shows its save shortcut. The menu and footer also link to the reference.
 
 ### Changed

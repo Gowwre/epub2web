@@ -221,8 +221,15 @@
         <button class="annotations-storage" type="button" data-storage-open>Keep on this device</button>
       </div>
       <div class="annotations-actions">
+        <button type="button" data-annotations-copy>Copy all</button>
+        <details class="annotations-export">
+          <summary>Export</summary>
+          <div class="annotations-export-menu">
+            <button type="button" data-annotations-export-markdown>Markdown (.md)</button>
+            <button type="button" data-annotations-export>JSON backup (.json)</button>
+          </div>
+        </details>
         <button type="button" data-annotations-import>Import</button>
-        <button type="button" data-annotations-export>Export</button>
         <input type="file" accept=".json,application/json" data-annotations-file hidden>
       </div>
     </div>

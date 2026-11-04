@@ -1577,21 +1577,21 @@
     }
   }
 
-  function copyText(text, label) {
-    if (!text) return;
+  function copyText(text, label, quiet) {
+    if (!text) return Promise.resolve(false);
     const done = function () {
-      showToast(label || "Copied", null);
+      if (!quiet) showToast(label || "Copied", null);
+      return true;
     };
     if (navigator.clipboard && typeof navigator.clipboard.writeText === "function") {
-      navigator.clipboard.writeText(text).then(done).catch(function () {
-        fallbackCopy(text, done);
+      return navigator.clipboard.writeText(text).then(done).catch(function () {
+        return fallbackCopy(text) ? done() : false;
       });
-    } else {
-      fallbackCopy(text, done);
     }
+    return Promise.resolve(fallbackCopy(text) ? done() : false);
   }
 
-  function fallbackCopy(text, done) {
+  function fallbackCopy(text) {
     const area = document.createElement("textarea");
     area.value = text;
     area.setAttribute("readonly", "");
@@ -1599,11 +1599,14 @@
     area.style.opacity = "0";
     document.body.appendChild(area);
     area.select();
+    let copied = false;
     try {
-      document.execCommand("copy");
-      done();
-    } catch (error) {}
+      copied = document.execCommand("copy");
+    } catch (error) {
+      copied = false;
+    }
     area.remove();
+    return copied;
   }
 
   function chapterLabel(annotation) {
@@ -1896,6 +1899,101 @@
     changed.forEach(broadcast);
   }
 
+  function bookSlug() {
+    const title = (bookMeta.title || "book").toString();
+    return (
+      title
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-+|-+$/g, "")
+        .slice(0, 60) || "book"
+    );
+  }
+
+  function downloadText(filename, text, mime) {
+    const blob = new Blob([text], { type: mime });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.setTimeout(function () {
+      URL.revokeObjectURL(url);
+    }, 1000);
+  }
+
+  function annotationCount(count) {
+    return count + (count === 1 ? " annotation" : " annotations");
+  }
+
+  function markdownForAnnotations(annotations) {
+    if (!annotations.length) return "";
+    const lines = [];
+    const title = String(bookMeta.title || "Highlights and notes")
+      .replace(/\s+/g, " ")
+      .trim();
+    lines.push("# " + title, "");
+    const author = String(bookMeta.author || "")
+      .replace(/\s+/g, " ")
+      .trim();
+    if (author) lines.push(author, "");
+    let currentChapter = null;
+    annotations.forEach(function (annotation) {
+      const chapter = (chapterLabel(annotation) || "Book").replace(/\s+/g, " ").trim();
+      if (chapter !== currentChapter) {
+        currentChapter = chapter;
+        lines.push("## " + chapter, "");
+      }
+      if (annotation.quote) {
+        annotation.quote.split(/\r?\n/).forEach(function (line) {
+          lines.push("> " + line);
+        });
+        lines.push("");
+      }
+      if (annotation.note) {
+        lines.push(annotation.note, "");
+      }
+      const date = formatDate(annotation.created || annotation.updated);
+      if (date) lines.push("*" + date + "*", "");
+    });
+    return lines.join("\n").replace(/\n{3,}/g, "\n\n").trim() + "\n";
+  }
+
+  function annotationsForExport() {
+    return sortAnnotations(activeAnnotations());
+  }
+
+  function copyAllAnnotations() {
+    const annotations = annotationsForExport();
+    if (!annotations.length) {
+      setStatus("No annotations to copy.");
+      return;
+    }
+    copyText(markdownForAnnotations(annotations), "", true).then(function (copied) {
+      setStatus(
+        copied
+          ? "Copied " + annotationCount(annotations.length) + " to the clipboard."
+          : "Could not copy. Use Export instead."
+      );
+    });
+  }
+
+  function exportMarkdown() {
+    const annotations = annotationsForExport();
+    if (!annotations.length) {
+      setStatus("No annotations to export.");
+      return;
+    }
+    downloadText(
+      bookSlug() + "-highlights.md",
+      markdownForAnnotations(annotations),
+      "text/markdown;charset=utf-8"
+    );
+    setStatus("Exported " + annotationCount(annotations.length) + " as Markdown.");
+  }
+
   function exportAnnotations() {
     const payload = {
       schema: SCHEMA,
@@ -1904,25 +2002,13 @@
       annotations: sortAnnotations(Array.from(state.annotations.values())),
     };
     const text = JSON.stringify(payload, null, 2) + "\n";
-    const blob = new Blob([text], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    const title = (bookMeta.title || "book").toString();
-    const slug =
-      title
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")
-        .slice(0, 60) || "book";
-    link.href = url;
-    link.download = slug + ".annotations.json";
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.setTimeout(function () {
-      URL.revokeObjectURL(url);
-    }, 1000);
-    setStatus("Exported " + activeAnnotations().length + " annotations.");
+    downloadText(bookSlug() + ".annotations.json", text, "application/json");
+    setStatus("Exported " + annotationCount(activeAnnotations().length) + " as JSON.");
+  }
+
+  function closeExportMenu() {
+    const menu = panel && panel.querySelector(".annotations-export");
+    if (menu) menu.open = false;
   }
 
   function firstTextNode(container) {
@@ -2095,9 +2181,30 @@
     });
     panel.querySelector("[data-annotations-export]").addEventListener("click", function () {
       exportAnnotations();
+      closeExportMenu();
+    });
+    panel.querySelector("[data-annotations-export-markdown]").addEventListener("click", function () {
+      exportMarkdown();
+      closeExportMenu();
+    });
+    panel.querySelector("[data-annotations-copy]").addEventListener("click", function () {
+      copyAllAnnotations();
     });
     panel.querySelector("[data-annotations-import]").addEventListener("click", function () {
       fileInput.click();
+    });
+    document.addEventListener("pointerdown", function (event) {
+      const menu = panel.querySelector(".annotations-export");
+      if (!menu || !menu.open) return;
+      if (menu.contains(event.target)) return;
+      menu.open = false;
+    });
+    panel.addEventListener("cancel", function (event) {
+      const menu = panel.querySelector(".annotations-export");
+      if (menu && menu.open) {
+        event.preventDefault();
+        menu.open = false;
+      }
     });
     fileInput.addEventListener("change", function () {
       const file = fileInput.files && fileInput.files[0];
@@ -2133,6 +2240,7 @@
       }
     });
     panel.addEventListener("close", function () {
+      closeExportMenu();
       if (state.panelReturnFocus) {
         const target = state.panelReturnFocus;
         state.panelReturnFocus = null;

@@ -2,9 +2,10 @@
 
 This document describes the storage, anchoring, persistence, and optional
 import design for highlights and notes. The first version is implemented:
-reading pages support local highlights, optional notes, review, and JSON
-export/import. Calibre import and the remaining reader adapters are planned as
-explicit, user-initiated features. It answers three questions:
+reading pages support local highlights, optional notes, review, Markdown
+copy/export, JSON backup and import. Calibre import and the remaining reader
+adapters are planned as explicit, user-initiated features. It answers three
+questions:
 
 1. How should highlights and notes be stored?
 2. How can they survive regenerating the site?
@@ -18,6 +19,9 @@ The short version:
 - Store annotations **outside the generated site**, in the browser (and
   optionally in the desktop app's data directory). Never put private notes into
   a site that may be published.
+- Offer **Markdown for people and JSON for backup**: Markdown is grouped by
+  chapter for notes apps and documents; JSON is the complete, re-importable
+  document.
 - Key the store by a **book content identity**, not by the output path, page
   route, or EPUB file hash alone. Keep the existing file hash as an alias.
 - Anchor a highlight with **several selectors**, not one: a DOM range, an EPUB
@@ -603,11 +607,18 @@ as a missing record.
 
 ### 6.3 Export
 
-Native export should be the complete document, including tombstones and
-`origin.raw`. It is the backup and interchange format. The file contains private
-quotes and notes, so it must be treated like the book itself and never written
-into a published site. Add a human-readable Markdown/plain-text export
-separately; do not use it for re-import.
+The reader offers three user-facing actions:
+
+- **Copy all** copies a Markdown document containing every active annotation.
+- **Export → Markdown (.md)** downloads the same document.
+- **Export → JSON backup (.json)** downloads the complete native document,
+  including tombstones and `origin.raw`.
+
+Markdown is grouped by chapter and includes the book title, author, quote, note,
+and annotation date. It is for notes apps, documents, and personal archives; it
+is not re-importable. JSON is the backup and interchange format. Both contain
+private quotes and notes, so treat them like the book itself and never write
+them into a published site.
 
 Optional calibre-compatible export:
 
