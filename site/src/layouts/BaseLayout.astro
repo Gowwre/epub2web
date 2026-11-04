@@ -2,30 +2,54 @@
 import SiteHeader from "../components/SiteHeader.astro";
 import SiteFooter from "../components/SiteFooter.astro";
 import frauncesLatin from "../assets/fonts/fraunces-latin.woff2?url";
+import frauncesVietnamese from "../assets/fonts/fraunces-vietnamese.woff2?url";
 import interLatin from "../assets/fonts/inter-latin.woff2?url";
-import { SITE_DESCRIPTION, withBase } from "../consts";
+import interVietnamese from "../assets/fonts/inter-vietnamese.woff2?url";
+import literataVietnamese from "../assets/fonts/literata-vietnamese.woff2?url";
+import { alternateLocalePath, getCopy, localePath, type Locale } from "../i18n";
+import { withBase } from "../consts";
 import "../styles/global.css";
 
 interface Props {
+  locale: Locale;
+  /** Canonical route without the locale prefix, e.g. "/" or "/download/". */
+  path: string;
   title?: string;
   description?: string;
   bodyClass?: string;
 }
 
 const {
-  title = "epub2web — Turn an EPUB into a reading website with highlights and notes",
-  description = SITE_DESCRIPTION,
+  locale,
+  path,
+  title = getCopy(locale).home.metaTitle,
+  description = getCopy(locale).home.metaDescription,
   bodyClass = "",
 } = Astro.props;
 
+const copy = getCopy(locale);
 const canonical = Astro.site ? new URL(Astro.url.pathname, Astro.site) : undefined;
 const socialImage = Astro.site
   ? new URL(withBase("/og.png"), Astro.site).toString()
   : undefined;
+
+const englishPath = localePath("en", path);
+const vietnamesePath = localePath("vi", path);
+const alternatePath = alternateLocalePath(locale, path);
+const ogLocale = locale === "vi" ? "vi_VN" : "en_US";
+const ogLocaleAlternate = locale === "vi" ? "en_US" : "vi_VN";
+
+const absolute = (value: string) =>
+  Astro.site ? new URL(value, Astro.site).toString() : value;
+
+const socialImageAlt =
+  locale === "vi"
+    ? "epub2web: Biến EPUB thành trang web đọc sách. Ảnh chụp trình đọc bên cạnh tiêu đề."
+    : "epub2web: Turn an EPUB into a reading website. A screenshot of the reader beside the headline.";
 ---
 
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang={locale} data-locale={locale} data-theme="light">
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -35,22 +59,22 @@ const socialImage = Astro.site
     <meta name="theme-color" content="#f7f3ea" media="(prefers-color-scheme: light)" />
     <meta name="theme-color" content="#151310" media="(prefers-color-scheme: dark)" />
     {canonical && <link rel="canonical" href={canonical} />}
+    <link rel="alternate" hreflang="en" href={absolute(englishPath)} />
+    <link rel="alternate" hreflang="vi" href={absolute(vietnamesePath)} />
+    <link rel="alternate" hreflang="x-default" href={absolute(englishPath)} />
     <link rel="icon" href={withBase("/favicon.svg")} type="image/svg+xml" />
 
     <meta property="og:type" content="website" />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:site_name" content="epub2web" />
+    <meta property="og:locale" content={ogLocale} />
+    <meta property="og:locale:alternate" content={ogLocaleAlternate} />
     {canonical && <meta property="og:url" content={canonical} />}
     {socialImage && <meta property="og:image" content={socialImage} />}
     {socialImage && <meta property="og:image:width" content="1200" />}
     {socialImage && <meta property="og:image:height" content="630" />}
-    {socialImage && (
-      <meta
-        property="og:image:alt"
-        content="epub2web: Turn an EPUB into a reading website. A screenshot of the reader beside the headline."
-      />
-    )}
+    {socialImage && <meta property="og:image:alt" content={socialImageAlt} />}
     <meta name="twitter:card" content="summary_large_image" />
     {socialImage && <meta name="twitter:image" content={socialImage} />}
 
@@ -68,6 +92,31 @@ const socialImage = Astro.site
       type="font/woff2"
       crossorigin
     />
+    {locale === "vi" && (
+      <>
+        <link
+          rel="preload"
+          href={frauncesVietnamese}
+          as="font"
+          type="font/woff2"
+          crossorigin
+        />
+        <link
+          rel="preload"
+          href={interVietnamese}
+          as="font"
+          type="font/woff2"
+          crossorigin
+        />
+        <link
+          rel="preload"
+          href={literataVietnamese}
+          as="font"
+          type="font/woff2"
+          crossorigin
+        />
+      </>
+    )}
 
     <script is:inline>
       (function () {
@@ -85,11 +134,11 @@ const socialImage = Astro.site
     </script>
   </head>
   <body class={bodyClass}>
-    <a class="skip-link" href="#main">Skip to content</a>
-    <SiteHeader />
+    <a class="skip-link" href="#main">{copy.common.skipToContent}</a>
+    <SiteHeader locale={locale} path={path} />
     <main id="main">
       <slot />
     </main>
-    <SiteFooter />
+    <SiteFooter locale={locale} />
   </body>
 </html>

@@ -30,15 +30,18 @@ commit checks, pushes, and tag creation:
 ```bash
 python scripts/release.py prepare 0.4.0
 # review the diff, run make test, then commit the release prep
-git add epub2web/__init__.py CHANGELOG.md
+git add epub2web/__init__.py CHANGELOG.md CHANGELOG.vi.md
 git commit -m "Release 0.4.0"
 python scripts/release.py ship 0.4.0 --execute
 ```
 
-`prepare` keeps a fresh empty `## Unreleased` section for the next release.
-`ship` is a dry run unless `--execute` is passed. It requires a clean `main`
-branch, verifies that the version and changelog match, runs the test suite,
-then pushes `main` and `vX.Y.Z`. Add `--watch` to follow the release workflow.
+`prepare` keeps a fresh empty `## Unreleased` section for the next release. It
+also rotates a non-empty `## Chưa phát hành` section in `CHANGELOG.vi.md` into
+the same dated heading; an empty Vietnamese section is left alone so the site
+falls back to English for that release. `ship` is a dry run unless `--execute`
+is passed. It requires a clean `main` branch, verifies that the version and
+changelog match, runs the test suite, then pushes `main` and `vX.Y.Z`. Add
+`--watch` to follow the release workflow.
 
 The equivalent Make targets are:
 
@@ -52,8 +55,10 @@ The manual process remains:
 1. Update `__version__` in `epub2web/__init__.py`. Move the entries under
    `## Unreleased` in `CHANGELOG.md` into a dated section such as
    `## 0.2.0 - 2026-11-04`, keeping the `Added`/`Changed`/`Fixed`/`Security`
-   groups. The release workflow extracts that exact section; a missing or empty
-   section fails before any artifacts are built.
+   groups. Do the same for `## Chưa phát hành` in `CHANGELOG.vi.md` when that
+   translation exists; leave it empty to use the English fallback. The release
+   workflow extracts the exact English section; a missing or empty section fails
+   before any artifacts are built.
 
    Preview the release body with:
 

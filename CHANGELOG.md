@@ -10,6 +10,8 @@ All notable, user-facing changes are documented here. The format follows
 
 - Add an English/Vietnamese interface language switch to the header and **Reading settings**. Navigation, search, reading controls, highlights and notes, dialogs, accessibility labels, read-time text, and browser tab titles can now be shown in Vietnamese. The book’s own text and metadata stay in their original language.
 - Bundle Vietnamese font subsets for Fraunces, Inter, and Literata so Vietnamese interface labels and Vietnamese books render with the same self-hosted typography as other languages.
+- Add a Vietnamese edition of the landing site, download page, and changelog at `/vi/`, with a header language switch, localized metadata, and Vietnamese font subsets.
+- Translate published release notes into Vietnamese in `CHANGELOG.vi.md`. The changelog page uses a translation only when its version and date match the canonical English release, and falls back to English per release while translations catch up.
 
 ## 0.12.0 - 2026-11-04
 

@@ -24,7 +24,12 @@ def release_script():
     return _load_release_module()
 
 
-def _write_repo(root: Path, *, unreleased: str | None = "- New thing.\n") -> None:
+def _write_repo(
+    root: Path,
+    *,
+    unreleased: str | None = "- New thing.\n",
+    vietnamese: str | None = None,
+) -> None:
     package = root / "epub2web"
     package.mkdir()
     (package / "__init__.py").write_text('__version__ = "0.3.0"\n', encoding="utf-8")
@@ -33,6 +38,13 @@ def _write_repo(root: Path, *, unreleased: str | None = "- New thing.\n") -> Non
         f"# Changelog\n\n## Unreleased\n\n{entries}## 0.3.0 - 2026-10-28\n\n- Old release.\n",
         encoding="utf-8",
     )
+    if vietnamese is not None:
+        (root / "CHANGELOG.vi.md").write_text(
+            "# Nhật ký thay đổi\n\n"
+            f"## Chưa phát hành\n\n{vietnamese}\n"
+            "## 0.3.0 - 2026-10-28\n\n- Bản cũ.\n",
+            encoding="utf-8",
+        )
 
 
 def test_prepare_release_updates_version_and_changelog(release_script, tmp_path: Path):
@@ -48,6 +60,36 @@ def test_prepare_release_updates_version_and_changelog(release_script, tmp_path:
     assert "## Unreleased\n\n## 0.4.0 - 2026-11-01" in changelog
     assert "- New thing." in changelog
     assert "## 0.3.0 - 2026-10-28" in changelog
+
+
+def test_prepare_release_rotates_translated_unreleased_section(release_script, tmp_path: Path):
+    _write_repo(tmp_path, vietnamese="### Thêm mới\n\n- Điều mới.\n")
+
+    release_script.prepare_release(tmp_path, "0.4.0", "2026-11-01")
+
+    translated = (tmp_path / "CHANGELOG.vi.md").read_text(encoding="utf-8")
+    assert "## Chưa phát hành\n\n## 0.4.0 - 2026-11-01" in translated
+    assert "- Điều mới." in translated
+    assert "## 0.3.0 - 2026-10-28" in translated
+
+
+def test_prepare_release_leaves_empty_translation_for_fallback(release_script, tmp_path: Path):
+    _write_repo(tmp_path, vietnamese="")
+
+    release_script.prepare_release(tmp_path, "0.4.0", "2026-11-01")
+
+    translated = (tmp_path / "CHANGELOG.vi.md").read_text(encoding="utf-8")
+    assert "## 0.4.0 - 2026-11-01" not in translated
+    assert "## Chưa phát hành" in translated
+
+
+def test_prepare_release_dry_run_leaves_translation_untouched(release_script, tmp_path: Path):
+    _write_repo(tmp_path, vietnamese="### Thêm mới\n\n- Điều mới.\n")
+    before = (tmp_path / "CHANGELOG.vi.md").read_text(encoding="utf-8")
+
+    release_script.prepare_release(tmp_path, "0.4.0", "2026-11-01", dry_run=True)
+
+    assert (tmp_path / "CHANGELOG.vi.md").read_text(encoding="utf-8") == before
 
 
 def test_prepare_release_dry_run_leaves_files_untouched(release_script, tmp_path: Path):

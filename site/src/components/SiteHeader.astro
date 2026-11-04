@@ -1,34 +1,72 @@
 ---
 import Icon from "./Icon.astro";
-import { GITHUB_URL, NAV_LINKS, withBase } from "../consts";
+import { GITHUB_URL, withBase } from "../consts";
+import {
+  alternateLocale,
+  getCopy,
+  localeHref,
+  localePath,
+  type Locale,
+} from "../i18n";
+
+interface Props {
+  locale: Locale;
+  path: string;
+}
+
+const { locale, path } = Astro.props;
+const copy = getCopy(locale);
+const otherLocale = alternateLocale(locale);
+const otherPath = localePath(otherLocale, path);
+const otherCode = otherLocale === "vi" ? "VI" : "EN";
+
+const navLinks = [
+  { label: copy.common.nav.features, href: localeHref(locale, "/#features") },
+  { label: copy.common.nav.fidelity, href: localeHref(locale, "/#fidelity") },
+  { label: copy.common.nav.howItWorks, href: localeHref(locale, "/#how-it-works") },
+  { label: copy.common.nav.changelog, href: localePath(locale, "/changelog/") },
+  { label: copy.common.nav.faq, href: localeHref(locale, "/#faq") },
+];
 ---
 
 <header class="site-header" data-site-header>
   <div class="header-inner">
-    <a class="brand" href={withBase("/")}>
+    <a class="brand" href={localePath(locale, "/")}>
       <img class="brand-mark" src={withBase("/favicon.svg")} alt="" width="32" height="32" />
       <span class="brand-text">
         <span class="brand-name">epub2web</span>
       </span>
-      <span class="sr-only">— home</span>
+      <span class="sr-only">{copy.common.header.homeSuffix}</span>
     </a>
 
-    <nav class="primary-nav" aria-label="Primary">
+    <nav class="primary-nav" aria-label={copy.common.nav.primary}>
       {
-        NAV_LINKS.map((link) => (
-          <a href={withBase(link.href)}>{link.label}</a>
+        navLinks.map((link) => (
+          <a href={link.href}>{link.label}</a>
         ))
       }
     </nav>
 
     <div class="header-actions">
       <a
+        class="icon-btn language-btn"
+        href={otherPath}
+        hreflang={otherLocale}
+        lang={otherLocale}
+        aria-label={copy.common.switchLanguage}
+        title={copy.common.switchLanguage}
+      >
+        <Icon name="globe" size={18} />
+        <span class="language-code" aria-hidden="true">{otherCode}</span>
+      </a>
+
+      <a
         class="icon-btn github-btn"
         href={GITHUB_URL}
         target="_blank"
         rel="noopener noreferrer"
-        aria-label="epub2web on GitHub (opens in a new tab)"
-        title="View epub2web on GitHub"
+        aria-label={copy.common.header.githubLabel}
+        title={copy.common.header.githubTitle}
       >
         <Icon name="github" size={19} />
       </a>
@@ -37,15 +75,15 @@ import { GITHUB_URL, NAV_LINKS, withBase } from "../consts";
         class="icon-btn theme-btn"
         type="button"
         data-theme-toggle
-        aria-label="Switch between light and dark themes"
-        title="Switch color theme"
+        aria-label={copy.common.header.themeLabel}
+        title={copy.common.header.themeTitle}
       >
         <span class="theme-icon sun-icon"><Icon name="sun" size={18} /></span>
         <span class="theme-icon moon-icon"><Icon name="moon" size={18} /></span>
       </button>
 
-      <a class="btn btn--primary btn--header" href={withBase("/download/")}>
-        Download
+      <a class="btn btn--primary btn--header" href={localePath(locale, "/download/")}>
+        {copy.common.header.download}
         <Icon name="arrow-right" size={15} class="btn-arrow" />
       </a>
     </div>

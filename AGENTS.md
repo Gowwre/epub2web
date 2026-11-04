@@ -110,6 +110,10 @@ renderer change.
 - `site/` — Astro landing and download site. Self-contained; not part of the
   Python package. Download CTAs point at the latest GitHub release. See
   `site/README.md`.
+- `site/src/i18n/` — English/Vietnamese landing copy, locale routes, and
+  locale-aware link helpers.
+- `CHANGELOG.vi.md` — Vietnamese release-note mirror used by the localized
+  changelog; the English `CHANGELOG.md` stays canonical for GitHub Releases.
 
 ## Testing rules
 
@@ -146,6 +150,10 @@ pip install -e ".[gui-build]"
   under `Added`, `Changed`, `Fixed`, `Security`, or `Upgrade notes`.
 - Write for users, not developers. Internal refactors and test-only changes do
   not need entries.
+- Mirror released notes in `CHANGELOG.vi.md` with the same version and date
+  headings. `release-prepare` rotates a non-empty `## Chưa phát hành` section;
+  an empty section is allowed because the landing site falls back to English for
+  that release.
 - Before a release, move `Unreleased` entries into a dated section such as
   `## 0.3.0 - 2026-10-28` and bump `epub2web.__version__`.
   `make release-prepare VERSION=X.Y.Z` does both and leaves a fresh empty

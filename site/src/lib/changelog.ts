@@ -1,4 +1,5 @@
 import { marked } from "marked";
+import type { Locale } from "../i18n/config";
 
 export interface ChangelogSection {
   title: string | null;
@@ -12,14 +13,21 @@ export interface ChangelogRelease {
   heading: string;
   githubAnchor: string;
   sections: ChangelogSection[];
+  translated: boolean;
 }
 
 const releaseHeading = /^(\d+\.\d+\.\d+)\s*[—–-]\s*(\d{4}-\d{2}-\d{2})\s*$/;
 
-const dateFormatter = new Intl.DateTimeFormat("en", {
-  dateStyle: "long",
-  timeZone: "UTC",
-});
+const dateFormatters: Record<Locale, Intl.DateTimeFormat> = {
+  en: new Intl.DateTimeFormat("en-US", {
+    dateStyle: "long",
+    timeZone: "UTC",
+  }),
+  vi: new Intl.DateTimeFormat("vi-VN", {
+    dateStyle: "long",
+    timeZone: "UTC",
+  }),
+};
 
 /**
  * GitHub's markdown heading anchors: strip punctuation, keep hyphens and
@@ -55,10 +63,14 @@ function splitSections(body: string): { title: string | null; markdown: string }
 }
 
 /**
- * Parse released sections from the repository changelog. The `Unreleased`
- * section is intentionally left to the repository copy.
+ * Parse released sections from a changelog file. The `Unreleased` section is
+ * intentionally left to the repository copy.
  */
-export async function parseChangelog(markdown: string): Promise<ChangelogRelease[]> {
+export async function parseChangelog(
+  markdown: string,
+  locale: Locale = "en",
+  translated = false,
+): Promise<ChangelogRelease[]> {
   const releases: ChangelogRelease[] = [];
   const chunks = markdown.split(/^##\s+/m).slice(1);
 
@@ -83,16 +95,37 @@ export async function parseChangelog(markdown: string): Promise<ChangelogRelease
     releases.push({
       version,
       date,
-      dateLabel: dateFormatter.format(new Date(`${date}T00:00:00Z`)),
+      dateLabel: dateFormatters[locale].format(new Date(`${date}T00:00:00Z`)),
       heading,
       githubAnchor: githubHeadingId(heading),
       sections,
+      translated,
     });
   }
 
   if (releases.length === 0) {
-    throw new Error("No released versions found in CHANGELOG.md");
+    throw new Error(`No released versions found in the ${locale} changelog`);
   }
 
   return releases;
+}
+
+/**
+ * Use a translated release when it matches the canonical version and date.
+ * Missing or stale translations fall back to the English release, one version
+ * at a time, so a new release never blocks the localized site.
+ */
+export function mergeChangelog(
+  english: ChangelogRelease[],
+  localized: ChangelogRelease[],
+): ChangelogRelease[] {
+  const byVersion = new Map(localized.map((release) => [release.version, release]));
+
+  return english.map((release) => {
+    const translation = byVersion.get(release.version);
+    if (translation && translation.date === release.date) {
+      return { ...translation, translated: true };
+    }
+    return { ...release, translated: false };
+  });
 }

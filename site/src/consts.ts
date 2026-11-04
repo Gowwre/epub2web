@@ -5,6 +5,7 @@ export const ISSUES_URL = `${GITHUB_URL}/issues/new`;
 export const LICENSE_URL = `${GITHUB_URL}/blob/main/LICENSE`;
 export const CONTRIBUTING_URL = `${GITHUB_URL}/blob/main/CONTRIBUTING.md`;
 export const CHANGELOG_URL = `${GITHUB_URL}/blob/main/CHANGELOG.md`;
+export const CHANGELOG_VI_URL = `${GITHUB_URL}/blob/main/CHANGELOG.vi.md`;
 export const README_URL = `${GITHUB_URL}/blob/main/README.md`;
 export const FIRST_LAUNCH_URL = `${README_URL}#first-launch-security-warnings-are-expected`;
 export const GUI_DOCS_URL = `${GITHUB_URL}/blob/main/docs/gui.md`;
@@ -20,14 +21,3 @@ export function withBase(path: string): string {
   if (!path.startsWith("/")) return path;
   return `${basePath}${path}`;
 }
-
-export const SITE_DESCRIPTION =
-  "Turn an EPUB you own into a reading website with private highlights and notes. Your files stay on your computer, and the folder is yours to keep or publish.";
-
-export const NAV_LINKS = [
-  { label: "Features", href: "/#features" },
-  { label: "Fidelity", href: "/#fidelity" },
-  { label: "How it works", href: "/#how-it-works" },
-  { label: "Changelog", href: "/changelog/" },
-  { label: "FAQ", href: "/#faq" },
-] as const;

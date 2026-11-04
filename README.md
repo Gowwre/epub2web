@@ -16,6 +16,9 @@ service.
 · [Download the desktop app](https://github.com/Gowwre/epub2web/releases/latest)
 · [Try the live demo](https://gowwre.github.io/epub2web/demo/)
 
+The website is available in English and
+[Vietnamese](https://gowwre.github.io/epub2web/vi/).
+
 [![Latest release](https://img.shields.io/github/v/release/Gowwre/epub2web)](https://github.com/Gowwre/epub2web/releases)
 
 ![epub2web home page](https://raw.githubusercontent.com/Gowwre/epub2web/main/docs/home.png)

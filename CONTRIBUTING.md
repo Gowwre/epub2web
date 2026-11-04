@@ -77,6 +77,13 @@ The changelog page is generated from the repository `CHANGELOG.md` and rebuilds
 when that file changes. Keep released sections in the format
 `## 0.2.0 - 2026-10-28`; the `Unreleased` section is intentionally not shown.
 
+The site is available in English (`/`) and Vietnamese (`/vi/`). Copy lives in
+`site/src/i18n/en.ts` and `site/src/i18n/vi.ts`; add new strings to both. Release
+notes for the Vietnamese changelog live in `CHANGELOG.vi.md` and must use the
+same version and date headings as `CHANGELOG.md`. A missing translation falls
+back to English for that release, so translations can land after a release.
+Keep version numbers, dates, commands, release tags, and issue IDs unchanged.
+
 ## Pull requests
 
 - Keep changes focused and explain the book structure they address.

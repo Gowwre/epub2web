@@ -7,6 +7,7 @@ on:
       - "site/**"
       - "epub2web/**"
       - "CHANGELOG.md"
+      - "CHANGELOG.vi.md"
       - "pyproject.toml"
       - ".github/workflows/pages.yml"
   workflow_dispatch:

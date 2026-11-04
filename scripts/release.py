@@ -26,9 +26,11 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 VERSION_FILE = ROOT / "epub2web" / "__init__.py"
 CHANGELOG = ROOT / "CHANGELOG.md"
+CHANGELOG_VI = ROOT / "CHANGELOG.vi.md"
 SEMVER_RE = re.compile(r"^(\d+)\.(\d+)\.(\d+)$")
 VERSION_RE = re.compile(r'^__version__ = "([^"]+)"$', re.MULTILINE)
 UNRELEASED_RE = re.compile(r"^## Unreleased[ \t]*$", re.MULTILINE)
+UNRELEASED_VI_RE = re.compile(r"^## Chưa phát hành[ \t]*$", re.MULTILINE)
 
 # `release.py` runs from scripts/, so its sibling module is importable.
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -62,6 +64,23 @@ def bump_version(text: str, version: str) -> str:
     return VERSION_RE.sub(f'__version__ = "{version}"', text, count=1)
 
 
+def _rotate_translated_unreleased(text: str, version: str, release_date: str) -> str | None:
+    """Rotate a non-empty Vietnamese Unreleased section, if the file has one."""
+    match = UNRELEASED_VI_RE.search(text)
+    if match is None:
+        return None
+    body_start = match.end()
+    next_heading = re.search(r"^## ", text[body_start:], re.MULTILINE)
+    body_end = body_start + next_heading.start() if next_heading else len(text)
+    if not text[body_start:body_end].strip():
+        return None
+    return (
+        text[: match.start()]
+        + f"## Chưa phát hành\n\n## {version} - {release_date}"
+        + text[match.end() :]
+    )
+
+
 def prepare_release(
     root: Path,
     version: str,
@@ -73,8 +92,12 @@ def prepare_release(
     new_version = parse_version(version)
     version_path = root / "epub2web" / "__init__.py"
     changelog_path = root / "CHANGELOG.md"
+    translated_path = root / "CHANGELOG.vi.md"
     version_text = version_path.read_text(encoding="utf-8")
     changelog_text = changelog_path.read_text(encoding="utf-8")
+    translated_text = (
+        translated_path.read_text(encoding="utf-8") if translated_path.is_file() else None
+    )
     old_version = current_version(version_text)
     if new_version <= parse_version(old_version):
         raise ReleaseError(f"new version {version} must be greater than {old_version}")
@@ -104,9 +127,17 @@ def prepare_release(
     except ReleaseNotesError as exc:
         raise ReleaseError(str(exc)) from exc
 
+    updated_translated = (
+        _rotate_translated_unreleased(translated_text, version, release_date)
+        if translated_text is not None
+        else None
+    )
+
     if not dry_run:
         version_path.write_text(bump_version(version_text, version), encoding="utf-8")
         changelog_path.write_text(updated_changelog, encoding="utf-8")
+        if updated_translated is not None:
+            translated_path.write_text(updated_translated, encoding="utf-8")
     return notes
 
 

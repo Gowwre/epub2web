@@ -12,68 +12,73 @@ import {
   README_URL,
   withBase,
 } from "../consts";
+import { getCopy, localeHref, localePath, type Locale } from "../i18n";
+
+interface Props {
+  locale: Locale;
+}
+
+const { locale } = Astro.props;
+const copy = getCopy(locale);
 ---
 
 <footer class="site-footer">
   <div class="container">
     <div class="footer-grid">
       <div class="footer-brand">
-        <a class="brand brand--footer" href={withBase("/")}>
+        <a class="brand brand--footer" href={localePath(locale, "/")}>
           <img class="brand-mark" src={withBase("/favicon.svg")} alt="" width="34" height="34" />
           <span class="brand-name">epub2web</span>
-          <span class="sr-only">— home</span>
+          <span class="sr-only">{copy.common.footer.homeSuffix}</span>
         </a>
-        <p class="footer-tagline">
-          A reading website made from the EPUB you own. Searchable, annotatable,
-          and yours to keep.
-        </p>
+        <p class="footer-tagline">{copy.common.footer.tagline}</p>
         <a class="footer-github" href={GITHUB_URL} target="_blank" rel="noopener noreferrer">
           <Icon name="github" size={18} />
-          <span>View the project on GitHub</span>
+          <span>{copy.common.footer.viewProject}</span>
           <Icon name="arrow-up-right" size={14} />
         </a>
       </div>
 
-      <nav class="footer-col" aria-label="Product">
-        <h2>Product</h2>
+      <nav class="footer-col" aria-label={copy.common.footer.product}>
+        <h2>{copy.common.footer.product}</h2>
         <ul>
-          <li><a href={withBase("/download/")}>Download</a></li>
-          <li><a href={DEMO_URL} target="_blank" rel="noopener noreferrer">Live demo</a></li>
-          <li><a href={LATEST_RELEASE_URL} target="_blank" rel="noopener noreferrer">Latest release</a></li>
-          <li><a href={withBase("/changelog/")}>Changelog</a></li>
+          <li><a href={localePath(locale, "/download/")}>{copy.common.footer.download}</a></li>
+          <li><a href={DEMO_URL} target="_blank" rel="noopener noreferrer">{copy.common.footer.liveDemo}</a></li>
+          <li><a href={LATEST_RELEASE_URL} target="_blank" rel="noopener noreferrer">{copy.common.footer.latestRelease}</a></li>
+          <li><a href={localePath(locale, "/changelog/")}>{copy.common.footer.changelog}</a></li>
         </ul>
       </nav>
 
-      <nav class="footer-col" aria-label="Learn">
-        <h2>Learn</h2>
+      <nav class="footer-col" aria-label={copy.common.footer.learn}>
+        <h2>{copy.common.footer.learn}</h2>
         <ul>
-          <li><a href={withBase("/#annotations")}>Highlights and notes</a></li>
-          <li><a href={withBase("/#fidelity")}>Text and image checks</a></li>
-          <li><a href={`${README_URL}#run-the-site`} target="_blank" rel="noopener noreferrer">Run your site</a></li>
-          <li><a href={withBase("/#first-launch")}>First-launch FAQ</a></li>
-          <li><a href={README_URL} target="_blank" rel="noopener noreferrer">README</a></li>
-          <li><a href={GUI_DOCS_URL} target="_blank" rel="noopener noreferrer">Desktop app docs</a></li>
+          <li><a href={localeHref(locale, "/#annotations")}>{copy.common.footer.highlights}</a></li>
+          <li><a href={localeHref(locale, "/#fidelity")}>{copy.common.footer.checks}</a></li>
+          <li><a href={`${README_URL}#run-the-site`} target="_blank" rel="noopener noreferrer">{copy.common.footer.runSite}</a></li>
+          <li><a href={localeHref(locale, "/#first-launch")}>{copy.common.footer.firstLaunch}</a></li>
+          <li><a href={README_URL} target="_blank" rel="noopener noreferrer">{copy.common.footer.readme}</a></li>
+          <li><a href={GUI_DOCS_URL} target="_blank" rel="noopener noreferrer">{copy.common.footer.desktopDocs}</a></li>
         </ul>
       </nav>
 
-      <nav class="footer-col" aria-label="Project">
-        <h2>Project</h2>
+      <nav class="footer-col" aria-label={copy.common.footer.project}>
+        <h2>{copy.common.footer.project}</h2>
         <ul>
-          <li><a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">GitHub</a></li>
-          <li><a href={ISSUES_URL} target="_blank" rel="noopener noreferrer">Report an issue</a></li>
-          <li><a href={LICENSE_URL} target="_blank" rel="noopener noreferrer">GPLv3 license</a></li>
-          <li><a href={CONTRIBUTING_URL} target="_blank" rel="noopener noreferrer">Contributing</a></li>
+          <li><a href={GITHUB_URL} target="_blank" rel="noopener noreferrer">{copy.common.footer.github}</a></li>
+          <li><a href={ISSUES_URL} target="_blank" rel="noopener noreferrer">{copy.common.footer.reportIssue}</a></li>
+          <li><a href={LICENSE_URL} target="_blank" rel="noopener noreferrer">{copy.common.footer.license}</a></li>
+          <li><a href={CONTRIBUTING_URL} target="_blank" rel="noopener noreferrer">{copy.common.footer.contributing}</a></li>
         </ul>
       </nav>
     </div>
 
     <div class="footer-base">
-      <p>Open source under GPLv3. Your books remain yours.</p>
+      <p>{copy.common.footer.base}</p>
       <p>
-        Built with{" "}
+        {copy.common.footer.builtWith}{" "}
         <a href="https://astro.build/" target="_blank" rel="noopener noreferrer">Astro</a>
         {" "}·{" "}
-        <a href={FIRST_LAUNCH_URL} target="_blank" rel="noopener noreferrer">First-launch notes</a>
+        <a href={FIRST_LAUNCH_URL} target="_blank" rel="noopener noreferrer">{copy.common.footer.firstLaunchNotes}</a>
       </p>
     </div>
   </div>

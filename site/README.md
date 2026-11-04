@@ -12,6 +12,10 @@ chrome. The fonts are bundled from `src/assets/fonts/`; the screenshots and
 social card are self-hosted. The site has no client-side framework or runtime
 services.
 
+The site ships in English at `/` and Vietnamese at `/vi/`. The header language
+button swaps to the same page in the other language, and every page declares
+`hreflang` alternates.
+
 ## Development
 
 ```bash
@@ -84,6 +88,25 @@ script fails if any expected platform asset or `SHA256SUMS.txt` is missing.
 The first-launch FAQ mirrors the instructions in the project README and
 `docs/gui.md`.
 
+## Languages
+
+English copy lives in `src/i18n/en.ts`; Vietnamese copy lives in
+`src/i18n/vi.ts` and is typed against the English table, so missing keys are
+TypeScript errors. Pages are thin route wrappers around shared page components:
+
+- `/` and `/vi/` render `HomePage.astro`.
+- `/download/` and `/vi/download/` render `DownloadPage.astro`.
+- `/changelog/` and `/vi/changelog/` render `ChangelogPage.astro`.
+
+Use `localePath()` and `localeHref()` from `src/i18n/` for internal links so
+the locale prefix and `BASE_PATH` stay correct. External links stay unchanged.
+Vietnamese pages preload the Vietnamese Fraunces, Inter, and Literata subsets;
+the `@font-face` rules are in `src/styles/global.css`.
+
+When adding a string, add it to both `en.ts` and `vi.ts`. Keep translations
+natural and concise; do not translate book excerpts, product names, commands,
+or file names. The canonical English copy remains the source of truth.
+
 ## Changelog page
 
 The `/changelog/` page reads the repository `CHANGELOG.md` at build time and
@@ -92,9 +115,31 @@ Each version gets a button to its GitHub release. Version 0.1.0 predates the
 repository's GitHub Releases history, so its button opens the 0.1.0 section in
 the GitHub-hosted changelog instead.
 
-The Pages workflow rebuilds when `CHANGELOG.md` changes. Release sections must
+The Pages workflow rebuilds when either changelog changes. Release sections must
 use the heading format `## 0.2.0 - 2026-10-28`; the `Unreleased` section is not
 published on the site.
+
+### Release notes in two languages
+
+GitHub Releases stay canonical in English. The Vietnamese site reads
+`CHANGELOG.vi.md` in the repository root and merges it with the English
+changelog, version by version:
+
+- A translated release is used only when its version and date match the
+  English release.
+- Missing or stale translations fall back to the English notes and show an
+  “English only” badge and notice, so a new release is never blocked by a
+  translation.
+- The English page links to `CHANGELOG.md`; the Vietnamese page links to
+  `CHANGELOG.vi.md`. Both remain readable on GitHub.
+
+This follows the pattern used by many mature open-source projects: keep one
+canonical release feed for automation and GitHub, publish localized release
+pages separately, and allow per-release fallback while translations catch up.
+Do not translate version numbers, dates, commands, release tags, or issue IDs.
+When adding a release, copy its section into `CHANGELOG.vi.md` under the same
+heading and translate the prose; the site checks the version and date before
+using it.
 
 The screenshots come from `docs/` at the repository root and are checked in here
 as optimized WebP files. `search-panel.webp` is cropped from `docs/search.png`
