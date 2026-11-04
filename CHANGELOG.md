@@ -12,6 +12,7 @@ All notable, user-facing changes are documented here. The format follows
 - Bundle Vietnamese font subsets for Fraunces, Inter, and Literata so Vietnamese interface labels and Vietnamese books render with the same self-hosted typography as other languages.
 - Add a Vietnamese edition of the landing site, download page, and changelog at `/vi/`, with a header language switch, localized metadata, and Vietnamese font subsets.
 - Translate published release notes into Vietnamese in `CHANGELOG.vi.md`. The changelog page uses a translation only when its version and date match the canonical English release, and falls back to English per release while translations catch up.
+- Add an English/Vietnamese language switch to the desktop app. The header button changes the interface immediately and remembers the choice; GUI status messages, errors, progress labels, file pickers, and the update dialog are localized. Build logs and GitHub release notes remain in English.
 
 ## 0.12.0 - 2026-11-04
 

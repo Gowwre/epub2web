@@ -23,6 +23,11 @@ gate, and theme as the CLI, then opens in the default browser.
   on Linux, `~/Library/Application Support/epub2web` on macOS, and
   `%LOCALAPPDATA%\epub2web` on Windows). Failure support ZIPs are written to
   the `reports` subdirectory.
+- The header has a language button that switches the desktop interface between
+  English and Vietnamese. The choice is saved in `settings.json` in the
+  platform application-data directory and restored on the next launch. Build
+  logs and GitHub release notes stay in English because they mirror the
+  command-line output and the published release.
 - The header shows the running version next to the wordmark, and the window
   title includes it as well.
 - The header links to the [project website](https://gowwre.github.io/epub2web/)
@@ -61,6 +66,8 @@ behind.
 ## Architecture
 
 - `epub2web/gui.py` — launcher and hidden `--worker` routing.
+- `epub2web/gui_i18n.py` — English/Vietnamese desktop labels and the saved
+  language preference.
 - `epub2web/tk_app.py` — Tkinter view. All widget calls stay on the Tk thread.
 - `epub2web/controller.py` — toolkit-independent process controller. It streams
   events from the worker and never imports Tk.

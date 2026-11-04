@@ -16,6 +16,7 @@ web sẽ hiển thị ghi chú tiếng Anh của phiên bản đó.
 - Đóng gói bộ ký tự tiếng Việt cho Fraunces, Inter và Literata để nhãn giao diện tiếng Việt và sách tiếng Việt hiển thị đúng với phông chữ tự lưu trữ như các ngôn ngữ khác.
 - Thêm giao diện tiếng Việt cho trang giới thiệu, trang tải xuống và nhật ký thay đổi, với nút chuyển ngôn ngữ trên thanh điều hướng và thẻ `hreflang` cho từng trang.
 - Dịch ghi chú phát hành sang tiếng Việt trong `CHANGELOG.vi.md`. Trang nhật ký thay đổi dùng bản dịch khi phiên bản và ngày khớp với changelog gốc, và tự động quay về ghi chú tiếng Anh khi bản dịch chưa có.
+- Thêm nút chuyển giao diện Anh/Việt vào ứng dụng desktop. Nút trên thanh đầu trang đổi giao diện ngay và ghi nhớ lựa chọn; trạng thái, lỗi, nhãn tiến trình, hộp chọn tệp và hộp thoại cập nhật đều được dịch. Nhật ký dựng và ghi chú phát hành trên GitHub vẫn bằng tiếng Anh.
 
 ## 0.12.0 - 2026-11-04
 

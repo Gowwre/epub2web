@@ -26,7 +26,7 @@ except ImportError:  # pragma: no cover - the GUI falls back to the file picker
     DND_FILES = None
     TkinterDnD = None
 
-from . import __version__
+from . import __version__, gui_i18n
 from .controller import (
     BuildController,
     BuildEvent,
@@ -92,10 +92,10 @@ def _enable_dnd(root: tk.Misc) -> bool:
     return True
 
 
-def _dnd_unavailable_message() -> str:
+def _dnd_unavailable_message(language: str = gui_i18n.DEFAULT_LANGUAGE) -> str:
     if TkinterDnD is None:
-        return "Drag and drop is unavailable because tkinterdnd2 is not installed."
-    return "Drag and drop is unavailable because TkDND could not load on this system."
+        return gui_i18n.translate(language, "source.dndMissing")
+    return gui_i18n.translate(language, "source.dndLoadFailed")
 
 
 def _font_candidates() -> tuple[list[str], list[str], list[str]]:
@@ -165,20 +165,77 @@ class Epub2WebApp:
         self._update_checking = False
         self._update_check_manual = False
         self._next_update_check = time.monotonic() + UPDATE_CHECK_STARTUP_DELAY
+        self.language = gui_i18n.load_language()
+        self._status_key: str | None = None
+        self._status_values: dict[str, object] = {}
+        self._status_tone = "muted"
+        self._log_hint_key: str | None = None
+        self._log_hint_values: dict[str, object] = {}
+        self._last_progress: tuple[str, int, int, float] | None = None
 
         self._configure_fonts()
         self._configure_styles()
         self._build_ui()
         self._refresh_controls()
-        start_hint = (
-            "Choose or drop an EPUB to begin." if self._dnd_enabled else "Choose an EPUB to begin."
-        )
-        self._set_status(start_hint, "muted")
-        self._set_log_hint("Fidelity and link checks appear here.")
-        self._append_log(start_hint, tag="muted")
+        start_key = "status.chooseOrDrop" if self._dnd_enabled else "status.choose"
+        self._set_status_key(start_key, "muted")
+        self._set_log_hint_key("log.hint")
+        self._append_log(self._t(start_key), tag="muted")
         if not self._dnd_enabled:
-            self._append_log(f"{_dnd_unavailable_message()} Use Choose EPUB… instead.", tag="muted")
+            self._append_log(
+                f"{_dnd_unavailable_message(self.language)} {self._t('source.useChoose')}",
+                tag="muted",
+            )
         self._poll()
+
+    def _t(self, key: str, **values: object) -> str:
+        return gui_i18n.translate(
+            getattr(self, "language", gui_i18n.DEFAULT_LANGUAGE), key, **values
+        )
+
+    def _language_code(self) -> str:
+        return "VI" if self.language == "en" else "EN"
+
+    def _format_count(self, value: int) -> str:
+        text = f"{value:,}"
+        return text.replace(",", ".") if self.language == "vi" else text
+
+    def _toggle_language(self) -> None:
+        self.language = "vi" if self.language == "en" else "en"
+        gui_i18n.save_language(self.language)
+        self._retranslate_ui()
+
+    def _retranslate_ui(self) -> None:
+        """Apply the selected language to the existing widgets."""
+        self.update_button.configure(text=self._t("header.update"))
+        self.website_button.configure(text=self._t("header.website"))
+        self.github_button.configure(text=self._t("header.github"))
+        self.language_button.configure(text=self._language_code())
+        self._set_update_check_busy(bool(getattr(self, "_update_checking", False)))
+        self.brand_title_label.configure(text=self._t("brand.title"))
+        self.brand_subtitle_label.configure(text=self._t("brand.subtitle"))
+        self.source_eyebrow_label.configure(text=self._t("source.eyebrow"))
+        self.source_badge_label.configure(text=self._t("source.badge"))
+        self.choose_button.configure(text=self._t("source.choose"))
+        self.output_eyebrow_label.configure(text=self._t("output.eyebrow"))
+        self.output_button.configure(text=self._t("output.change"))
+        self.convert_button.configure(text=self._t("actions.convert"))
+        self.stop_button.configure(text=self._t("actions.stop"))
+        self.open_button.configure(text=self._t("actions.openPreview"))
+        self.log_eyebrow_label.configure(text=self._t("log.eyebrow"))
+        if self.epub is None:
+            self.file_name_var.set(self._t("source.emptyTitle"))
+            self.file_path_var.set(
+                self._t("source.emptyHintDrop" if self._dnd_enabled else "source.emptyHint")
+            )
+        if self.output is None:
+            self.output_var.set(self._t("output.placeholder"))
+        if self._building and self._last_progress is not None:
+            self._apply_progress_status()
+        elif self._status_key is not None:
+            self._render_status()
+        if self._log_hint_key is not None:
+            self._render_log_hint()
 
     @staticmethod
     def _default_open_dir() -> Path:
@@ -436,13 +493,13 @@ class Epub2WebApp:
         brand_actions.pack(side="right")
         self.update_button = ttk.Button(
             brand_actions,
-            text="Update",
+            text=self._t("header.update"),
             style="Primary.TButton",
             command=self._show_update_dialog,
         )
         self.website_button = ttk.Button(
             brand_actions,
-            text="Website",
+            text=self._t("header.website"),
             style="Ghost.TButton",
             command=self._open_website,
         )
@@ -453,7 +510,7 @@ class Epub2WebApp:
         )
         self.github_button = ttk.Button(
             brand_actions,
-            text="GitHub",
+            text=self._t("header.github"),
             style="Icon.TButton",
             command=self._open_github,
             takefocus=True,
@@ -464,29 +521,39 @@ class Epub2WebApp:
 
         self.update_check_button = ttk.Button(
             brand_actions,
-            text=UPDATE_CHECK_LABEL,
+            text=self._t("header.checkUpdates"),
             style="Ghost.TButton",
             command=self._manual_update_check,
         )
         if self._updates_enabled:
             self.update_check_button.pack(side="right", padx=(0, 8))
 
-        tk.Label(
+        self.language_button = ttk.Button(
+            brand_actions,
+            text=self._language_code(),
+            style="Ghost.TButton",
+            command=self._toggle_language,
+        )
+        self.language_button.pack(side="right", padx=(0, 8))
+
+        self.brand_title_label = tk.Label(
             header,
-            text="Turn an EPUB into a website",
+            text=self._t("brand.title"),
             bg=BG,
             fg=INK,
             font=self.font_display,
             anchor="w",
-        ).pack(fill="x", pady=(14, 0))
-        tk.Label(
+        )
+        self.brand_title_label.pack(fill="x", pady=(14, 0))
+        self.brand_subtitle_label = tk.Label(
             header,
-            text="A readable web edition, verified against the source.",
+            text=self._t("brand.subtitle"),
             bg=BG,
             fg=MUTED,
             font=self.font_body,
             anchor="w",
-        ).pack(fill="x", pady=(6, 0))
+        )
+        self.brand_subtitle_label.pack(fill="x", pady=(6, 0))
 
     def _build_source_card(self, outer: tk.Frame) -> None:
         card = tk.Frame(outer, bg=SURFACE, highlightbackground=RULE, highlightthickness=1)
@@ -500,31 +567,33 @@ class Epub2WebApp:
 
         eyebrow = tk.Frame(inner, bg=SURFACE)
         eyebrow.grid(row=0, column=0, columnspan=3, sticky="ew", pady=(0, 12))
-        tk.Label(
+        self.source_eyebrow_label = tk.Label(
             eyebrow,
-            text="SOURCE",
+            text=self._t("source.eyebrow"),
             bg=SURFACE,
             fg=MUTED,
             font=self.font_brand,
-        ).pack(side="left")
-        tk.Label(
+        )
+        self.source_eyebrow_label.pack(side="left")
+        self.source_badge_label = tk.Label(
             eyebrow,
-            text="EPUB 2 / 3",
+            text=self._t("source.badge"),
             bg=ACCENT_SOFT,
             fg=ACCENT,
             font=self.font_brand,
             padx=8,
             pady=3,
-        ).pack(side="right")
+        )
+        self.source_badge_label.pack(side="right")
 
         icon = tk.Canvas(inner, width=44, height=44, bg=SURFACE, highlightthickness=0)
         icon.grid(row=1, column=0, rowspan=2, sticky="nw", padx=(0, 14))
         self._draw_book_icon(icon)
 
-        self.file_name_var = tk.StringVar(value="No EPUB selected")
-        empty_hint = "Choose a reflowable EPUB 2/3 file to begin."
+        self.file_name_var = tk.StringVar(value=self._t("source.emptyTitle"))
+        empty_hint = self._t("source.emptyHint")
         if self._dnd_enabled:
-            empty_hint = "Choose a reflowable EPUB 2/3 file, or drag and drop it here."
+            empty_hint = self._t("source.emptyHintDrop")
         self.file_path_var = tk.StringVar(value=empty_hint)
         tk.Label(
             inner,
@@ -550,7 +619,7 @@ class Epub2WebApp:
 
         self.choose_button = ttk.Button(
             inner,
-            text="Choose EPUB…",
+            text=self._t("source.choose"),
             style="Ghost.TButton",
             command=self._choose_epub,
         )
@@ -585,20 +654,20 @@ class Epub2WebApp:
         self._set_drop_highlight(False)
         paths = self._drop_paths(getattr(event, "data", ""))
         if self._building or self._preview_running:
-            self._reject_drop("Stop the current preview before choosing another EPUB.")
+            self._reject_drop("source.dropLocked")
             return
         if not paths:
-            self._reject_drop("Drop one EPUB 2 or 3 file to select it.")
+            self._reject_drop("source.dropOne")
             return
         if len(paths) > 1:
-            self._reject_drop("Drop one EPUB at a time.")
+            self._reject_drop("source.dropTooMany")
             return
         path = paths[0]
         if path.is_dir():
-            self._reject_drop("Drop an EPUB file, not a folder.")
+            self._reject_drop("source.dropFolder")
             return
         if path.suffix.lower() != ".epub":
-            self._reject_drop("That file is not an EPUB. Drop a .epub file.")
+            self._reject_drop("source.dropNotEpub")
             return
         self._select_epub(path)
 
@@ -625,8 +694,9 @@ class Epub2WebApp:
                 highlightcolor=ACCENT if active else RULE,
             )
 
-    def _reject_drop(self, message: str) -> None:
-        self._set_status(message, "error")
+    def _reject_drop(self, key: str) -> None:
+        message = self._t(key)
+        self._set_status_key(key, "error")
         self._append_log(message, tag="error")
 
     @staticmethod
@@ -663,14 +733,15 @@ class Epub2WebApp:
         output = tk.Frame(outer, bg=BG)
         output.grid(row=2, column=0, sticky="ew", pady=(0, 8))
         output.columnconfigure(1, weight=1)
-        tk.Label(
+        self.output_eyebrow_label = tk.Label(
             output,
-            text="OUTPUT",
+            text=self._t("output.eyebrow"),
             bg=BG,
             fg=MUTED,
             font=self.font_brand,
-        ).grid(row=0, column=0, sticky="nw", padx=(2, 12), pady=(2, 0))
-        self.output_var = tk.StringVar(value="The generated site will appear here.")
+        )
+        self.output_eyebrow_label.grid(row=0, column=0, sticky="nw", padx=(2, 12), pady=(2, 0))
+        self.output_var = tk.StringVar(value=self._t("output.placeholder"))
         tk.Label(
             output,
             textvariable=self.output_var,
@@ -683,7 +754,7 @@ class Epub2WebApp:
         ).grid(row=0, column=1, sticky="w")
         self.output_button = ttk.Button(
             output,
-            text="Change…",
+            text=self._t("output.change"),
             style="Secondary.TButton",
             command=self._choose_output,
         )
@@ -694,21 +765,21 @@ class Epub2WebApp:
         actions.grid(row=3, column=0, sticky="ew", pady=(12, 0))
         self.convert_button = ttk.Button(
             actions,
-            text="Convert",
+            text=self._t("actions.convert"),
             style="Primary.TButton",
             command=self._convert,
         )
         self.convert_button.pack(side="left")
         self.stop_button = ttk.Button(
             actions,
-            text="Stop",
+            text=self._t("actions.stop"),
             style="Secondary.TButton",
             command=self._stop,
         )
         self.stop_button.pack(side="left", padx=(8, 0))
         self.open_button = ttk.Button(
             actions,
-            text="Open preview",
+            text=self._t("actions.openPreview"),
             style="Secondary.TButton",
             command=self._open_preview,
         )
@@ -730,7 +801,7 @@ class Epub2WebApp:
         self.status_dot = tk.Canvas(status, width=10, height=10, bg=BG, highlightthickness=0)
         self.status_dot.grid(row=0, column=0, sticky="w", pady=(2, 0))
         self._status_dot_id = self.status_dot.create_oval(1, 1, 9, 9, fill=MUTED, outline="")
-        self.status_var = tk.StringVar(value="Choose an EPUB to begin.")
+        self.status_var = tk.StringVar(value=self._t("status.choose"))
         self.status_label = tk.Label(
             status,
             textvariable=self.status_var,
@@ -746,14 +817,15 @@ class Epub2WebApp:
     def _build_log(self, outer: tk.Frame) -> None:
         log_header = tk.Frame(outer, bg=BG)
         log_header.grid(row=6, column=0, sticky="ew", pady=(22, 8))
-        tk.Label(
+        self.log_eyebrow_label = tk.Label(
             log_header,
-            text="BUILD LOG",
+            text=self._t("log.eyebrow"),
             bg=BG,
             fg=MUTED,
             font=self.font_brand,
-        ).pack(side="left")
-        self.log_hint_var = tk.StringVar(value="Fidelity and link checks appear here.")
+        )
+        self.log_eyebrow_label.pack(side="left")
+        self.log_hint_var = tk.StringVar(value=self._t("log.hint"))
         tk.Label(
             log_header,
             textvariable=self.log_hint_var,
@@ -829,9 +901,12 @@ class Epub2WebApp:
             return
         filename = filedialog.askopenfilename(
             parent=self.root,
-            title="Choose an EPUB",
+            title=self._t("dialog.selectEpubTitle"),
             initialdir=str(self._last_dir),
-            filetypes=(("EPUB books", "*.epub"), ("All files", "*.*")),
+            filetypes=(
+                (self._t("dialog.epubFiles"), "*.epub"),
+                (self._t("dialog.allFiles"), "*.*"),
+            ),
         )
         if not filename:
             return
@@ -840,19 +915,19 @@ class Epub2WebApp:
     def _select_epub(self, path: Path) -> bool:
         """Apply a chosen or dropped EPUB to the form."""
         if self._building or self._preview_running:
-            self._set_status("Stop the current preview before choosing another EPUB.", "error")
+            self._set_status_key("source.dropLocked", "error")
             return False
         if not path.is_file():
             self._show_error(
-                "File not found",
-                "The selected EPUB is no longer available.",
+                self._t("source.notFoundTitle"),
+                self._t("source.notFoundMessage"),
                 str(path),
             )
             return False
         if path.suffix.lower() != ".epub":
             self._show_error(
-                "Not an EPUB",
-                "Choose a reflowable EPUB 2 or 3 file.",
+                self._t("source.notEpubTitle"),
+                self._t("source.notEpubMessage"),
                 str(path),
             )
             return False
@@ -866,9 +941,12 @@ class Epub2WebApp:
         self.file_name_var.set(self._friendly_filename(path))
         self.file_path_var.set(self._display_path(path))
         self._reset_log()
-        self._append_log(f"Selected {self._friendly_filename(path)}", tag="muted")
-        self._set_status("Ready to convert.", "ready")
-        self._set_log_hint("Fidelity and link checks appear here.")
+        self._append_log(
+            self._t("log.selected", name=self._friendly_filename(path)),
+            tag="muted",
+        )
+        self._set_status_key("status.ready", "ready")
+        self._set_log_hint_key("log.hint")
         self._refresh_controls()
         threading.Thread(
             target=self._load_book_info,
@@ -916,7 +994,7 @@ class Epub2WebApp:
             return
         self.file_name_var.set(title)
         self._update_output_path(title=title)
-        self._set_status("Ready to convert.", "ready")
+        self._set_status_key("status.ready", "ready")
 
     def _update_output_path(self, *, title: str | None = None) -> Path | None:
         """Refresh the site path from the book, title, and chosen parent."""
@@ -945,7 +1023,7 @@ class Epub2WebApp:
             initial = self._last_dir
         filename = filedialog.askdirectory(
             parent=self.root,
-            title="Choose where to save the generated site",
+            title=self._t("dialog.chooseOutputTitle"),
             initialdir=str(initial),
             mustexist=True,
         )
@@ -953,9 +1031,12 @@ class Epub2WebApp:
             return
         self._output_parent = Path(filename).expanduser().resolve()
         output = self._update_output_path()
-        self._set_status("Ready to convert.", "ready")
+        self._set_status_key("status.ready", "ready")
         if output is not None:
-            self._append_log(f"Output folder: {self._display_path(output)}", tag="muted")
+            self._append_log(
+                self._t("output.folderLog", path=self._display_path(output)),
+                tag="muted",
+            )
 
     def _convert(self) -> None:
         if self.epub is None or self.output is None or self._building:
@@ -966,7 +1047,7 @@ class Epub2WebApp:
         try:
             self.output.parent.mkdir(parents=True, exist_ok=True)
         except OSError as exc:
-            self._show_error("Could not create the output folder", str(exc))
+            self._show_error(self._t("dialog.outputCreateTitle"), str(exc))
             return
 
         self.preview_url = None
@@ -975,12 +1056,15 @@ class Epub2WebApp:
         self._auto_open_preview = False
         self._progress_determinate = False
         self._last_progress_key = None
+        self._last_progress = None
         self.progress.configure(mode="indeterminate", value=0)
         self._refresh_controls()
-        self._set_status("Converting…", "accent")
-        self._set_log_hint("Running fidelity and link checks…")
+        self._set_status_key("status.converting", "accent")
+        self._set_log_hint_key("status.runningChecks")
         self._reset_log()
-        self._append_log(f"Converting {self.file_name_var.get()} …")
+        self._append_log(
+            self._t("log.converting", name=self.file_name_var.get()),
+        )
 
         try:
             controller = BuildController(
@@ -997,16 +1081,17 @@ class Epub2WebApp:
         except Exception as exc:
             self._building = False
             self._refresh_controls()
-            self._set_status("Could not start conversion.", "error")
-            self._set_log_hint("Build failed. See the error below.")
+            self._set_status_key("status.startFailed", "error")
+            self._set_log_hint_key("status.startFailedHint")
             self._append_log(f"error: {exc}", tag="error")
-            self._show_error("Could not start conversion", str(exc))
+            self._show_error(self._t("dialog.startFailedTitle"), str(exc))
 
     def _stop(self) -> None:
         if self.controller is None:
             return
-        self._set_status("Stopping…", "accent")
-        self._set_log_hint("Stopping the preview server…")
+        self._set_status_key("status.stopping", "accent")
+        self._set_log_hint_key("status.stoppingServer")
+        self._last_progress = None
         self.stop_button.configure(state="disabled")
         self.controller.stop(timeout=5.0)
         # The controller emits a "stopped" event from its reader thread; the
@@ -1017,37 +1102,37 @@ class Epub2WebApp:
             return
         self._open_external_url(
             self.preview_url,
-            "Open preview",
-            detail_label="PREVIEW ADDRESS",
+            self._t("dialog.openPreviewTitle"),
+            detail_label=self._t("dialog.previewAddress"),
         )
 
     def _open_github(self) -> None:
-        self._open_external_url(GITHUB_URL, "Open GitHub")
+        self._open_external_url(GITHUB_URL, self._t("dialog.openGithubTitle"))
 
     def _open_website(self) -> None:
-        self._open_external_url(WEBSITE_URL, "Open website")
+        self._open_external_url(WEBSITE_URL, self._t("dialog.openWebsiteTitle"))
 
     def _open_download_page(self) -> None:
-        self._open_external_url(DOWNLOAD_URL, "Open download page")
+        self._open_external_url(DOWNLOAD_URL, self._t("dialog.openDownloadTitle"))
 
     def _open_external_url(
         self,
         url: str,
         title: str,
         *,
-        detail_label: str = "ADDRESS",
+        detail_label: str | None = None,
     ) -> None:
         try:
             opened = webbrowser.open(url)
         except Exception as exc:
-            self._show_error("Could not open the browser", str(exc))
+            self._show_error(self._t("dialog.openBrowserFailed"), str(exc))
             return
         if not opened:
             self._show_info(
                 title,
-                "Open this address in your browser:",
+                self._t("dialog.openAddress"),
                 url,
-                detail_label,
+                detail_label or self._t("dialog.address"),
             )
 
     def _open_preview_async(self) -> None:
@@ -1097,7 +1182,7 @@ class Epub2WebApp:
             return
         with contextlib.suppress(tk.TclError):
             button.configure(
-                text="Checking…" if busy else UPDATE_CHECK_LABEL,
+                text=self._t("header.checking") if busy else self._t("header.checkUpdates"),
                 state="disabled" if busy else "normal",
             )
 
@@ -1121,9 +1206,8 @@ class Epub2WebApp:
         if release is None:
             if manual:
                 self._show_error(
-                    "Could not check for updates",
-                    "The update server could not be reached. "
-                    "Check your internet connection and try again.",
+                    self._t("dialog.updateCheckTitle"),
+                    self._t("dialog.updateCheckMessage"),
                 )
             return
 
@@ -1137,8 +1221,8 @@ class Epub2WebApp:
         if not is_newer(release.version):
             if manual:
                 self._show_info(
-                    "No updates available",
-                    f"You are running epub2web {__version__}, the latest version.",
+                    self._t("dialog.noUpdateTitle"),
+                    self._t("dialog.noUpdateMessage", version=__version__),
                 )
             return
 
@@ -1180,8 +1264,8 @@ class Epub2WebApp:
             return
 
         if event.kind == "site":
-            self._set_status("Site built. Starting preview…", "accent")
-            self._set_log_hint("Starting the local preview server…")
+            self._set_status_key("status.siteBuilt", "accent")
+            self._set_log_hint_key("status.startingPreview")
             return
 
         if event.kind == "preview":
@@ -1190,14 +1274,18 @@ class Epub2WebApp:
             self._preview_running = bool(self.preview_url)
             self._refresh_controls()
             if self.preview_url:
-                self._set_status(f"Preview running at {self.preview_url}", "success")
-                self._set_log_hint("Preview running. Use Stop to close the local server.")
-                self._append_log("Preview server started.", tag="preview")
+                self._set_status_key(
+                    "status.previewRunning",
+                    "success",
+                    url=self.preview_url,
+                )
+                self._set_log_hint_key("status.previewHint")
+                self._append_log(self._t("log.previewStarted"), tag="preview")
                 if not self._auto_open_preview:
                     self._auto_open_preview = True
                     self.root.after(100, self._open_preview_async)
             else:
-                self._set_status("Preview unavailable.", "error")
+                self._set_status_key("status.previewUnavailable", "error")
             return
 
         if event.kind == "success":
@@ -1210,33 +1298,44 @@ class Epub2WebApp:
             )
             self._refresh_controls()
             if self.preview_url:
-                self._set_status(f"Preview running at {self.preview_url}", "success")
-                self._set_log_hint("Preview running. Use Stop to close the local server.")
+                self._set_status_key(
+                    "status.previewRunning",
+                    "success",
+                    url=self.preview_url,
+                )
+                self._set_log_hint_key("status.previewHint")
             else:
                 site = str(event.data.get("site") or "")
-                self._set_status("Conversion complete.", "success")
-                self._set_log_hint("All checks passed.")
-                self._append_log(
-                    "Conversion complete." + (f" Site: {site}" if site else ""),
-                    tag="success",
-                )
+                self._set_status_key("status.complete", "success")
+                self._set_log_hint_key("status.checksPassed")
+                if site:
+                    self._append_log(
+                        self._t("log.conversionCompleteSite", site=site),
+                        tag="success",
+                    )
+                else:
+                    self._append_log(
+                        self._t("log.conversionComplete"),
+                        tag="success",
+                    )
             return
 
         if event.kind == "failure":
             self._building = False
             self._preview_running = False
             self.preview_url = None
+            self._last_progress = None
             self._refresh_controls()
-            message = event.message or "Conversion failed."
-            self._set_status(message, "error")
-            self._set_log_hint("Build failed. The support report is ready.")
+            message = event.message or self._t("status.failed")
+            self._set_status_key("status.failed", "error")
+            self._set_log_hint_key("status.buildFailedHint")
             self._append_log(message, tag="error")
             report = str(event.data.get("report") or "")
             self._show_error(
-                "Build failed",
+                self._t("dialog.buildFailedTitle"),
                 message,
-                f"Support report:\n{report}" if report else "",
-                "SUPPORT REPORT" if report else "DETAILS",
+                self._t("dialog.supportReportDetail", report=report) if report else "",
+                self._t("dialog.supportReport") if report else self._t("dialog.details"),
             )
             return
 
@@ -1244,9 +1343,10 @@ class Epub2WebApp:
             self._building = False
             self._preview_running = False
             self.preview_url = None
+            self._last_progress = None
             self._refresh_controls()
-            self._set_status("Stopped.", "muted")
-            self._set_log_hint("Fidelity and link checks appear here.")
+            self._set_status_key("status.stopped", "muted")
+            self._set_log_hint_key("log.hint")
 
     def _handle_progress(self, data: dict) -> None:
         if not self._building:
@@ -1259,8 +1359,9 @@ class Epub2WebApp:
             return
         if not 0.0 <= percent <= 1.0:
             percent = max(0.0, min(1.0, percent))
-        label = str(data.get("label") or "Working")
+        raw_label = str(data.get("label") or self._t("progress.working"))
         phase = str(data.get("phase") or "")
+        self._last_progress = (raw_label, current, total, percent)
 
         if not self._progress_determinate:
             self.progress.stop()
@@ -1269,20 +1370,40 @@ class Epub2WebApp:
             self.progress.grid()
         self.progress["value"] = percent * 100
 
+        self._apply_progress_status()
+        self._log_progress_milestone(phase, raw_label, current, total)
+
+    def _apply_progress_status(self) -> None:
+        if self._last_progress is None:
+            return
+        raw_label, current, total, percent = self._last_progress
+        label = gui_i18n.progress_label(self.language, raw_label)
         if total > 1:
-            self._set_status(
-                f"{label} — {current:,} of {total:,} · {percent * 100:.0f}%",
+            self._set_status_key(
+                "progress.counted",
                 "accent",
+                label=label,
+                current=self._format_count(current),
+                total=self._format_count(total),
+                percent=f"{percent * 100:.0f}",
             )
         else:
-            self._set_status(f"{label}… {percent * 100:.0f}%", "accent")
-        self._set_log_hint(f"{label} · {percent * 100:.0f}% complete")
-        self._log_progress_milestone(phase, label, current, total)
+            self._set_status_key(
+                "progress.simple",
+                "accent",
+                label=label,
+                percent=f"{percent * 100:.0f}",
+            )
+        self._set_log_hint_key(
+            "progress.hint",
+            label=label,
+            percent=f"{percent * 100:.0f}",
+        )
 
     def _log_progress_milestone(
         self,
         phase: str,
-        label: str,
+        raw_label: str,
         current: int,
         total: int,
     ) -> None:
@@ -1295,12 +1416,18 @@ class Epub2WebApp:
         if key == self._last_progress_key:
             return
         self._last_progress_key = key
+        label = gui_i18n.progress_label(self.language, raw_label)
         if total > 1 and current == 0:
-            line = f"{label}…"
+            line = self._t("progress.start", label=label)
         elif total > 1:
-            line = f"{label}: {current:,} of {total:,}"
+            line = self._t(
+                "progress.countedLog",
+                label=label,
+                current=self._format_count(current),
+                total=self._format_count(total),
+            )
         else:
-            line = f"{label}: done"
+            line = self._t("progress.done", label=label)
         self._append_log(line, tag="muted")
 
     def _log_tag(self, message: str) -> str | None:
@@ -1437,6 +1564,24 @@ class Epub2WebApp:
             self.log.configure(state="disabled")
 
     def _set_status(self, text: str, tone: str = "muted") -> None:
+        self._status_key = None
+        self._status_values = {}
+        self._status_tone = tone
+        self._apply_status(text, tone)
+
+    def _set_status_key(self, key: str, tone: str = "muted", **values: object) -> None:
+        self._status_key = key
+        self._status_values = values
+        self._status_tone = tone
+        text = self._t(key, **values)
+        self._set_status(text, tone)
+        # A real _set_status clears the key so raw messages do not get
+        # retranslated; keep the key for messages owned by the GUI.
+        self._status_key = key
+        self._status_values = values
+        self._status_tone = tone
+
+    def _apply_status(self, text: str, tone: str) -> None:
         dot, foreground = {
             "muted": (MUTED, INK_2),
             "ready": (SUCCESS, INK_2),
@@ -1448,8 +1593,28 @@ class Epub2WebApp:
         self.status_dot.itemconfigure(self._status_dot_id, fill=dot)
         self.status_label.configure(fg=foreground)
 
+    def _render_status(self) -> None:
+        if self._status_key is not None:
+            self._apply_status(
+                self._t(self._status_key, **self._status_values),
+                self._status_tone,
+            )
+
     def _set_log_hint(self, text: str) -> None:
+        self._log_hint_key = None
+        self._log_hint_values = {}
         self.log_hint_var.set(text)
+
+    def _set_log_hint_key(self, key: str, **values: object) -> None:
+        self._log_hint_key = key
+        self._log_hint_values = values
+        self._set_log_hint(self._t(key, **values))
+        self._log_hint_key = key
+        self._log_hint_values = values
+
+    def _render_log_hint(self) -> None:
+        if self._log_hint_key is not None:
+            self.log_hint_var.set(self._t(self._log_hint_key, **self._log_hint_values))
 
     def _show_update_dialog(self) -> None:
         release = self.update_info
@@ -1457,7 +1622,7 @@ class Epub2WebApp:
             return
 
         dialog = tk.Toplevel(self.root)
-        dialog.title(f"{APP_TITLE} — Update available")
+        dialog.title(f"{APP_TITLE} — {self._t('update.titleSuffix')}")
         dialog.transient(self.root)
         dialog.configure(bg=BG)
         dialog.minsize(520, 420)
@@ -1490,7 +1655,7 @@ class Epub2WebApp:
 
         tk.Label(
             inner,
-            text="Update available",
+            text=self._t("update.titleSuffix"),
             bg=SURFACE,
             fg=INK,
             font=self.font_dialog,
@@ -1499,7 +1664,11 @@ class Epub2WebApp:
         ).pack(fill="x")
         tk.Label(
             inner,
-            text=f"epub2web {release.version} is available. You are running {__version__}.",
+            text=self._t(
+                "update.available",
+                version=release.version,
+                current=__version__,
+            ),
             bg=SURFACE,
             fg=INK_2,
             font=self.font_body,
@@ -1510,12 +1679,23 @@ class Epub2WebApp:
 
         tk.Label(
             inner,
-            text="WHAT'S NEW",
+            text=self._t("update.whatsNew"),
             bg=SURFACE,
             fg=MUTED,
             font=self.font_brand,
             anchor="w",
         ).pack(fill="x", pady=(18, 6))
+        if self.language != gui_i18n.DEFAULT_LANGUAGE:
+            tk.Label(
+                inner,
+                text=self._t("update.notesLanguage"),
+                bg=SURFACE,
+                fg=MUTED,
+                font=self.font_small,
+                anchor="w",
+                justify="left",
+                wraplength=500,
+            ).pack(fill="x", pady=(0, 6))
 
         notes_frame = tk.Frame(
             inner,
@@ -1544,21 +1724,24 @@ class Epub2WebApp:
         scroll = ttk.Scrollbar(notes_frame, orient="vertical", command=notes.yview)
         scroll.grid(row=0, column=1, sticky="ns")
         notes.configure(yscrollcommand=scroll.set)
-        notes.insert("1.0", release.notes.strip() or "See the download page for details.")
+        notes.insert(
+            "1.0",
+            release.notes.strip() or self._t("update.notesFallback"),
+        )
         notes.configure(state="disabled")
 
         actions = tk.Frame(inner, bg=SURFACE)
         actions.pack(fill="x", pady=(18, 0))
         download_button = ttk.Button(
             actions,
-            text="Open download page",
+            text=self._t("update.openDownload"),
             style="Primary.TButton",
             command=download,
         )
         download_button.pack(side="right")
         later = ttk.Button(
             actions,
-            text="Later",
+            text=self._t("update.later"),
             style="Secondary.TButton",
             command=close,
         )
@@ -1581,13 +1764,13 @@ class Epub2WebApp:
         title: str,
         message: str,
         detail: str = "",
-        detail_label: str = "DETAILS",
+        detail_label: str | None = None,
     ) -> None:
         self._show_dialog(
             title,
             message,
             detail,
-            detail_label,
+            detail_label or self._t("dialog.details"),
             bar_color=DANGER,
         )
 
@@ -1596,13 +1779,13 @@ class Epub2WebApp:
         title: str,
         message: str,
         detail: str = "",
-        detail_label: str = "DETAILS",
+        detail_label: str | None = None,
     ) -> None:
         self._show_dialog(
             title,
             message,
             detail,
-            detail_label,
+            detail_label or self._t("dialog.details"),
             bar_color=SUCCESS,
         )
 
@@ -1611,10 +1794,11 @@ class Epub2WebApp:
         title: str,
         message: str,
         detail: str = "",
-        detail_label: str = "DETAILS",
+        detail_label: str | None = None,
         *,
         bar_color: str = DANGER,
     ) -> None:
+        detail_label = detail_label or self._t("dialog.details")
         dialog = tk.Toplevel(self.root)
         dialog.title(f"{APP_TITLE} — {title}")
         dialog.transient(self.root)
@@ -1693,7 +1877,12 @@ class Epub2WebApp:
 
         actions = tk.Frame(inner, bg=SURFACE)
         actions.pack(fill="x", pady=(18, 0))
-        ok = ttk.Button(actions, text="OK", style="Primary.TButton", command=close)
+        ok = ttk.Button(
+            actions,
+            text=self._t("dialog.ok"),
+            style="Primary.TButton",
+            command=close,
+        )
         ok.pack(side="right")
 
         dialog.bind("<Escape>", lambda _event: close())
@@ -1746,18 +1935,19 @@ def _print_error(text: str) -> None:
 def run() -> int:
     """Create the window and run the Tk event loop."""
     _enable_windows_dpi_awareness()
+    language = gui_i18n.load_language()
     try:
         root = tk.Tk()
     except tk.TclError as exc:
-        _print_error(f"error: could not start the desktop GUI: {exc}")
-        _print_error("This machine may not have a graphical display.")
+        _print_error(gui_i18n.translate(language, "error.startGui", error=exc))
+        _print_error(gui_i18n.translate(language, "error.noDisplay"))
         return 2
 
     try:
         Epub2WebApp(root)
         root.mainloop()
     except tk.TclError as exc:
-        _print_error(f"error: could not start the desktop GUI: {exc}")
+        _print_error(gui_i18n.translate(language, "error.startGui", error=exc))
         return 2
     finally:
         with contextlib.suppress(tk.TclError):
