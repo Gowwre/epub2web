@@ -11,6 +11,10 @@ instructions for coding agents working in this repository; `README.md`,
 - `RELEASING.md` — tag-driven release and PyPI process.
 - `docs/gui.md` — GUI architecture and portable packaging.
 - `docs/fonts.md` — bundled fonts, script detection, and per-book font selection.
+- `docs/highlights-and-notes.md` — annotation storage, persistence, and calibre
+  migration design.
+- `docs/highlights-and-notes-ux.md` — annotation UI/UX, accessibility, and
+  interaction design.
 - `CHANGELOG.md` — user-facing changes, grouped by release.
 
 ## Hard invariants

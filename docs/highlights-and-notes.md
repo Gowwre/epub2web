@@ -7,6 +7,9 @@ three questions:
 2. How can they survive regenerating the site?
 3. How can existing calibre highlights and notes be migrated?
 
+For the reader interaction design, see
+[`highlights-and-notes-ux.md`](highlights-and-notes-ux.md).
+
 The short version:
 
 - Store annotations **outside the generated site**, in the browser (and
@@ -803,6 +806,10 @@ Do not publish the import file with the site.
 
 ### Phase 2: reader UI and local storage
 
+- Implement the interaction design in
+  [`highlights-and-notes-ux.md`](highlights-and-notes-ux.md): selection toolbar,
+  one-tap highlight, optional note composer, highlight card, Undo, and the
+  annotation panel.
 - Add an IndexedDB wrapper with a `localStorage` fallback.
 - Add selection handling on `.book-page`, a small highlight toolbar, and a note
   editor.
