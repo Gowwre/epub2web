@@ -141,6 +141,7 @@
   const menuDialog = document.getElementById("epub2web-menu-dialog");
   const searchDialog = document.getElementById("epub2web-search-dialog");
   const readerDialog = document.getElementById("epub2web-reader-dialog");
+  const shortcutsDialog = document.getElementById("epub2web-shortcuts-dialog");
   const lightbox = document.getElementById("epub2web-lightbox");
   let lastFocus = null;
 
@@ -183,6 +184,11 @@
       openSearch();
     });
   });
+  document.querySelectorAll("[data-shortcuts-open]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      openDialog(shortcutsDialog);
+    });
+  });
   document.querySelectorAll("[data-close]").forEach(function (button) {
     button.addEventListener("click", function () {
       closeDialog(button.closest("dialog"));
@@ -193,8 +199,19 @@
       if (event.target === dialog) dialog.close();
     });
     dialog.addEventListener("close", function () {
-      if (lastFocus && typeof lastFocus.focus === "function") lastFocus.focus();
+      const target = lastFocus;
       lastFocus = null;
+      if (target && target.isConnected && target.getClientRects().length) {
+        target.focus();
+        return;
+      }
+      const menuButton = document.querySelector("[data-menu-open]");
+      if (menuButton && menuButton.getClientRects().length) {
+        menuButton.focus();
+        return;
+      }
+      const helpButton = document.querySelector(".shortcuts-btn");
+      if (helpButton && helpButton.getClientRects().length) helpButton.focus();
     });
   });
 
@@ -886,6 +903,22 @@
 
   document.addEventListener("keydown", function (event) {
     if (event.defaultPrevented) return;
+    if (event.key === "?" && !isTyping(event.target)) {
+      if (event.altKey || event.ctrlKey || event.metaKey) return;
+      event.preventDefault();
+      if (shortcutsDialog && shortcutsDialog.open) {
+        shortcutsDialog.close();
+        return;
+      }
+      const openDialogEl = document.querySelector("dialog[open]");
+      if (openDialogEl && openDialogEl.id === "epub2web-annotations-dialog") {
+        openDialogEl.close();
+      } else if (openDialogEl) {
+        return;
+      }
+      openDialog(shortcutsDialog);
+      return;
+    }
     if (event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
     if (event.key === "/" && !isTyping(event.target)) {
       const openDialogEl = document.querySelector("dialog[open]");

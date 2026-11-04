@@ -1,8 +1,10 @@
 import json
 import shutil
+import uuid
 from pathlib import Path
 
 from bs4 import BeautifulSoup
+from epub2web.annotations import make_document, write_document
 from epub2web.generic import GenericExtractor
 from epub2web.links import check_site_links
 from epub2web.render import render_site
@@ -31,6 +33,7 @@ def test_build_and_verify(tiny_epub, tmp_path: Path):
     assert "literata-latin.woff2" in font_css
     assert "noto-" not in font_css
     assert not (site / "assets" / "fonts" / "cjk").exists()
+    assert (site / "assets" / "annotations.js").is_file()
 
     verified = verify_site(content, site, verbose=False)
     assert verified["pass"], verified
@@ -69,6 +72,114 @@ def test_reading_id_is_stable_and_file_specific(tiny_epub, epub_factory, tmp_pat
     assert variant_book["meta"]["reading_id"] != reading_id
 
 
+def test_content_id_survives_metadata_changes_and_tracks_text(
+    tiny_epub, epub_factory, tmp_path: Path
+):
+    def extract(epub: Path, name: str) -> dict:
+        return GenericExtractor(
+            epub,
+            tmp_path / f"{name}-content",
+            tmp_path / f"{name}-images",
+        ).run()
+
+    original = extract(tiny_epub, "original")
+    content_id = original["meta"]["content_id"]
+    assert len(content_id) == 64
+    assert all(character in "0123456789abcdef" for character in content_id)
+
+    metadata_variant = epub_factory(
+        "metadata-variant.epub",
+        replacements={
+            "OEBPS/content.opf": [
+                (b"<dc:title>A Tiny Book</dc:title>", b"<dc:title>A Revised Title</dc:title>")
+            ]
+        },
+    )
+    metadata_book = extract(metadata_variant, "metadata-variant")
+    assert metadata_book["meta"]["content_id"] == content_id
+    assert metadata_book["meta"]["reading_id"] != original["meta"]["reading_id"]
+
+    text_variant = epub_factory(
+        "text-variant.epub",
+        replacements={"OEBPS/ch1.xhtml": [(b"Hello", b"Goodbye")]},
+    )
+    text_book = extract(text_variant, "text-variant")
+    assert text_book["meta"]["content_id"] != content_id
+
+
+def test_generated_site_never_contains_annotation_stores(tiny_epub, tmp_path: Path):
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    site = tmp_path / "site"
+
+    book = GenericExtractor(tiny_epub, content, images).run()
+    marker = "PRIVATE-ANNOTATION-MARKER"
+    document = make_document(
+        book["meta"],
+        [
+            {
+                "id": str(uuid.uuid4()),
+                "type": "highlight",
+                "created": "2026-11-04T10:00:00.000Z",
+                "updated": "2026-11-04T10:00:00.000Z",
+                "note": marker,
+                "quote": "Hello world.",
+            }
+        ],
+    )
+    write_document(content / "annotations.json", document)
+
+    render_site(content, site, site_url="http://localhost:8000")
+
+    assert not (site / "annotations.json").exists()
+    assert not (site / "annotations").exists()
+    rendered = "\n".join(
+        path.read_text(encoding="utf-8", errors="replace") for path in site.rglob("*.html")
+    )
+    assert marker not in rendered
+    assert "epub2web.annotations" not in rendered
+
+
+def test_reader_advertises_keyboard_shortcuts(tiny_epub, tmp_path: Path):
+    content = tmp_path / "content"
+    images = tmp_path / "images"
+    site = tmp_path / "site"
+
+    GenericExtractor(tiny_epub, content, images).run()
+    render_site(content, site, site_url="http://localhost:8000")
+
+    home = BeautifulSoup((site / "index.html").read_text(encoding="utf-8"), "lxml")
+    help_button = home.find("button", class_="shortcuts-btn")
+    assert help_button is not None
+    assert help_button["aria-keyshortcuts"] == "?"
+    search_button = home.find("button", class_="search-btn")
+    assert search_button["aria-keyshortcuts"] == "/"
+    assert search_button.find("kbd").get_text(strip=True) == "/"
+    assert home.find("button", class_="footer-shortcuts") is not None
+    assert home.find("button", class_="menu-shortcuts") is not None
+    shortcuts = home.find("dialog", id="epub2web-shortcuts-dialog")
+    assert shortcuts is not None
+    assert shortcuts.find(id="shortcuts-anywhere") is not None
+    assert shortcuts.find(id="shortcuts-reading") is None
+    assert "Search the book" in shortcuts.get_text(" ", strip=True)
+
+    page = BeautifulSoup((site / "read" / "1" / "index.html").read_text(encoding="utf-8"), "lxml")
+    shortcuts = page.find("dialog", id="epub2web-shortcuts-dialog")
+    assert shortcuts.find(id="shortcuts-reading") is not None
+    assert shortcuts.find(id="shortcuts-notes") is not None
+    toolbar = page.find(id="epub2web-annotation-toolbar")
+    assert toolbar.find(attrs={"data-annotation-highlight": True})["aria-keyshortcuts"] == "H"
+    assert toolbar.find("kbd", class_="annotation-key").get_text(strip=True) == "H"
+    note_dialog = page.find(id="epub2web-note-dialog")
+    assert "Ctrl" in note_dialog.find("p", class_="note-hint").get_text(" ", strip=True)
+    reader_dialog = page.find(id="epub2web-reader-dialog")
+    assert reader_dialog.find("button", class_="reader-shortcuts") is not None
+    panel = page.find(id="epub2web-annotations-dialog")
+    assert "all shortcuts" in panel.find("p", class_="annotations-shortcuts").get_text(
+        " ", strip=True
+    )
+
+
 def test_rendered_pages_expose_reading_progress(tiny_epub, tmp_path: Path):
     content = tmp_path / "content"
     images = tmp_path / "images"
@@ -80,6 +191,7 @@ def test_rendered_pages_expose_reading_progress(tiny_epub, tmp_path: Path):
 
     home = BeautifulSoup((site / "index.html").read_text(encoding="utf-8"), "lxml")
     assert home.html["data-reading-id"] == reading_id
+    assert home.html["data-content-id"] == book["meta"]["content_id"]
     start = next(
         (
             link
@@ -100,13 +212,27 @@ def test_rendered_pages_expose_reading_progress(tiny_epub, tmp_path: Path):
     assert len(reading_map) == 2
     assert {entry["route"] for entry in reading_map} == {"/read/1/", "/read/2/"}
     assert {entry["label"] for entry in reading_map} == {"Chapter 1", "Chapter 2"}
+    assert home.find(attrs={"data-annotations-open": True}) is None
+    assert home.find(id="epub2web-annotation-toolbar") is None
 
     page1 = BeautifulSoup((site / "read" / "1" / "index.html").read_text(encoding="utf-8"), "lxml")
     page2 = BeautifulSoup((site / "read" / "2" / "index.html").read_text(encoding="utf-8"), "lxml")
 
     page_keys = {entry["key"] for entry in reading_map}
+    meta_script = page1.find("script", id="epub2web-book-meta")
+    assert meta_script is not None
+    assert json.loads(meta_script.get_text())["content_id"] == book["meta"]["content_id"]
+    page_map_script = page1.find("script", id="epub2web-reading-map")
+    assert page_map_script is not None
+    assert {entry["key"] for entry in json.loads(page_map_script.get_text())} == page_keys
+    assert page1.find(attrs={"data-annotations-open": True}) is not None
+    assert page1.find(id="epub2web-annotation-toolbar") is not None
+    assert page1.find(id="epub2web-highlight-card") is not None
+    assert page1.find(id="epub2web-note-dialog") is not None
+    assert page1.find(id="epub2web-annotations-dialog") is not None
     for page, chapter in ((page1, 1), (page2, 2)):
         assert page.html["data-reading-id"] == reading_id
+        assert page.html["data-content-id"] == book["meta"]["content_id"]
         assert page.body["data-reading"] == "true"
         assert len(page.body["data-page-key"]) == 16
         assert page.body["data-page-key"] in page_keys

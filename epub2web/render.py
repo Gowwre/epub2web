@@ -180,6 +180,7 @@ class SiteRenderer:
         meta.setdefault("source", "EPUB")
         meta.setdefault("title_lines", [])
         meta.setdefault("reading_id", "")
+        meta.setdefault("content_id", "")
         self.text_direction = "rtl" if is_rtl_language(meta.get("language", "")) else "ltr"
 
         self.pages = self.book.get("pages", [])
@@ -263,6 +264,19 @@ class SiteRenderer:
         if not reading_id:
             reading_id = self._fallback_reading_id()
         meta["reading_id"] = reading_id
+        content_id = str(meta.get("content_id") or "").strip()
+        if not content_id:
+            # Content directories from older versions gain a usable, if
+            # file-specific, key. New builds always write the text-based id.
+            content_id = reading_id
+        meta["content_id"] = content_id
+        self.book_meta = {
+            "content_id": content_id,
+            "source_sha256": reading_id,
+            "title": meta.get("title", ""),
+            "author": meta.get("author", ""),
+            "isbn": meta.get("isbn", ""),
+        }
 
         chapter_total = sum(1 for page in self.pages if page.get("type") == "chapter")
         chapter_index = 0
@@ -508,6 +522,8 @@ class SiteRenderer:
             "is_reading": is_reading,
             "show_sidebar": show_sidebar,
             "wide": wide,
+            "book_meta": self.book_meta,
+            "reading_map": self.reading_map,
             "legacy_anchors": legacy_anchors if legacy_anchors is not None else {"top", "main"},
         }
 

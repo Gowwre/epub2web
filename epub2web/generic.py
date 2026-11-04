@@ -29,7 +29,7 @@ from .models import PagePlan
 from .navigation import SiteTocBuilder
 from .planner import PagePlanner
 from .progress import ProgressCallback, report
-from .text import reading_units, slugify, split_title, year_from_date
+from .text import normalize_text, reading_units, slugify, split_title, text_of, year_from_date
 
 warnings.filterwarnings("ignore", category=XMLParsedAsHTMLWarning)
 logger = logging.getLogger(__name__)
@@ -56,6 +56,15 @@ def _file_sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _content_id(source_texts: list[str]) -> str:
+    """Hash normalized spine text so annotations survive re-zipping and metadata edits."""
+    digest = hashlib.sha256()
+    for text in source_texts:
+        digest.update(normalize_text(text).encode("utf-8"))
+        digest.update(b"\0")
+    return digest.hexdigest()
+
+
 class GenericExtractor:
     def __init__(
         self,
@@ -74,6 +83,7 @@ class GenericExtractor:
         self.book: Epub | None = None
         self.items: list[ManifestItem] = []
         self.cleaned: dict[str, BeautifulSoup] = {}
+        self.source_texts: dict[str, str] = {}
         self.cover_info: dict | None = None
         self.cover_source = ""
         self.images: dict[str, dict] = {}
@@ -110,6 +120,7 @@ class GenericExtractor:
                 raise ValueError("EPUB spine contains no readable HTML documents")
             logger.debug("spine documents", extra={"count": len(self.items)})
             self.cleaned: dict[str, BeautifulSoup] = {}
+            self.source_texts: dict[str, str] = {}
             total_docs = len(self.items)
             self._report("read", "Opening book", 0, total_docs)
             for index, item in enumerate(self.items, 1):
@@ -117,6 +128,7 @@ class GenericExtractor:
                     soup = BeautifulSoup(book.read(item.path), "lxml")
                 except Exception as exc:
                     raise ValueError(f"could not parse {item.path}: {exc}") from exc
+                self.source_texts[item.path] = text_of(soup.body or soup)
                 self.cleaned[item.path] = clean_doc(soup)
                 self._report("read", "Opening book", index, total_docs)
 
@@ -425,6 +437,7 @@ class GenericExtractor:
             reading_id = _file_sha256(self.epub_path)
         except OSError:
             reading_id = ""
+        content_id = _content_id([self.source_texts.get(item.path, "") for item in self.items])
 
         pages = [page.to_dict() for page in self.pages]
 
@@ -458,6 +471,7 @@ class GenericExtractor:
                 "edition": "",
                 "source": "EPUB",
                 "reading_id": reading_id,
+                "content_id": content_id,
             },
             "pages": pages,
             "toc": self.toc,

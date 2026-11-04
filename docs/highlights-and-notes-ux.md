@@ -1,7 +1,7 @@
 # Highlights and notes: UI and interaction design
 
-This is research and design, not an implemented feature. The goal is to make
-highlighting and note-taking feel like a natural part of reading:
+This is the interaction design for the implemented first version. The goal is
+to make highlighting and note-taking feel like a natural part of reading:
 
 - one action to highlight;
 - notes are optional and never block the highlight;
@@ -10,7 +10,9 @@ highlighting and note-taking feel like a natural part of reading:
 - the same mental model works on desktop, tablet, phone, keyboard, and screen
   reader.
 
-See [`highlights-and-notes.md`](highlights-and-notes.md) for storage, anchoring,
+The reader implementation lives in `epub2web/theme/assets/annotations.js`;
+storage, schema, and merge rules live in `epub2web/annotations.py`. See
+[`highlights-and-notes.md`](highlights-and-notes.md) for storage, anchoring,
 persistence, and calibre migration.
 
 ## 1. What other readers teach us
@@ -386,6 +388,23 @@ truth: every highlight and note must be reachable, labeled, and editable there.
 - Color swatches have names and selected states.
 - Support Windows High Contrast and forced-colors mode where possible; at
   minimum, do not let highlights disappear entirely.
+
+### 7.5 Discoverability
+
+Shortcuts must be visible before someone memorizes them:
+
+- A **Keyboard shortcuts** help button sits in the header on every page and
+  opens a reference dialog. `?` opens and closes the same dialog.
+- The search button shows its `/` shortcut on desktop.
+- The selection toolbar shows small `H` and `N` key badges next to the actions.
+- The note composer shows its `Ctrl`/`⌘` + `Enter` save shortcut.
+- The annotation panel shows the `H`, `N`, and `?` reminders.
+- The contents sheet and site footer link to the shortcut reference.
+- The reference groups shortcuts by context (reading, search, notes) and
+  explains that shortcuts are ignored while typing.
+
+Keyboard shortcuts should never be the only way to do something. Every action
+in the reference is also a visible button.
 
 ## 8. Visual specification
 

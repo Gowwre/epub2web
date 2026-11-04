@@ -9,6 +9,45 @@
       {{ fragment|safe }}
     </article>
 
+    <div class="annotation-toolbar" id="epub2web-annotation-toolbar" role="toolbar" aria-label="Highlight or note this selection" data-chrome hidden>
+      <button class="annotation-tool" type="button" data-annotation-highlight aria-keyshortcuts="H" title="Highlight (H)">
+        {{ icon("highlighter", 16) }}<span>Highlight</span><kbd class="annotation-key" aria-hidden="true">H</kbd>
+      </button>
+      <button class="annotation-tool" type="button" data-annotation-note aria-keyshortcuts="N" title="Add a note (N)">
+        {{ icon("note", 16) }}<span>Note</span><kbd class="annotation-key" aria-hidden="true">N</kbd>
+      </button>
+      <button class="annotation-tool annotation-color-toggle" type="button" data-annotation-color-toggle aria-label="Choose highlight color" aria-expanded="false">
+        <span class="annotation-color-dot" data-annotation-color-dot aria-hidden="true"></span>
+      </button>
+      <div class="annotation-colors" data-annotation-colors role="group" aria-label="Highlight color" hidden>
+        <button type="button" class="annotation-color" data-annotation-color-choice="yellow" aria-label="Yellow highlight" aria-pressed="true" style="--annotation-color: var(--hl-yellow)"></button>
+        <button type="button" class="annotation-color" data-annotation-color-choice="green" aria-label="Green highlight" aria-pressed="false" style="--annotation-color: var(--hl-green)"></button>
+        <button type="button" class="annotation-color" data-annotation-color-choice="blue" aria-label="Blue highlight" aria-pressed="false" style="--annotation-color: var(--hl-blue)"></button>
+        <button type="button" class="annotation-color" data-annotation-color-choice="pink" aria-label="Pink highlight" aria-pressed="false" style="--annotation-color: var(--hl-pink)"></button>
+        <button type="button" class="annotation-color" data-annotation-color-choice="purple" aria-label="Purple highlight" aria-pressed="false" style="--annotation-color: var(--hl-purple)"></button>
+      </div>
+    </div>
+
+    <div class="highlight-card" id="epub2web-highlight-card" role="dialog" aria-label="Highlight" tabindex="-1" data-chrome hidden>
+      <button class="icon-btn highlight-card-close" type="button" data-highlight-close aria-label="Close highlight">{{ icon("close", 16) }}</button>
+      <blockquote class="highlight-card-quote" data-highlight-quote></blockquote>
+      <p class="highlight-card-note" data-highlight-note hidden></p>
+      <p class="highlight-card-meta" data-highlight-meta></p>
+      <div class="highlight-card-actions">
+        <button type="button" data-highlight-edit>{{ icon("note", 14) }}<span>Add note</span></button>
+        <button type="button" data-highlight-color-toggle aria-expanded="false">{{ icon("highlighter", 14) }}<span>Color</span></button>
+        <button type="button" data-highlight-copy>Copy</button>
+        <button type="button" data-highlight-remove>Remove</button>
+      </div>
+      <div class="highlight-card-colors" data-highlight-colors role="group" aria-label="Highlight color" hidden>
+        <button type="button" class="annotation-color" data-highlight-color-choice="yellow" aria-label="Yellow highlight" aria-pressed="true" style="--annotation-color: var(--hl-yellow)"></button>
+        <button type="button" class="annotation-color" data-highlight-color-choice="green" aria-label="Green highlight" aria-pressed="false" style="--annotation-color: var(--hl-green)"></button>
+        <button type="button" class="annotation-color" data-highlight-color-choice="blue" aria-label="Blue highlight" aria-pressed="false" style="--annotation-color: var(--hl-blue)"></button>
+        <button type="button" class="annotation-color" data-highlight-color-choice="pink" aria-label="Pink highlight" aria-pressed="false" style="--annotation-color: var(--hl-pink)"></button>
+        <button type="button" class="annotation-color" data-highlight-color-choice="purple" aria-label="Purple highlight" aria-pressed="false" style="--annotation-color: var(--hl-purple)"></button>
+      </div>
+    </div>
+
     {% if prev or next %}
     <nav class="chapter-nav" aria-label="Chapter navigation" data-chrome>
       {% if prev %}

@@ -1,6 +1,9 @@
 # Highlights and notes: storage, persistence, and migration
 
-This document is research and design, not an implemented feature. It answers
+This document describes the storage, anchoring, persistence, and migration
+design for highlights and notes. The first version is implemented: reading
+pages support local highlights, optional notes, review, and JSON export/import.
+Calibre import and the remaining reader adapters are still planned. It answers
 three questions:
 
 1. How should highlights and notes be stored?
@@ -30,16 +33,19 @@ The short version:
 
 ## 1. What the reader does today
 
-`epub2web` has no annotation layer. It stores only reading progress and display
-settings in `localStorage`:
+`epub2web` stores reading state locally in the browser:
 
 - `epub2web:progress:v1:<reading_id>` stores the last page key and scroll ratio.
 - `epub2web-reader:v1` stores type size, spacing, width, and paragraph style.
 - `epub2web-theme` stores the color theme.
+- highlights and notes are stored in IndexedDB, with a `localStorage` fallback;
+  the last-used highlight color is stored in `epub2web:annotations:color`.
 
-`reading_id` is `sha256(EPUB file bytes)` (`epub2web/generic.py`). The renderer
-also gives each page a `key` derived from its source file list
-(`epub2web/render.py`), and routes are positional (`/read/1/`, `/read/2/`, …).
+`reading_id` is `sha256(EPUB file bytes)` (`epub2web/generic.py`). `content_id` is
+`sha256` of the normalized text of the EPUB spine, in spine order. It survives
+re-zipping and metadata-only changes. The renderer also gives each page a `key`
+derived from its source file list (`epub2web/render.py`), and routes are
+positional (`/read/1/`, `/read/2/`, …).
 
 That design has two consequences for annotations:
 
@@ -788,9 +794,13 @@ A static site cannot write a file next to itself. The practical options are:
 
 Do not publish the import file with the site.
 
-## 8. Implementation plan for this repository
+## 8. Implementation status
 
-### Phase 1: identity and schema
+The first two phases are implemented in `epub2web/annotations.py` (schema,
+validation, merge, tombstones, files) and
+`epub2web/theme/assets/annotations.js` (browser store and reader UI).
+
+### Phase 1: identity and schema (implemented)
 
 - Add `content_id` to `epub2web/generic.py` and `book.json` metadata.
 - Add `data-content-id` to the reading pages (alongside `data-reading-id`).
@@ -804,7 +814,7 @@ Do not publish the import file with the site.
   - malformed import rejection;
   - annotations never appear in the generated site.
 
-### Phase 2: reader UI and local storage
+### Phase 2: reader UI and local storage (implemented)
 
 - Implement the interaction design in
   [`highlights-and-notes-ux.md`](highlights-and-notes-ux.md): selection toolbar,
@@ -821,7 +831,7 @@ Do not publish the import file with the site.
 - Add keyboard and screen-reader behavior; selection must work without a mouse.
 - Test with synthetic EPUB fixtures only.
 
-### Phase 3: robust re-anchoring
+### Phase 3: robust re-anchoring (planned)
 
 - Store DOM range, source locator, quote/prefix/suffix, page key, and
   progression.
@@ -829,7 +839,7 @@ Do not publish the import file with the site.
 - Handle page splits and cross-page ranges.
 - Add a migration test that regenerates a site with changed routes/TOC splits.
 
-### Phase 4: zero-touch calibre import
+### Phase 4: zero-touch calibre import (planned)
 
 - Start with exported JSON (`calibre_annotation_collection` and
   `calibre_highlights`); it is the easiest to test offline.
@@ -842,7 +852,7 @@ Do not publish the import file with the site.
 - Add fixture tests using synthetic calibre JSON; do not commit real books.
 - Keep the import code independent of the GUI and worker modules.
 
-### Phase 5: desktop durability
+### Phase 5: desktop durability (planned)
 
 - Write the app-data copy.
 - Add a localhost-only read endpoint, and optionally a write endpoint with an
@@ -852,8 +862,9 @@ Do not publish the import file with the site.
 ## 9. Open questions
 
 - **Notes without highlights:** should a standalone note be allowed? Calibre
-  couples notes to highlights. A separate `note` type is easier for users but
-  needs a point anchor and a different list UI.
+  couples notes to highlights. The current UI offers **Note at current page**,
+  stored as a point-anchored highlight with a paragraph context quote. A
+  separate `note` type is still an open design question.
 - **Cross-page selection:** allow it in the UI, or split it into two highlights?
   Calibre highlights are within a spine item, but the generated site may split
   that item.
@@ -1037,8 +1048,14 @@ and some cloud readers deliberately do not expose it.
 
 ### This repository
 
-- `epub2web/generic.py` — `reading_id`.
-- `epub2web/render.py` — page keys, chapter keys, progress.
+- `epub2web/generic.py` — EPUB extraction, `reading_id`, and `content_id`.
+- `epub2web/annotations.py` — annotation schema, validation, merge, tombstones,
+  and native JSON files.
+- `epub2web/render.py` — page keys, chapter keys, progress, and annotation
+  metadata.
+- `epub2web/theme/assets/annotations.js` — browser storage and annotation UI.
 - `epub2web/theme/assets/app.js` — progress and settings storage.
-- `epub2web/templates/base.html` — `data-reading-id`, `data-page-key`, `data-chapter-key`.
+- `epub2web/templates/base.html` — `data-content-id`, `data-page-key`, and the
+  annotation header action.
+- `epub2web/templates/page.html` — selection toolbar and highlight card.
 - `tests/test_end_to_end.py` — reading id and page key behavior.

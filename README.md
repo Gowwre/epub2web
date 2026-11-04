@@ -122,12 +122,17 @@ A complete website, ready to read:
 - every chapter as a clean, readable web page
 - pictures, captions, tables, lists, notes, and cross-references
 - built-in search that works without an account or internet connection
+- highlight passages and add private notes, review them in a panel, and export
+  or import them as JSON; they stay in your browser and never enter the
+  generated site
 - light, dark, and automatic reading modes
 - adjustable text size, line spacing, paragraph style, and page width, remembered in your browser
 - self-hosted fonts for Latin, Greek, Cyrillic, Arabic, Hebrew, Devanagari, Thai, and CJK text
 - remembers your place and shows progress through the whole book
 - a layout that works on phones, tablets, and desktops
-- keyboard navigation through chapters and search results, accessible labels, and image descriptions
+- keyboard navigation through chapters and search results, with a visible
+  **Keyboard shortcuts** reference (`?`), accessible labels, and image
+  descriptions
 - your text exactly as it appears in the EPUB
 
 You can keep the site on your computer, or put it online with any web host.
@@ -158,6 +163,10 @@ book**.
 - **Your place stays in your browser.** Reading position is stored locally per
   EPUB file. Rebuilding the same EPUB keeps it; a different EPUB starts a
   separate position. Clearing site data removes it.
+- **Highlights and notes stay private.** They are stored in your browser, not in
+  the generated site, and are never uploaded. Export them from the
+  **Highlights & notes** panel if you want a backup or want to move them to
+  another browser.
 
 If a check fails, `epub2web` stops and leaves any previous working site
 untouched. It does not publish a half-finished version.

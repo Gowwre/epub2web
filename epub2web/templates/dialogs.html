@@ -41,6 +41,9 @@
       <span class="menu-arrow" aria-hidden="true">→</span>
     </a>
     {% endfor %}
+    <div class="menu-shortcuts-row">
+      <button class="menu-shortcuts" type="button" data-shortcuts-open>Keyboard shortcuts <kbd>?</kbd></button>
+    </div>
   </div>
 </dialog>
 
@@ -94,7 +97,10 @@
       </div>
     </fieldset>
     <p class="reader-note">These settings apply only to this browser. Auto follows your device theme. Your book is unchanged.</p>
-    <button class="reader-reset" type="button" data-reader-reset>Reset to defaults</button>
+    <div class="reader-actions">
+      <button class="reader-reset" type="button" data-reader-reset>Reset to defaults</button>
+      <button class="reader-shortcuts" type="button" data-shortcuts-open>Keyboard shortcuts <kbd>?</kbd></button>
+    </div>
   </div>
 </dialog>
 
@@ -114,6 +120,109 @@
     <p class="search-status" id="epub2web-search-status">Type a word or phrase.</p>
     <div id="epub2web-search-results" class="search-results" aria-live="polite"></div>
     <p class="search-hint">Press <kbd>/</kbd> anywhere to open search, <kbd>↑</kbd><kbd>↓</kbd> to choose a result, <kbd>Enter</kbd> to open it, <kbd>Esc</kbd> to close.</p>
+  </div>
+</dialog>
+
+<dialog id="epub2web-shortcuts-dialog" class="sheet shortcuts-sheet" aria-labelledby="epub2web-shortcuts-title">
+  <div class="sheet-head">
+    <div>
+      <p class="sheet-eyebrow">Reader</p>
+      <h2 class="sheet-title" id="epub2web-shortcuts-title">Keyboard shortcuts</h2>
+    </div>
+    <button class="icon-btn" type="button" data-close aria-label="Close keyboard shortcuts">{{ icon("close") }}</button>
+  </div>
+  <div class="sheet-body shortcuts-body">
+    {% if is_reading %}
+    <section class="shortcut-group" aria-labelledby="shortcuts-reading">
+      <h3 id="shortcuts-reading">Reading</h3>
+      <ul class="shortcut-list">
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>H</kbd></span><span><span class="sr-only">Shortcut H: </span>Highlight the selected text</span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>N</kbd></span><span><span class="sr-only">Shortcut N: </span>Add a note to the selected text</span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>Shift</kbd><span class="shortcut-plus">+</span><kbd>A</kbd></span><span><span class="sr-only">Shortcut Shift plus A: </span>Open or close highlights and notes</span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>←</kbd><kbd>→</kbd></span><span><span class="sr-only">Shortcut Left arrow or Right arrow: </span>Previous or next chapter</span></li>
+      </ul>
+    </section>
+    {% endif %}
+    <section class="shortcut-group" aria-labelledby="shortcuts-anywhere">
+      <h3 id="shortcuts-anywhere">Anywhere</h3>
+      <ul class="shortcut-list">
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>/</kbd></span><span><span class="sr-only">Shortcut slash: </span>Search the book</span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>?</kbd></span><span><span class="sr-only">Shortcut question mark: </span>Show this shortcut list</span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>Esc</kbd></span><span><span class="sr-only">Shortcut Escape: </span>Close a toolbar, card, composer, or panel</span></li>
+      </ul>
+    </section>
+    <section class="shortcut-group" aria-labelledby="shortcuts-search">
+      <h3 id="shortcuts-search">Search results</h3>
+      <ul class="shortcut-list">
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>↑</kbd><kbd>↓</kbd></span><span><span class="sr-only">Shortcut Up arrow or Down arrow: </span>Choose a result</span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>Enter</kbd></span><span><span class="sr-only">Shortcut Enter: </span>Open the chosen result</span></li>
+      </ul>
+    </section>
+    {% if is_reading %}
+    <section class="shortcut-group" aria-labelledby="shortcuts-notes">
+      <h3 id="shortcuts-notes">Note composer</h3>
+      <ul class="shortcut-list">
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>Ctrl</kbd><span class="shortcut-plus">/</span><kbd>⌘</kbd><span class="shortcut-plus">+</span><kbd>Enter</kbd></span><span><span class="sr-only">Shortcut Control or Command plus Enter: </span>Save the note</span></li>
+        <li><span class="shortcut-keys" aria-hidden="true"><kbd>Esc</kbd></span><span><span class="sr-only">Shortcut Escape: </span>Cancel and close</span></li>
+      </ul>
+    </section>
+    {% endif %}
+    <p class="shortcut-note">Shortcuts are ignored while you are typing in a field. On a touch device, use the header buttons and the selection toolbar.</p>
+  </div>
+</dialog>
+
+<dialog id="epub2web-note-dialog" class="sheet note-sheet" aria-labelledby="epub2web-note-title">
+  <div class="sheet-head">
+    <div>
+      <p class="sheet-eyebrow">Highlight</p>
+      <h2 class="sheet-title" id="epub2web-note-title">Add a note</h2>
+    </div>
+    <button class="icon-btn" type="button" data-note-cancel aria-label="Close note">{{ icon("close") }}</button>
+  </div>
+  <div class="sheet-body note-body">
+    <blockquote class="note-quote" data-note-quote></blockquote>
+    <label class="note-label" for="epub2web-note-text">Your note</label>
+    <textarea id="epub2web-note-text" class="note-text" rows="5" placeholder="Write a note…"></textarea>
+    <p class="note-hint" aria-label="Press Control or Command plus Enter to save. Escape to cancel."><span aria-hidden="true">Press <kbd>Ctrl</kbd>/<kbd>⌘</kbd> + <kbd>Enter</kbd> to save. <kbd>Esc</kbd> to cancel.</span></p>
+    <p class="note-error" data-note-error role="alert" hidden></p>
+    <div class="note-actions">
+      <button class="note-remove" type="button" data-note-remove hidden>Remove note</button>
+      <span class="note-actions-spacer"></span>
+      <button class="btn btn-quiet" type="button" data-note-cancel>Cancel</button>
+      <button class="btn btn-primary" type="button" data-note-save aria-keyshortcuts="Control+Enter Meta+Enter" disabled>Done</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="epub2web-annotations-dialog" class="sheet annotations-sheet" aria-labelledby="epub2web-annotations-title">
+  <div class="sheet-head">
+    <div>
+      <p class="sheet-eyebrow">Reading</p>
+      <h2 class="sheet-title" id="epub2web-annotations-title">Highlights &amp; notes <span class="annotations-total" data-annotations-total></span></h2>
+    </div>
+    <button class="icon-btn" type="button" data-close aria-label="Close highlights and notes">{{ icon("close") }}</button>
+  </div>
+  <div class="sheet-body annotations-body">
+    <div class="annotations-toolbar">
+      <div class="annotations-filters" role="group" aria-label="Filter annotations">
+        <button type="button" class="annotations-filter is-active" data-annotations-filter="all" aria-pressed="true">All</button>
+        <button type="button" class="annotations-filter" data-annotations-filter="highlight" aria-pressed="false">Highlights</button>
+        <button type="button" class="annotations-filter" data-annotations-filter="note" aria-pressed="false">Notes</button>
+      </div>
+      <button type="button" class="annotations-location" data-annotations-location>{{ icon("note", 14) }}<span>Note at current page</span></button>
+    </div>
+    <p class="annotations-status" data-annotations-status role="status" aria-live="polite"></p>
+    <p class="annotations-shortcuts"><kbd>H</kbd> highlight · <kbd>N</kbd> note · <kbd>?</kbd> all shortcuts</p>
+    <div class="annotations-list" data-annotations-list></div>
+    <p class="annotations-empty" data-annotations-empty hidden>No highlights or notes yet. Select text and press H to highlight, or use the selection toolbar.</p>
+    <div class="annotations-footer">
+      <span class="annotations-privacy">Stored in this browser only.</span>
+      <div class="annotations-actions">
+        <button type="button" data-annotations-import>Import</button>
+        <button type="button" data-annotations-export>Export</button>
+        <input type="file" accept=".json,application/json" data-annotations-file hidden>
+      </div>
+    </div>
   </div>
 </dialog>
 

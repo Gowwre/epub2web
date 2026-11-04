@@ -75,13 +75,18 @@ renderer change.
 - `epub2web/planner.py` — spine document → reading page planning.
 - `epub2web/converter.py` — reading page → semantic HTML fragment.
 - `epub2web/navigation.py` — EPUB TOC → site contents/sidebar tree.
-- `epub2web/generic.py` — extraction orchestration, images, and output metadata.
+- `epub2web/generic.py` — extraction orchestration, images, output metadata, and
+  the text-based annotation `content_id`.
+- `epub2web/annotations.py` — annotation schema, validation, merge, tombstones,
+  and native JSON import/export.
 - `epub2web/text.py` — normalization, text extraction, tokenization, slugs,
   reading-length estimates. Changes here affect the fidelity gate; test them
   carefully.
 - `epub2web/fonts.py` — script detection, font-manifest selection, generated
   `@font-face` CSS, and RTL language checks.
 - `epub2web/render.py` — Jinja rendering, static assets, search index, sitemap.
+- `epub2web/theme/assets/annotations.js` — browser annotation store and reader
+  UI.
 - `epub2web/paths.py` — shared route and base-path helpers.
 - `epub2web/verify.py` — text/image/structural fidelity gate.
 - `epub2web/links.py` — internal link, anchor, image, and duplicate-ID gate.

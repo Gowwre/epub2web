@@ -6,6 +6,12 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+### Added
+
+- Highlight passages and add optional notes while reading. Select text to highlight it in one action, click a highlight to edit its note or color, and open **Highlights & notes** in the header to review annotations by chapter, jump back to a passage, or remove one with Undo.
+- Export and import annotations as JSON from the **Highlights & notes** panel. Highlights and notes stay in your browser and are never written into the generated site.
+- Make keyboard shortcuts discoverable: a **Keyboard shortcuts** button and `?` open a reference dialog, the search button shows `/`, the selection toolbar shows `H` and `N`, and the note composer shows its save shortcut. The menu and footer also link to the reference.
+
 ### Changed
 
 - Relicense epub2web under GPL-3.0-or-later. Your EPUB and book text remain yours; generated sites include the GPL-licensed reader theme, so keep its notice when redistributing. Distributing a modified version of epub2web now requires making its source available under the same license.
