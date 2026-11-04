@@ -115,7 +115,11 @@ jobs:
             echo
             echo "---"
             echo
-            echo "**Install:** \`pip install epub2web==$VERSION\`"
+            if curl -fsS https://pypi.org/pypi/epub2web/json >/dev/null 2>&1; then
+              echo "**Install:** \`pip install epub2web==$VERSION\`"
+            else
+              echo "**Install:** Download the wheel or source archive below. PyPI publishing is not configured yet."
+            fi
             echo
             echo "Portable desktop builds for Windows, macOS, and Linux are attached below."
             echo
