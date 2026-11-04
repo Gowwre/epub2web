@@ -10,6 +10,8 @@ web sẽ hiển thị ghi chú tiếng Anh của phiên bản đó.
 
 ## Chưa phát hành
 
+## 0.13.0 - 2026-11-04
+
 ### Thêm mới
 
 - Thêm nút chuyển giao diện Anh/Việt vào thanh điều hướng và **Cài đặt đọc**. Điều hướng, tìm kiếm, các nút đọc, đánh dấu và ghi chú, hộp thoại, nhãn trợ năng, thời gian đọc và tiêu đề tab trình duyệt có thể hiển thị bằng tiếng Việt. Văn bản và metadata của sách vẫn giữ nguyên ngôn ngữ gốc.

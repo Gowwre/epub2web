@@ -6,6 +6,8 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+## 0.13.0 - 2026-11-04
+
 ### Added
 
 - Add an English/Vietnamese interface language switch to the header and **Reading settings**. Navigation, search, reading controls, highlights and notes, dialogs, accessibility labels, read-time text, and browser tab titles can now be shown in Vietnamese. The book’s own text and metadata stay in their original language.
