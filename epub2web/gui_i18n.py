@@ -8,6 +8,7 @@ command-line output; everything the GUI itself writes is translated.
 from __future__ import annotations
 
 import json
+import locale
 import os
 import re
 from pathlib import Path
@@ -286,6 +287,61 @@ def normalize_language(value: str | None) -> str:
     return base if base in SUPPORTED_LANGUAGES else DEFAULT_LANGUAGE
 
 
+def _stored_language(value: object) -> str:
+    if not isinstance(value, str):
+        return ""
+    key = value.strip().lower().replace("_", "-").split("-", 1)[0]
+    return key if key in SUPPORTED_LANGUAGES else ""
+
+
+def _language_from_locale(value: str) -> str:
+    key = (value or "").strip().lower().replace("_", "-")
+    token = key.split("-", 1)[0].split(".", 1)[0].split("@", 1)[0]
+    if token in {"vi", "vietnamese"}:
+        return "vi"
+    if token in {"en", "english", "c", "posix"}:
+        return "en"
+    return ""
+
+
+def _locale_values() -> list[str]:
+    values: list[str] = []
+    for name in ("LC_ALL", "LANGUAGE", "LC_MESSAGES", "LANG"):
+        raw = os.environ.get(name, "").strip()
+        if not raw:
+            continue
+        if name == "LANGUAGE":
+            values.extend(part.strip() for part in raw.split(":") if part.strip())
+        else:
+            values.append(raw)
+
+    for category_name in ("LC_MESSAGES", "LC_CTYPE"):
+        category = getattr(locale, category_name, None)
+        if category is None:
+            continue
+        try:
+            language, _encoding = locale.getlocale(category)
+        except (TypeError, ValueError, locale.Error):
+            continue
+        if language:
+            values.append(language)
+    return values
+
+
+def system_language() -> str:
+    """Return the interface language for the current system locale.
+
+    The highest-priority locale decides the result: Vietnamese selects
+    Vietnamese, and every other locale falls back to English. This mirrors the
+    browser and landing-site detection so the desktop app opens in the same
+    language as the rest of the product.
+    """
+    values = _locale_values()
+    if not values:
+        return DEFAULT_LANGUAGE
+    return _language_from_locale(values[0]) or DEFAULT_LANGUAGE
+
+
 def translate(language: str | None, key: str, **values: Any) -> str:
     table = MESSAGES[normalize_language(language)]
     template = table.get(key)
@@ -316,10 +372,10 @@ def load_language(path: Path | None = None) -> str:
     try:
         data = json.loads(destination.read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        return DEFAULT_LANGUAGE
+        return system_language()
     if not isinstance(data, dict):
-        return DEFAULT_LANGUAGE
-    return normalize_language(str(data.get("language") or ""))
+        return system_language()
+    return _stored_language(data.get("language")) or system_language()
 
 
 def save_language(language: str, path: Path | None = None) -> None:

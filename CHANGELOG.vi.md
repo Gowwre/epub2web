@@ -20,7 +20,7 @@ web sẽ hiển thị ghi chú tiếng Anh của phiên bản đó.
 
 ### Thay đổi
 
-- Tự nhận diện ngôn ngữ hệ thống hoặc trình duyệt trong lần truy cập đầu. Trang giới thiệu đưa khách dùng tiếng Việt sang bản tiếng Việt, và trình đọc được tạo sẽ mở bằng tiếng Việt khi tiếng Việt là ngôn ngữ hệ thống ưu tiên. Mọi ngôn ngữ khác dùng tiếng Anh, và lựa chọn ngôn ngữ thủ công vẫn được ghi nhớ.
+- Tự nhận diện ngôn ngữ hệ thống hoặc trình duyệt trong lần truy cập đầu. Trang giới thiệu đưa khách dùng tiếng Việt sang bản tiếng Việt, trình đọc được tạo sẽ mở bằng tiếng Việt khi tiếng Việt là ngôn ngữ hệ thống ưu tiên, và ứng dụng desktop theo ngôn ngữ hệ thống trong lần khởi động đầu. Mọi ngôn ngữ khác dùng tiếng Anh, và lựa chọn ngôn ngữ thủ công vẫn được ghi nhớ.
 
 ## 0.12.0 - 2026-11-04
 

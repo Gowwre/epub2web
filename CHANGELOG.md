@@ -16,7 +16,7 @@ All notable, user-facing changes are documented here. The format follows
 
 ### Changed
 
-- Detect the system or browser language on first visit. The landing site sends Vietnamese-language visitors to the Vietnamese edition, and the generated reader opens in Vietnamese when Vietnamese is the preferred system language. Every other language gets English, and an explicit language choice is still remembered.
+- Detect the system or browser language on first visit. The landing site sends Vietnamese-language visitors to the Vietnamese edition, the generated reader opens in Vietnamese when Vietnamese is the preferred system language, and the desktop app follows the system locale on first launch. Every other language gets English, and an explicit language choice is still remembered.
 
 ## 0.12.0 - 2026-11-04
 

@@ -47,6 +47,7 @@ def test_gui_translate_and_language_names():
 
 def test_gui_settings_round_trip(tmp_path: Path, monkeypatch):
     monkeypatch.delenv("EPUB2WEB_LANGUAGE", raising=False)
+    monkeypatch.setattr(gui_i18n, "system_language", lambda: "en")
     settings = tmp_path / "settings.json"
     assert gui_i18n.load_language(settings) == "en"
 
@@ -65,6 +66,87 @@ def test_gui_language_environment_override(tmp_path: Path, monkeypatch):
     settings = tmp_path / "settings.json"
     gui_i18n.save_language("en", settings)
     monkeypatch.setenv("EPUB2WEB_LANGUAGE", "vi")
+    assert gui_i18n.load_language(settings) == "vi"
+
+
+def _clear_locale_env(monkeypatch):
+    for name in ("LC_ALL", "LANGUAGE", "LC_MESSAGES", "LANG"):
+        monkeypatch.delenv(name, raising=False)
+
+
+def test_gui_locale_names_map_to_supported_languages():
+    assert gui_i18n._language_from_locale("vi_VN.UTF-8") == "vi"
+    assert gui_i18n._language_from_locale("vi.UTF-8") == "vi"
+    assert gui_i18n._language_from_locale("Vietnamese_Vietnam") == "vi"
+    assert gui_i18n._language_from_locale("en_US.UTF-8") == "en"
+    assert gui_i18n._language_from_locale("English_United States") == "en"
+    assert gui_i18n._language_from_locale("C.UTF-8") == "en"
+    assert gui_i18n._language_from_locale("fr_FR.UTF-8") == ""
+
+
+def test_gui_system_language_detects_vietnamese(monkeypatch):
+    _clear_locale_env(monkeypatch)
+    monkeypatch.setenv("LANG", "vi_VN.UTF-8")
+    monkeypatch.setattr(gui_i18n.locale, "getlocale", lambda *args: (None, None))
+    assert gui_i18n.system_language() == "vi"
+
+
+def test_gui_system_language_defaults_to_english(monkeypatch):
+    _clear_locale_env(monkeypatch)
+    monkeypatch.setenv("LANG", "fr_FR.UTF-8")
+    monkeypatch.setattr(gui_i18n.locale, "getlocale", lambda *args: (None, None))
+    assert gui_i18n.system_language() == "en"
+
+
+def test_gui_system_language_handles_c_locale(monkeypatch):
+    _clear_locale_env(monkeypatch)
+    monkeypatch.setenv("LANG", "C.UTF-8")
+    monkeypatch.setattr(gui_i18n.locale, "getlocale", lambda *args: (None, None))
+    assert gui_i18n.system_language() == "en"
+
+
+def test_gui_system_language_honors_lc_all(monkeypatch):
+    _clear_locale_env(monkeypatch)
+    monkeypatch.setenv("LC_ALL", "C.UTF-8")
+    monkeypatch.setenv("LANG", "vi_VN.UTF-8")
+    monkeypatch.setattr(gui_i18n.locale, "getlocale", lambda *args: (None, None))
+    assert gui_i18n.system_language() == "en"
+
+
+def test_gui_system_language_reads_language_list(monkeypatch):
+    _clear_locale_env(monkeypatch)
+    monkeypatch.setenv("LANGUAGE", "vi:en")
+    monkeypatch.setattr(gui_i18n.locale, "getlocale", lambda *args: (None, None))
+    assert gui_i18n.system_language() == "vi"
+
+
+def test_gui_system_language_reads_python_locale(monkeypatch):
+    _clear_locale_env(monkeypatch)
+    monkeypatch.setattr(
+        gui_i18n.locale,
+        "getlocale",
+        lambda category=None: ("Vietnamese_Vietnam", "1258"),
+    )
+    assert gui_i18n.system_language() == "vi"
+
+
+def test_gui_settings_fall_back_to_system_language(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("EPUB2WEB_LANGUAGE", raising=False)
+    monkeypatch.setattr(gui_i18n, "system_language", lambda: "vi")
+    settings = tmp_path / "settings.json"
+
+    assert gui_i18n.load_language(settings) == "vi"
+
+    settings.write_text("not json", encoding="utf-8")
+    assert gui_i18n.load_language(settings) == "vi"
+
+    settings.write_text(json.dumps({"language": "fr"}), encoding="utf-8")
+    assert gui_i18n.load_language(settings) == "vi"
+
+    settings.write_text(json.dumps({"language": "en"}), encoding="utf-8")
+    assert gui_i18n.load_language(settings) == "en"
+
+    settings.write_text(json.dumps({"language": "vi-VN"}), encoding="utf-8")
     assert gui_i18n.load_language(settings) == "vi"
 
 

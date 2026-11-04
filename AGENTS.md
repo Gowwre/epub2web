@@ -101,8 +101,8 @@ renderer change.
 - `epub2web/progress.py` — progress protocol shared by CLI, worker, and GUI.
 - `epub2web/updates.py` — best-effort GUI update check against GitHub Releases.
 - `epub2web/gui.py` — GUI launcher and hidden `--worker`/`--self-test` modes.
-- `epub2web/gui_i18n.py` — English/Vietnamese desktop labels and the saved
-  language preference in the application-data folder.
+- `epub2web/gui_i18n.py` — English/Vietnamese desktop labels, system-locale
+  detection, and the saved language preference in the application-data folder.
 - `epub2web/tk_app.py` — Tkinter view; all widget calls stay on the Tk thread.
 - `epub2web/controller.py` — toolkit-independent worker process controller.
 - `epub2web/worker.py` — worker process; must not import GUI modules.

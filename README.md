@@ -55,8 +55,9 @@ window also stops it. To read the site again later, see
 
 The app shows live progress while it works, down to individual pages and
 images, so a long book does not look frozen. Use the language button in the
-header to switch the app between English and Vietnamese; the choice is
-remembered. Build logs and published release notes remain in English.
+header to switch the app between English and Vietnamese; the first launch
+follows your system locale, and an explicit choice is remembered. Build logs
+and published release notes remain in English.
 
 ### First launch: security warnings are expected
 
