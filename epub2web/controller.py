@@ -29,6 +29,7 @@ from enum import Enum
 from pathlib import Path
 from typing import Any
 
+from .paths import app_data_dir
 from .progress import EVENT_PREFIX, PROGRESS_PREFIX
 
 logger = logging.getLogger(__name__)
@@ -90,19 +91,6 @@ def default_output_dir(
     name = name[:80].rstrip(" .-") or "book"
     base = Path(parent).expanduser() if parent is not None else documents_dir() / "epub2web"
     return base / f"{name}-site"
-
-
-def app_data_dir() -> Path:
-    """Return a platform-appropriate directory for logs and support reports."""
-    if sys.platform == "win32":
-        base = os.environ.get("LOCALAPPDATA") or os.environ.get("APPDATA")
-        root = Path(base).expanduser() if base else Path.home() / "AppData" / "Local"
-    elif sys.platform == "darwin":
-        root = Path.home() / "Library" / "Application Support"
-    else:
-        base = os.environ.get("XDG_DATA_HOME")
-        root = Path(base).expanduser() if base else Path.home() / ".local" / "share"
-    return root / "epub2web"
 
 
 def default_log_dir() -> Path:

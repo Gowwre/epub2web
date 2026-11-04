@@ -240,7 +240,7 @@ detail.
 
 [![CI](https://github.com/Gowwre/epub2web/actions/workflows/ci.yml/badge.svg)](https://github.com/Gowwre/epub2web/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/python-3.10%2B-3776ab)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/Gowwre/epub2web/blob/main/LICENSE)
+[![License: GPL v3](https://img.shields.io/badge/license-GPLv3-blue.svg)](https://github.com/Gowwre/epub2web/blob/main/LICENSE)
 
 <details>
 <summary><strong>Install with Python</strong></summary>
@@ -301,7 +301,7 @@ epub2web book.epub -o my-site --site-url https://example.com
 | `--no-links` | Skip the internal-link gate (development only) |
 | `--force` | Force replacement; reruns refresh an epub2web site automatically |
 | `--keep-work` | Keep extraction files and a failed site for inspection |
-| `--log-dir DIR` | Directory for run diagnostics (default: `~/.epub2web/logs`) |
+| `--log-dir DIR` | Directory for run diagnostics (default: the platform application-data folder under `epub2web/logs`) |
 | `--log-file FILE` | Write this run's human-readable log to an exact file |
 | `--report-dir DIR` | Directory for failure support ZIPs (default: `./epub2web-reports`) |
 | `--version` | Print the version |
@@ -493,8 +493,11 @@ markup sample (no copyrighted text). See [CONTRIBUTING.md](https://github.com/Go
 
 ## License and rights
 
-The code and theme are **MIT** licensed. Your EPUB and generated site remain
-yours; `epub2web` does not include or redistribute book text.
+The code and theme are **GPL-3.0-or-later** licensed. Your EPUB and book text
+remain yours; `epub2web` does not include or redistribute book text. Generated
+sites include the GPL-licensed reader theme, so keep its license notice when
+redistributing a site. If you distribute a modified version of `epub2web`, the
+GPL requires you to make its source available under the same license.
 
 The self-hosted fonts are under the SIL Open Font License; see
 [THIRD_PARTY_NOTICES.md](https://github.com/Gowwre/epub2web/blob/main/THIRD_PARTY_NOTICES.md).

@@ -83,6 +83,7 @@ when that file changes. Keep released sections in the format
 - Include the failing case (without copyrighted text) and the expected result.
 - Run `make test`.
 - Do not add a copyrighted EPUB or a full generated edition to the repository.
+- Contributions are accepted under the project's GPL-3.0-or-later license.
 
 ## Reporting issues
 

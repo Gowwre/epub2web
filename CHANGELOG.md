@@ -6,6 +6,14 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+### Changed
+
+- Relicense epub2web under GPL-3.0-or-later. Your EPUB and book text remain yours; generated sites include the GPL-licensed reader theme, so keep its notice when redistributing. Distributing a modified version of epub2web now requires making its source available under the same license.
+
+### Fixed
+
+- Store CLI logs in the platform application-data directory, matching the desktop app and the documented location.
+
 ## 0.11.0 - 2026-11-03
 
 ### Added

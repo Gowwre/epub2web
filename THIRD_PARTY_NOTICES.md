@@ -1,7 +1,7 @@
 # Third-party notices
 
-The code is MIT-licensed. The following assets and dependencies are used under
-their own licenses.
+The epub2web code is licensed under GPL-3.0-or-later. The following assets and
+dependencies are used under their own licenses.
 
 ## Fonts
 

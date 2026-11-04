@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Turn an EPUB into a beautiful, browser-optimized static website. Deterministic, no LLM, with a text-fidelity gate."
 readme = "README.md"
 requires-python = ">=3.10"
-license = "MIT"
+license = "GPL-3.0-or-later"
 license-files = ["LICENSE"]
 authors = [{ name = "epub2web contributors" }]
 keywords = ["epub", "ebook", "html", "static-site", "publishing", "accessibility"]

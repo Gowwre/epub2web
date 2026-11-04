@@ -194,7 +194,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--log-dir",
         type=Path,
-        help="directory for run logs (default: ~/.epub2web/logs)",
+        help="directory for run logs (default: platform application-data folder)",
     )
     parser.add_argument(
         "--log-file",

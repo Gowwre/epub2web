@@ -24,6 +24,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .paths import app_data_dir
+
 LOGGER_NAME = "epub2web"
 _RESERVED = set(logging.makeLogRecord({}).__dict__) | {"message", "asctime"}
 DEFAULT_KEEP_RUNS = 20
@@ -34,7 +36,7 @@ def default_log_dir() -> Path:
     override = os.environ.get("EPUB2WEB_LOG_DIR")
     if override:
         return Path(override).expanduser()
-    return Path.home() / ".epub2web" / "logs"
+    return app_data_dir() / "logs"
 
 
 def _short(value: Any, limit: int = 500) -> str:
