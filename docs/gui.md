@@ -40,8 +40,10 @@ gate, and theme as the CLI, then opens in the default browser.
   Automatic checks run in the background and fail silently when offline, so
   they never affect book conversion. **Check for updates** in the header runs
   the same check on demand and reports when the app is current or when the
-  check fails. Set `EPUB2WEB_NO_UPDATE_CHECK=1` to skip both automatic and
-  manual checks.
+  check fails. The check trusts the CA bundle shipped with `certifi`, so
+  portable builds do not depend on OpenSSL certificate paths that exist only on
+  the build machine. Set `EPUB2WEB_NO_UPDATE_CHECK=1` to skip both automatic
+  and manual checks.
 - The GUI is a thin front end. For automation, use the CLI.
 
 ## Requirements
@@ -136,9 +138,10 @@ The build command uses `--collect-data epub2web` for templates, CSS, JavaScript,
 and fonts, and `--collect-submodules epub2web` so the hidden `--worker` mode and
 Tk modules survive freezing. PyInstaller discovers `tkinterdnd2`'s own hook,
 which bundles only the TkDND binary for the build platform. Before packaging, it
-runs two smoke tests against the frozen executable: `--self-test` confirms Tk
-and the drag-and-drop module can be imported, then a generated one-page EPUB is
-converted through the worker to exercise the real pipeline and package data.
+runs two smoke tests against the frozen executable: `--self-test` confirms Tk,
+the drag-and-drop module, and the update-check certificate bundle are available,
+then a generated one-page EPUB is converted through the worker to exercise the
+real pipeline and package data.
 
 For Linux AppImages, `appimagetool` is not bundled. Install it from
 [AppImageKit](https://github.com/AppImage/appimagetool) or set `APPIMAGETOOL`:

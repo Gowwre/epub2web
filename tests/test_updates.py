@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import ssl
 import urllib.error
 
 import pytest
@@ -31,7 +32,7 @@ def _payload(**overrides) -> bytes:
 
 
 def _respond_with(payload: bytes):
-    def fake(_request, *, timeout):
+    def fake(_request, *, timeout, context=None):
         return _Response(payload)
 
     return fake
@@ -63,8 +64,8 @@ def test_is_newer_defaults_to_running_version():
 def test_fetch_latest_release_parses_release(monkeypatch):
     requests = []
 
-    def fake_urlopen(request, timeout):
-        requests.append((request, timeout))
+    def fake_urlopen(request, timeout, context=None):
+        requests.append((request, timeout, context))
         return _Response(_payload())
 
     monkeypatch.setattr(updates.urllib.request, "urlopen", fake_urlopen)
@@ -75,9 +76,10 @@ def test_fetch_latest_release_parses_release(monkeypatch):
         version="0.4.0",
         notes="## Added\n\n- A thing.",
     )
-    request, timeout = requests[0]
+    request, timeout, context = requests[0]
     assert request.full_url == updates.LATEST_RELEASE_API
     assert timeout == 1.5
+    assert isinstance(context, ssl.SSLContext)
     headers = {key.lower(): value for key, value in request.header_items()}
     assert headers["user-agent"] == updates.USER_AGENT
     assert headers["accept"] == "application/vnd.github+json"
@@ -126,12 +128,34 @@ def test_fetch_latest_release_rejects_oversized_response(monkeypatch):
 
 
 def test_fetch_latest_release_ignores_network_errors(monkeypatch):
-    def fail(_request, *, timeout):
+    def fail(_request, *, timeout, context=None):
         raise urllib.error.URLError("offline")
 
     monkeypatch.setattr(updates.urllib.request, "urlopen", fail)
 
     assert updates.fetch_latest_release() is None
+
+
+def test_ssl_context_includes_certifi_bundle(monkeypatch):
+    loaded = []
+    real_load = ssl.SSLContext.load_verify_locations
+
+    def record(self, cafile=None, capath=None, cadata=None):
+        loaded.append(cafile)
+        return real_load(self, cafile, capath, cadata)
+
+    monkeypatch.setattr(ssl.SSLContext, "load_verify_locations", record)
+
+    context = updates._ssl_context()
+
+    assert isinstance(context, ssl.SSLContext)
+    assert updates.certifi.where() in loaded
+
+
+def test_ssl_context_returns_none_when_bundle_is_unavailable(monkeypatch, tmp_path):
+    monkeypatch.setattr(updates.certifi, "where", lambda: str(tmp_path / "missing.pem"))
+
+    assert updates._ssl_context() is None
 
 
 def test_download_url_points_at_site_download_page():

@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import pytest
-from epub2web import __version__
+from epub2web import __version__, updates
 from epub2web.controller import (
     BuildController,
     BuildEvent,
@@ -544,6 +544,14 @@ def test_gui_self_test_reports_missing_dnd(monkeypatch, capsys):
 
     assert gui_main(["--self-test"]) == 2
     assert "tkinterdnd2" in capsys.readouterr().err
+
+
+def test_gui_self_test_reports_missing_certificate_bundle(monkeypatch, capsys):
+    _import_tk_app()
+    monkeypatch.setattr(updates, "_ssl_context", lambda: None)
+
+    assert gui_main(["--self-test"]) == 2
+    assert "certificate bundle" in capsys.readouterr().err
 
 
 def test_gui_worker_flag_routes_to_cli(tiny_epub, tmp_path: Path):

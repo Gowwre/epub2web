@@ -6,6 +6,10 @@ All notable, user-facing changes are documented here. The format follows
 
 ## Unreleased
 
+### Fixed
+
+- Fix **Check for updates** failing in the Linux AppImage and macOS builds when the OpenSSL certificate path from the build machine is unavailable on the user's computer. Update checks now use the bundled Mozilla CA certificate bundle.
+
 ## 0.13.0 - 2026-11-04
 
 ### Added

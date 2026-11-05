@@ -3,8 +3,8 @@
 The Tkinter implementation lives in :mod:`epub2web.tk_app`. Keeping it out of
 this module means a frozen app can handle its hidden ``--worker`` mode without
 loading a GUI toolkit, and the worker can run in environments without Tk. The
-hidden ``--self-test`` flag imports the view for packaging smoke tests without
-opening a window.
+hidden ``--self-test`` flag imports the view and checks the bundled certificate
+data for packaging smoke tests without opening a window.
 """
 
 from __future__ import annotations
@@ -28,6 +28,14 @@ The epub2web desktop GUI needs tkinterdnd2 for native drag and drop.
 Install it with: pip install tkinterdnd2
 
 The command-line version still works: epub2web book.epub --serve
+"""
+
+CERT_HELP = """\
+The epub2web desktop GUI could not load the certificate bundle used for
+update checks.
+
+The packaged build is incomplete. Download it again from the official release,
+or install the package with: pip install epub2web
 """
 
 
@@ -59,6 +67,16 @@ def main(argv: list[str] | None = None) -> int:
             return 2
         if getattr(tk_app, "DND_FILES", None) is None:
             _print_error(DND_HELP)
+            return 2
+        try:
+            from . import updates
+        except ImportError as exc:
+            _print_error(CERT_HELP)
+            _print_error(f"Details: {exc}")
+            return 2
+
+        if updates._ssl_context() is None:
+            _print_error(CERT_HELP)
             return 2
         return 0
 

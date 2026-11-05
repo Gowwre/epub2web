@@ -40,8 +40,9 @@ def test_appimage_arch_uses_appimage_names(build_gui):
     assert build_gui.appimage_arch("armv7l") == "armhf"
 
 
-def test_license_scan_includes_drag_and_drop_dependency(build_gui):
+def test_license_scan_includes_runtime_dependencies(build_gui):
     assert "tkinterdnd2" in build_gui.BUNDLED_DISTRIBUTIONS
+    assert "certifi" in build_gui.BUNDLED_DISTRIBUTIONS
 
 
 @pytest.mark.parametrize(
@@ -54,8 +55,10 @@ def test_license_scan_includes_drag_and_drop_dependency(build_gui):
 )
 def test_pyinstaller_command_bundles_data_and_worker(build_gui, tmp_path: Path, name, extra):
     command = build_gui.pyinstaller_command(tmp_path, one_file=False, icon=None, name=name)
-    assert "--collect-data" in command
-    assert command[command.index("--collect-data") + 1] == "epub2web"
+    collected_data = [
+        command[index + 1] for index, part in enumerate(command) if part == "--collect-data"
+    ]
+    assert collected_data == ["epub2web", "certifi"]
     assert "--collect-submodules" in command
     assert command[command.index("--collect-submodules") + 1] == "epub2web"
     assert str(build_gui.ENTRY_POINT) == command[-1]

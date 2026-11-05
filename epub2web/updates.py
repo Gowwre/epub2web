@@ -11,8 +11,11 @@ from __future__ import annotations
 import http.client
 import json
 import re
+import ssl
 import urllib.request
 from dataclasses import dataclass
+
+import certifi
 
 from . import __version__
 
@@ -32,6 +35,22 @@ class ReleaseInfo:
 
     version: str
     notes: str
+
+
+def _ssl_context() -> ssl.SSLContext | None:
+    """Return a TLS context with certifi's Mozilla CA bundle.
+
+    Frozen builds bundle the OpenSSL libraries from the build machine, whose
+    compiled-in default certificate directory may not exist on the user's
+    distribution. certifi keeps public certificate roots available regardless
+    of the host's OpenSSL configuration.
+    """
+    try:
+        context = ssl.create_default_context()
+        context.load_verify_locations(cafile=certifi.where())
+    except (OSError, ssl.SSLError):
+        return None
+    return context
 
 
 def _version_parts(value: str) -> tuple[int, ...] | None:
@@ -67,7 +86,7 @@ def fetch_latest_release(timeout: float = DEFAULT_TIMEOUT) -> ReleaseInfo | None
         },
     )
     try:
-        with urllib.request.urlopen(request, timeout=timeout) as response:
+        with urllib.request.urlopen(request, timeout=timeout, context=_ssl_context()) as response:
             payload = response.read(MAX_RESPONSE_BYTES + 1)
     except (OSError, ValueError, http.client.HTTPException):
         return None

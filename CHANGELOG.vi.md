@@ -10,6 +10,10 @@ web sẽ hiển thị ghi chú tiếng Anh của phiên bản đó.
 
 ## Chưa phát hành
 
+### Sửa lỗi
+
+- Sửa lỗi **Kiểm tra cập nhật** trên bản AppImage Linux và bản macOS khi đường dẫn chứng chỉ OpenSSL từ máy dựng không tồn tại trên máy người dùng. Việc kiểm tra cập nhật giờ dùng bộ chứng chỉ Mozilla CA đi kèm.
+
 ## 0.13.0 - 2026-11-04
 
 ### Thêm mới

@@ -38,6 +38,7 @@ ICON_SOURCE = ROOT / "epub2web" / "theme" / "gui-icon.png"
 LICENSE_FILES = ("LICENSE", "THIRD_PARTY_NOTICES.md")
 BUNDLED_DISTRIBUTIONS = (
     "beautifulsoup4",
+    "certifi",
     "Jinja2",
     "lxml",
     "Pillow",
@@ -137,6 +138,8 @@ def pyinstaller_command(
         str(ROOT),
         "--collect-data",
         "epub2web",
+        "--collect-data",
+        "certifi",
         "--collect-submodules",
         "epub2web",
         "--distpath",

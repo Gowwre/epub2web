@@ -20,6 +20,8 @@ License: https://openfontlicense.org/
 ## Python dependencies
 
 - Beautiful Soup (MIT)
+- certifi (MPL-2.0) — Mozilla CA certificate bundle used by desktop update
+  checks.
 - Jinja2 (BSD-3-Clause)
 - lxml (BSD-3-Clause)
 - Pillow (HPND)
